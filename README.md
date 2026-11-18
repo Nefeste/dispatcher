@@ -22,7 +22,7 @@
 
 ## Карта
 
-Данные карты — © участники OpenStreetMap, лицензия Open Database License (ODbL)
+Данные карты — © участники OpenStreetMap ([openstreetmap.org/copyright](https://www.openstreetmap.org/copyright)), лицензия Open Database License (ODbL)
 ([ADR 0004](docs/adr/0004-osm-map.md)).
 
 ## Версии
