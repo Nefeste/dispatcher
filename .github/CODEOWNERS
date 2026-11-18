@@ -1,0 +1,10 @@
+# Пути владельца (устав студии, ADR 0018 «Права по классам изменений»): PR, который их
+# трогает, сливает только владелец. Пока в репозитории только документы; пути кода
+# (src/money/, plugins/, deploy/) добавляются вместе с кодом. Этот файл — тоже путь владельца.
+
+/.github/          @Nefeste
+/app.json          @Nefeste
+/src/money/        @Nefeste
+/plugins/          @Nefeste
+/store/forms.md    @Nefeste
+/store/privacy*    @Nefeste
