@@ -1,4 +1,4 @@
-This is «Диспетчер 03» (`dispetcher`), an Expo/React Native mobile game for RuStore: a shift as an ambulance dispatcher
+This is «Диспетчер 03» (`dispatcher`), an Expo/React Native mobile game for RuStore: a shift as an ambulance dispatcher
 in a big Russian city. A caller describes what happened; the player asks questions, decides how urgent the call is,
 sends a crew across a real street map, and after the shift reviews where urgency was misjudged and what it cost.
 Prioritize mobile-first patterns, a smooth map on the owner's phone, correctness of every medical fact, and a pure
