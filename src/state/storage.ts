@@ -5,10 +5,10 @@ import { DEFAULT_SETTINGS, type Settings, parseSettings } from './settings';
 
 /** Ключи хранилища — с версией: изменился смысл — новый ключ и шаг миграции (docs/04-data-model.md). */
 export const KEYS = {
-  settings: 'dispetcher.settings.v1',
-  current: 'dispetcher.shift.current.v1',
-  history: 'dispetcher.shift.history.v1',
-  progress: 'dispetcher.progress.v1',
+  settings: 'dispatcher.settings.v1',
+  current: 'dispatcher.shift.current.v1',
+  history: 'dispatcher.shift.history.v1',
+  progress: 'dispatcher.progress.v1',
 } as const;
 
 export async function readRaw(key: string): Promise<string | null> {
