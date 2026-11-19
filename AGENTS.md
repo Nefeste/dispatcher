@@ -55,8 +55,19 @@ Reanimated or gesture-handler code from memory — follow «Expo has changed» i
 
 ## Commands
 
-There is no code yet: the prototype specification comes first (charter `docs/04-process.md`). The commands appear here
-with the first code PR (part П1 in `docs/07-roadmap.md`).
+```bash
+npm ci                              # dependencies (npm; tests and tools run in Bun)
+npx expo install <package>          # ALWAYS instead of npm/yarn/bun add — SDK-compatible versions
+npx expo start                      # dev server
+npm run typecheck                   # tsc (app) + tsc -p tools
+npm run lint                        # zero warnings; engine purity rules for src/engine
+bun test tools/test                 # i18n guard, version, settings, docs links, workflows
+npm run export:web                  # web build into dist-web/
+NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts   # the browser scenario, shots in tools/e2e/out/
+```
+
+Run typecheck, lint, tests and — for UI changes — the web build and the browser scenario before every push
+(`.github/workflows/pr.yml` runs the first three on every PR; `docs/06-testing.md`).
 
 ## Hard rules
 
