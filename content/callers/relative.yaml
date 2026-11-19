@@ -5,13 +5,15 @@ self: false
 at: [home, street]
 weight: 50
 relations:
-  - { caller: дочь, as: f, patient: { m: отец, f: мама }, age: [55, 120] }
+  - { caller: дочь, as: f, patient: { m: отец, f: мама }, age: [55, 120], picture: daughter }
   - { caller: сын, as: m, patient: { m: отец, f: мама }, age: [55, 120] }
-  - { caller: жена, as: f, patient: { m: муж }, sex: m, age: [25, 120] }
+  - { caller: жена, as: f, patient: { m: муж }, sex: m, age: [25, 120], picture: daughter }
   - { caller: муж, as: m, patient: { f: жена }, sex: f, age: [25, 120] }
-  - { caller: мама, as: f, patient: { m: сын, f: дочь }, age: [18, 30] }
+  - { caller: мама, as: f, patient: { m: сын, f: дочь }, age: [18, 30], picture: daughter }
 cannot: []
 unsure: ["Не знаю, {он|она} не говорит", "Не пойму…", "Не знаю"]
+# повторный звонок — бригады всё нет
+again: ["Это снова я, мы вызывали. {Who}: хуже {ему|ей}, когда приедут?", "Мы вызывали, а никого нет. Когда приедут?"]
 nothing: ["Больше ничего, я же говорю", "Да вроде всё"]
 estimate: true
 sources: ["pp1931", "mos-103"]

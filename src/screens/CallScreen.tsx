@@ -1,39 +1,43 @@
-// Сцена «Разговор» как экран (ADR 0009): пока смены нет (П5), это эталонный кадр — дочь звонит из квартиры матери,
-// вопросы заполняют карточку и двигают счётчик на линии по ценам геймдизайна (§9: принять звонок — 30 игровых
-// секунд). Решение уходит в пробную смену (src/state/proto.ts): на вызов едет ближайшая свободная бригада.
+// Сцена «Разговор» как экран (ADR 0009; часть П5): открытый вызов смены (src/state/session.ts). Вопрос — команда
+// смены, часы сдвигаются на его цену (ADR 0003); решение — форма вызова; потом — кого послать или оставить ждать.
+// Первый выезд смены — видеовставка (onSent).
 import React, { useState } from 'react';
-import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
-import { T } from '../i18n';
+import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { CallScene } from '../scenes/call/CallScene';
 import { SCENE } from '../scenes/palette';
-import { FONTS } from '../ui/fonts';
-import { Txt } from '../ui/kit';
+import { callView } from '../state/callView';
+import { command, useSession } from '../state/session';
 
-/** Принять звонок, услышать адрес и повод — 30 игровых секунд (docs/08-game-design.md, §9). */
-const ANSWER = 30;
-
-export function CallScreen({ onBack, onDecide }: { onBack: () => void; onDecide: (kind: 'emergency' | 'urgent' | 'none', seconds: number) => void }) {
+export function CallScreen({ onDone, onSent }: { onDone: () => void; onSent: () => void }) {
+  const x = useSession();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const [asked, setAsked] = useState<number[]>([]);
-  const seconds = ANSWER + asked.reduce((a, i) => a + T.call.questions[i][1], 0);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     if (!size || size.w !== width || size.h !== height) setSize({ w: width, h: height });
   };
+  const view = x?.s.open ? callView(x.ctx, x.s, x.s.open) : null;
   return (
     <View style={styles.root} onLayout={onLayout}>
-      {size ? (
-        <CallScene width={size.w} height={size.h} asked={asked} seconds={seconds} onAsk={i => setAsked(a => (a.includes(i) ? a : [...a, i]))} onForm={kind => onDecide(kind, seconds)} />
+      {size && view ? (
+        <CallScene
+          width={size.w}
+          height={size.h}
+          view={view}
+          onAsk={q => command({ c: 'ask', q })}
+          onForm={kind => {
+            if (command({ c: 'form', form: kind })) return;
+            if (kind === 'none') onDone();
+          }}
+          onSend={crew => {
+            if (!command({ c: 'send', call: view.id, crew })) onSent();
+          }}
+          onHold={() => {
+            if (!command({ c: 'hold', call: view.id })) onDone();
+          }}
+        />
       ) : null}
-      <Pressable style={styles.back} onPress={onBack} accessibilityRole="button" testID="call-back">
-        <Txt style={styles.backText}>{T.common.back}</Txt>
-      </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: SCENE.hallTop },
-  back: { position: 'absolute', left: 8, top: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(20,26,31,0.7)' },
-  backText: { color: '#e6e9e4', fontSize: 13, fontFamily: FONTS.medium },
-});
+const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: SCENE.hallTop } });

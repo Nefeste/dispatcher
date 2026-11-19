@@ -8,7 +8,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import type { ContentDb } from '../../src/content/med';
-import { type City, type CrewKind, type Db, type Hospital, type Place, PROFILES, type Profile, type Roads, type ShiftSetup } from '../../src/content/types';
+import { type City, type CrewKind, type Db, type Flow, type Hospital, type Place, PROFILES, type Profile, type Roads, type ShiftSetup } from '../../src/content/types';
 import { roadOf } from '../../src/engine/road/graph';
 import { FAR, search } from '../../src/engine/road/route';
 import type { MapData } from '../../src/map/format';
@@ -53,6 +53,15 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
     if (!Number.isInteger(h.pct) || h.pct <= 0) err(`roads: hour ${h.from} pct must be a positive integer`);
     if (i > 0 && h.from <= roads.hours[i - 1].from) err('roads: hours must go up');
     if (h.from < 0 || h.from > 23) err(`roads: hour ${h.from} out of 0..23`);
+  });
+
+  const f = read(join(dir, 'flow.yaml'));
+  const flow: Flow = { estimate: Boolean(f.estimate), hours: (f.hours as Flow['hours']) ?? [] };
+  if (!flow.estimate) err('flow: the numbers are an estimate — set estimate: true');
+  if (!flow.hours.length || flow.hours[0].from !== 0) err('flow: hours must start at 0');
+  flow.hours.forEach((h, i) => {
+    if (!(h.perHour > 0)) err(`flow: hour ${h.from} perHour must be positive`);
+    if (i > 0 && h.from <= flow.hours[i - 1].from) err('flow: hours must go up');
   });
 
   const crews: Record<string, CrewKind> = {};
@@ -105,7 +114,11 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
 
   const shifts: Record<string, ShiftSetup> = {};
   for (const [id, s] of records(dir, 'shifts', 'shift')) {
-    const setup: ShiftSetup = { id, city: String(s.city ?? ''), start: Number(s.start), length: Number(s.length), crews: (s.crews as ShiftSetup['crews']) ?? [] };
+    const setup: ShiftSetup = {
+      id, city: String(s.city ?? ''), start: Number(s.start), length: Number(s.length), season: s.season as ShiftSetup['season'],
+      crews: (s.crews as ShiftSetup['crews']) ?? [], script: (s.script as ShiftSetup['script']) ?? [],
+    };
+    if (!['winter', 'spring', 'summer', 'autumn'].includes(setup.season)) err(`${id}: season must be winter, spring, summer or autumn`);
     const city = cities[setup.city];
     if (!city) err(`${id}: no city ${setup.city}`);
     if (!Number.isInteger(setup.start) || setup.start < 0 || setup.start >= 86400) err(`${id}: start must be seconds in a day`);
@@ -119,10 +132,23 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
     }
     shifts[id] = setup;
   }
+
   // медицина: копия базы «Анамнеза» (tools/content/anamnez.ts) и своё — записи «по телефону» (tools/content/phone.ts)
   const med = JSON.parse(readFileSync(join(dir, 'med/anamnez.json'), 'utf8')) as ContentDb;
   const phone = buildPhone(dir, med, Object.values(cities), err);
-  return { db: { roads, crews, cities, shifts, phone }, med, errors };
+  // учебные звонки — по записям «по телефону»: болезнь, звонящий, место, время внутри смены
+  for (const s of Object.values(shifts)) {
+    let prev = -1;
+    for (const r of s.script) {
+      if (!phone.conditions[r.condition]) err(`${s.id}: script ring at ${r.at} has unknown condition ${r.condition}`);
+      const k = phone.callers[r.caller];
+      if (!k) err(`${s.id}: script ring at ${r.at} has unknown caller ${r.caller}`);
+      else if (!k.at.includes(r.where)) err(`${s.id}: ${r.caller} does not call from ${r.where}`);
+      if (!(Number.isInteger(r.at) && r.at > prev && r.at < s.length)) err(`${s.id}: script times must go up inside the shift`);
+      prev = r.at;
+    }
+  }
+  return { db: { roads, flow, crews, cities, shifts, phone }, med, errors };
 }
 
 export function moduleText(db: Db): string {

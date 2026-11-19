@@ -1,12 +1,19 @@
-// Первый экран (спецификация прототипа, §3, шаг 1): название, строка «Это игра…» (ADR 0007), «Начать смену»,
-// «Об игре». Смена появится с частью П5; до неё кнопка видна, но не нажимается, а карту района (П2) можно открыть.
-import React from 'react';
+// Первый экран (спецификация прототипа, §3, шаг 1): название, строка «Это игра…» (ADR 0007), «Начать смену», а если
+// смена не закончена — «Продолжить смену»; рабочее место и «Об игре».
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
+import { hasSaved } from '../state/session';
 import { Button, Txt } from '../ui/kit';
 import { S } from '../ui/theme';
 
-export function TitleScreen({ onMap, onDesk, onAbout }: { onMap: () => void; onDesk: () => void; onAbout: () => void }) {
+export function TitleScreen({ onStart, onResume, onDesk, onAbout }: { onStart: () => void; onResume: () => void; onDesk: () => void; onAbout: () => void }) {
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void hasSaved().then(x => { if (alive) setSaved(x); });
+    return () => { alive = false; };
+  }, []);
   return (
     <View style={styles.root}>
       <View style={styles.head}>
@@ -14,10 +21,10 @@ export function TitleScreen({ onMap, onDesk, onAbout }: { onMap: () => void; onD
         <Txt style={styles.lead}>{T.title.lead}</Txt>
       </View>
       <View style={styles.actions}>
-        <Button label={T.title.start} onPress={() => {}} disabled testID="title-start" />
-        <Txt dim style={styles.center}>{T.title.soon}</Txt>
+        {saved ? <Button label={T.title.resume} onPress={onResume} testID="title-resume" /> : null}
+        <Button label={T.title.start} kind={saved ? 'ghost' : 'primary'} onPress={onStart} testID="title-start" />
+        <Txt dim style={styles.center}>{T.title.shift}</Txt>
         <Button label={T.title.desk} kind="ghost" onPress={onDesk} testID="title-desk" />
-        <Button label={T.title.map} kind="ghost" onPress={onMap} testID="title-map" />
         <Button label={T.title.about} kind="ghost" onPress={onAbout} testID="title-about" />
       </View>
       <Txt dim style={styles.center} testID="title-not-training">{T.title.notTraining}</Txt>

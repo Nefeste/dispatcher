@@ -1,6 +1,7 @@
 group: see
 rank: 1
 text: Лицо ровное? Обе руки поднимает? Говорит внятно?
+label: Лицо, руки
 cost: 25
 tell: { self: sometimes, relative: usually, neighbour: usually, bystander: often }
 opens: [sym.face_droop, sym.weakness_one_side, sym.speech_trouble]

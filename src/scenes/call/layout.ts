@@ -1,43 +1,77 @@
-// Раскладка сцены «Разговор» (ADR 0009) — чистая функция: картинка звонящего сверху, строка его ответа, монитор с
-// опросником под ней. Вопросы и решение — в нижней половине, под большим пальцем (docs/08-game-design.md, §12).
+// Раскладка сцены «Разговор» (ADR 0009) — чистая функция: картинка звонящего сверху, строка его ответа поверх неё,
+// монитор с опросником под ней: шапка вызова, карточка, вкладки групп вопросов, вопросы группы, решение. Вопросы и
+// решение — в нижней половине, под большим пальцем (docs/08-game-design.md, §12); касания — не меньше 44 точек.
 import type { Rect } from '../pult/layout';
 
 export interface CallLayout {
   picture: Rect;
-  bubble: Rect;
   monitor: Rect;
   screen: Rect;
+  /** карточка вызова: строки от шапки до вкладок */
   fields: Rect;
   fieldStep: number;
-  tabs: { x: number; y: number; step: number[] };
+  /** сколько строк карточки помещается */
+  rows: number;
+  /** полоса вкладок групп вопросов */
+  tabs: Rect;
+  /** восемь мест под вопросы группы: два столбца, четыре ряда */
   questions: Rect[];
+  /** где список бригад после решения — на месте вкладок и вопросов */
+  choice: Rect;
   forms: Rect[];
 }
 
 /** Картинка звонящего — 1080 × 960 (blender/caller.py); на длинном экране обрезается по бокам («cover»). */
 const PICTURE_ASPECT = 960 / 1080;
+const GAP = 6;
+const TAP = 44;
+const HEAD = 34;
 
-export function callLayout(width: number, height: number, fields = 6): CallLayout {
-  const ph = Math.max(Math.min(width * PICTURE_ASPECT, height * 0.4), height * 0.44);
+export function callLayout(width: number, height: number): CallLayout {
+  const ph = Math.max(height * 0.31, Math.min(width * PICTURE_ASPECT, height * 0.33));
   const picture = { x: 0, y: 0, w: width, h: ph };
-  const bubble = { x: 12, y: ph - 58, w: width - 24, h: 40 };
   const monitor = { x: 6, y: ph - 6, w: width - 12, h: height - ph };
   const screen = { x: monitor.x + 8, y: monitor.y + 8, w: monitor.w - 16, h: monitor.h - 16 };
-  const fieldStep = 24;
-  const fieldsBox = { x: screen.x, y: screen.y + 34, w: screen.w, h: fields * fieldStep + 8 };
-  const gap = 8;
-  const formH = 46;
-  const qH = 46;
+  const inner = { x: screen.x + 12, w: screen.w - 24 };
+  const formY = screen.y + screen.h - TAP - 10;
   const forms: Rect[] = [];
-  const fw = (screen.w - 24 - gap * 2) / 3;
-  const formY = screen.y + screen.h - formH - 12;
-  for (let i = 0; i < 3; i++) forms.push({ x: screen.x + 12 + i * (fw + gap), y: formY, w: fw, h: formH });
+  const fw = (inner.w - GAP * 2) / 3;
+  for (let i = 0; i < 3; i++) forms.push({ x: inner.x + i * (fw + GAP), y: formY, w: fw, h: TAP });
+  const qw = (inner.w - GAP) / 2;
+  const gridTop = formY - GAP * 2 - (TAP * 4 + GAP * 3);
   const questions: Rect[] = [];
-  const qw = (screen.w - 24 - gap) / 2;
-  const qTop = formY - gap * 2 - qH * 2 - gap;
-  for (let i = 0; i < 4; i++) {
-    questions.push({ x: screen.x + 12 + (i % 2) * (qw + gap), y: qTop + Math.floor(i / 2) * (qH + gap), w: qw, h: qH });
+  for (let i = 0; i < 8; i++) questions.push({ x: inner.x + (i % 2) * (qw + GAP), y: gridTop + Math.floor(i / 2) * (TAP + GAP), w: qw, h: TAP });
+  const tabs = { x: inner.x, y: gridTop - GAP - TAP, w: inner.w, h: TAP };
+  const fieldStep = 22;
+  const fields = { x: screen.x, y: screen.y + HEAD, w: screen.w, h: Math.max(fieldStep, tabs.y - GAP - screen.y - HEAD) };
+  const rows = Math.max(1, Math.floor(fields.h / fieldStep));
+  const choice = { x: screen.x, y: tabs.y, w: screen.w, h: formY - GAP - tabs.y };
+  return { picture, monitor, screen, fields, fieldStep, rows, tabs, questions, choice, forms };
+}
+
+/** Строки текста не шире `max` по мерке `measure` — переносом по словам; длинное слово режется. */
+export function wrap(text: string, max: number, measure: (s: string) => number, limit = 3): string[] {
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const next = line ? `${line} ${word}` : word;
+    if (measure(next) <= max || !line) line = next;
+    else {
+      out.push(line);
+      line = word;
+    }
   }
-  const tabs = { x: screen.x + 12, y: qTop - 36, step: [64, 160, 128] };
-  return { picture, bubble, monitor, screen, fields: fieldsBox, fieldStep, tabs, questions, forms };
+  if (line) out.push(line);
+  if (out.length <= limit) return out;
+  const cut = out.slice(0, limit);
+  cut[limit - 1] = fit(`${cut[limit - 1]} ${out.slice(limit).join(' ')}`, max, measure);
+  return cut;
+}
+
+/** Строка не шире `max`: лишнее — многоточием. */
+export function fit(text: string, max: number, measure: (s: string) => number): string {
+  if (measure(text) <= max) return text;
+  let s = text;
+  while (s.length > 1 && measure(`${s}…`) > max) s = s.slice(0, -1);
+  return `${s.trimEnd()}…`;
 }

@@ -2,6 +2,7 @@
 group: place
 rank: 1
 text: Подъезд, этаж, код домофона?
+label: Как пройти
 cost: 15
 opens: []
 about: place

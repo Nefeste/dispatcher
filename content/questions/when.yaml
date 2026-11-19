@@ -1,6 +1,7 @@
 group: what
 rank: 2
 text: Когда это началось?
+label: Началось
 cost: 15
 opens: []
 about: onset

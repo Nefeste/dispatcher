@@ -4,10 +4,12 @@ self: false
 at: [home]
 weight: 10
 relations:
-  - { caller: соседка, as: f, patient: { m: сосед, f: соседка } }
+  - { caller: соседка, as: f, patient: { m: сосед, f: соседка }, picture: daughter }
   - { caller: сосед, as: m, patient: { m: сосед, f: соседка } }
 cannot: []
 unsure: ["Не знаю, я сосед{^|ка}, заш{^ёл|ла} только", "Откуда мне знать", "Не знаю"]
+# повторный звонок — бригады всё нет
+again: ["Я звонил{^|а} про соседа, никто не приехал", "Мы вызывали, никого нет до сих пор"]
 nothing: ["Больше ничего не знаю"]
 estimate: true
 sources: ["pp1931"]

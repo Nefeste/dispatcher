@@ -1,6 +1,7 @@
 group: vital
 rank: 2
 text: Отвечает на вопросы? Понимает, где находится?
+label: Ответы
 cost: 20
 tell: { self: sure, relative: always, neighbour: usually, bystander: usually }
 opens: [sym.confusion, sym.strange_behavior, sign.gcs_low]

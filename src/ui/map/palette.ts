@@ -29,8 +29,13 @@ export const CREW = {
   base: '#2f7d5b',
   drive: '#8a5d00',
   scene: C.kumach,
+  transport: '#6b3d8c',
+  hospital: '#2a5d8f',
   back: '#3d6d99',
 } as const;
+
+/** Вызов, форму которого ещё не решили, — серое кольцо. */
+export const UNDECIDED = '#5d6468';
 
 /** Форма вызова — цвет кольца. */
 export const FORM_MARK = { emergency: C.kumach, urgent: '#8a5d00' } as const;
