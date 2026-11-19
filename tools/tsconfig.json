@@ -19,6 +19,7 @@
   ],
   "include": [
     "./**/*.ts",
+    "../spikes/**/*.ts",
     "../src/state/settings.ts",
     "../src/version.ts",
     "../src/engine/**/*.ts",
