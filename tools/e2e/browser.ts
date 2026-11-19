@@ -1,6 +1,6 @@
 // Сценарий в браузере (спецификация прототипа, критерий 1): веб-сборка, Chromium без окна, настоящие нажатия.
-// Сейчас — первый экран → карта района (П2) → «Об игре» → назад; с каждой частью прототипа путь растёт до
-// сквозного (§3).
+// Сейчас — первый экран → карта района (П2) → рабочее место (сцена Three.js) → «Об игре» → назад; с каждой частью
+// прототипа путь растёт до сквозного (§3).
 // Снимки — tools/e2e/out/. Ошибка в консоли — провал. По образцу shelter: tools/e2e/browser.ts @ 396daee.
 //
 //   npm run export:web && NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts
@@ -36,7 +36,8 @@ const see = async (p: Page, id: string, text?: string) => {
   checks++;
 };
 
-const browser = await chromium.launch();
+// WebGL без видеокарты — программный SwiftShader через ANGLE: без флагов Chromium без окна сцену не покажет
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 try {
   // телефон в портрете (ADR 0006); снимки для людей — с плотностью 2
   const page = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2 });
@@ -65,6 +66,24 @@ try {
   await page.waitForTimeout(500);
   await snap(page, 'map-moved');
   await page.getByTestId('map-back').click();
+  await see(page, 'title-name');
+
+  // рабочее место: модель из Blender на Three.js, экраны мониторов — Skia; палец поворачивает взгляд
+  await page.getByTestId('title-desk').click();
+  await see(page, 'desk-gl');
+  await page.getByTestId('desk-ready').waitFor({ state: 'visible', timeout: 90000 });
+  await see(page, 'desk-ready', 'оглядеться');
+  await see(page, 'desk-fps', 'к/с');
+  await page.waitForTimeout(1500);
+  await snap(page, 'desk');
+  const gl = (await page.getByTestId('desk-gl').boundingBox())!;
+  await page.mouse.move(gl.x + gl.width / 2, gl.y + gl.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(gl.x + gl.width / 2 + 150, gl.y + gl.height / 2 - 40, { steps: 10 });
+  await page.mouse.up();
+  await page.waitForTimeout(1500);
+  await snap(page, 'desk-look');
+  await page.getByTestId('desk-back').click();
   await see(page, 'title-name');
 
   await page.getByTestId('title-about').click();

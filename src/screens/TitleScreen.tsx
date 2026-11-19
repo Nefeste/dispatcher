@@ -6,7 +6,7 @@ import { T } from '../i18n';
 import { Button, Txt } from '../ui/kit';
 import { S } from '../ui/theme';
 
-export function TitleScreen({ onMap, onAbout }: { onMap: () => void; onAbout: () => void }) {
+export function TitleScreen({ onMap, onDesk, onAbout }: { onMap: () => void; onDesk: () => void; onAbout: () => void }) {
   return (
     <View style={styles.root}>
       <View style={styles.head}>
@@ -16,6 +16,7 @@ export function TitleScreen({ onMap, onAbout }: { onMap: () => void; onAbout: ()
       <View style={styles.actions}>
         <Button label={T.title.start} onPress={() => {}} disabled testID="title-start" />
         <Txt dim style={styles.center}>{T.title.soon}</Txt>
+        <Button label={T.title.desk} kind="ghost" onPress={onDesk} testID="title-desk" />
         <Button label={T.title.map} kind="ghost" onPress={onMap} testID="title-map" />
         <Button label={T.title.about} kind="ghost" onPress={onAbout} testID="title-about" />
       </View>

@@ -1,0 +1,54 @@
+{
+  "id": "desk",
+  "name": "Рабочее место диспетчера скорой: стол, мониторы, связь, зал с видеостеной",
+  "licence": "своя работа студии «Горница»",
+  "made": {
+    "script": "blender/build.py",
+    "blender": "4.5.15",
+    "aoSamples": 64,
+    "aoDistance": 0.6
+  },
+  "triangles": 12280,
+  "screens": [
+    "videowall",
+    "mon_call",
+    "mon_map",
+    "nb0_mon0",
+    "nb0_mon1",
+    "nb1_mon0",
+    "nb1_mon1",
+    "nb2_mon0",
+    "nb2_mon1",
+    "nb3_mon0",
+    "nb3_mon1"
+  ],
+  "regions": [
+    "floor",
+    "wall",
+    "partition",
+    "desk",
+    "edge",
+    "metal",
+    "plastic",
+    "dark",
+    "key",
+    "chair",
+    "accent",
+    "paper",
+    "mug",
+    "lamp",
+    "glass",
+    "pad",
+    "glow"
+  ],
+  "files": {
+    "src/art/desk.gen.ts": {
+      "sha256": "b45dc5a8dc1713ddfad358347b3c8a6028746ffaf155489577e82bf095da4de7",
+      "bytes": 892482
+    },
+    "assets/models/desk.glb": {
+      "sha256": "2c9dd18dc7060942fd3ed498ff4f0ff02c0a69cab2a04bfb1ad925f2b2482a0c",
+      "bytes": 626452
+    }
+  }
+}

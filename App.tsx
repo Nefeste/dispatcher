@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AboutScreen } from './src/screens/AboutScreen';
 import { MapScreen } from './src/screens/MapScreen';
+import { DeskScreen } from './src/screens/DeskScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
 import { lessMotionOf } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
@@ -15,7 +16,7 @@ import { FONT_FILES } from './src/ui/fonts';
 import { setLessMotion } from './src/ui/motion';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'map' | 'about';
+type Screen = 'title' | 'map' | 'desk' | 'about';
 
 export default function App() {
   // шрифты студии лежат в сборке — грузятся мгновенно; не загрузились — игра идёт системным шрифтом
@@ -48,8 +49,9 @@ export default function App() {
         <View style={styles.root}>
           {fontsReady || fontsError ? (
             <>
-              {screen === 'title' ? <TitleScreen onMap={() => setScreen('map')} onAbout={() => setScreen('about')} /> : null}
+              {screen === 'title' ? <TitleScreen onMap={() => setScreen('map')} onDesk={() => setScreen('desk')} onAbout={() => setScreen('about')} /> : null}
               {screen === 'map' ? <MapScreen onBack={() => setScreen('title')} /> : null}
+              {screen === 'desk' ? <DeskScreen onBack={() => setScreen('title')} /> : null}
               {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} /> : null}
             </>
           ) : null}
