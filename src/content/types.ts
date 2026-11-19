@@ -26,7 +26,7 @@ export interface Place {
 }
 
 export interface Hospital extends Place {
-  profiles: string[];
+  profiles: Profile[];
 }
 
 export interface City {
@@ -52,9 +52,165 @@ export interface ShiftSetup {
   crews: ShiftCrew[];
 }
 
+// --- медицина по телефону (часть П4; docs/04-data-model.md, §1; ADR 0002) ----------------------------------------
+// Болезни, признаки, факторы риска — копия базы «Анамнеза» (src/content/generated/med.ts, тип ContentDb из
+// src/content/med.ts). Здесь — своё у «Диспетчера»: что о признаке скажет звонящий, какие вопросы его открывают, как
+// звонят и с чем, форма вызова, больница, окно. Вероятности — целые доли 1/10 000, как в «Анамнезе».
+
+/** Слова звонящего: от себя («давит в груди») и о другом («говорит, давит в груди»). Шаблоны: `{м|ж}` — по полу
+ *  больного, `{^м|ж}` — по полу звонящего, `{who}` и `{Who}` — кто больной звонящему («отец», «соседка»,
+ *  «мужчина»), с маленькой и большой буквы. */
+export interface Lines {
+  self: string[];
+  other: string[];
+}
+
+/** Признак по телефону — запись phone/findings/<id>.yaml, идентификатор — тот же, что в базе «Анамнеза». */
+export interface PhoneFinding {
+  id: string;
+  /** насколько вероятно, что звонящий этого вида знает, есть признак или нет; вид звонящего → доля 1/10 000 */
+  tell: Record<string, number>;
+  says: { present: Lines; absent?: Lines };
+  /** повод экстренной формы — пункт 388н, п. 11, с буквой; нет — признак угрозы жизни не означает */
+  threat?: string;
+  /** доли `tell` — оценка, а не факт */
+  estimate: boolean;
+  sources: string[];
+  notes?: string;
+  review: 'draft' | 'checked';
+}
+
+export type QuestionGroup = 'who' | 'vital' | 'what' | 'see' | 'history' | 'place';
+export const QUESTION_GROUPS: readonly QuestionGroup[] = ['who', 'vital', 'what', 'see', 'history', 'place'];
+
+/** Слова ответа по числу: первая полоса, в которую оно попало (`to` — не больше). */
+export interface Band<T = string> {
+  to: number;
+  words: T;
+}
+
+/** Вопрос диспетчера — запись questions/<id>.yaml. */
+export interface Question {
+  id: string;
+  group: QuestionGroup;
+  /** порядок в группе */
+  rank: number;
+  /** слова вопроса; `{м|ж}` — по полу больного: диспетчер знает его из первых слов */
+  text: string;
+  /** цена, игровые секунды (docs/08-game-design.md, §9) */
+  cost: number;
+  /** признаки, которые он открывает, по порядку: звонящий называет первые два, что есть */
+  opens: string[];
+  /** все открытые признаки, о которых звонящий знает, — нет */
+  none?: Lines;
+  /** не признак, а сведения: возраст, когда началось, как пройти; повтор — что ещё не сказано */
+  about?: 'age' | 'onset' | 'place' | 'more';
+  /** знает ли звонящий этого вида то, о чём вопрос, — доля 1/10 000. Знает — отвечает как есть; не знает — называет
+   *  только то, что заметил сам (`tell` признака), иначе «не знаю» */
+  tell: Record<string, number>;
+  /** для `age`: точный ответ, `{age}` и `{years}` — число и «год», «года», «лет» */
+  answer?: Lines;
+  years?: [string, string, string];
+  /** для `age` — приблизительно, когда точно не знает (лет); для `onset` — по минутам до звонка */
+  bands?: Band<Lines>[];
+  /** для `place`: слова по месту больного */
+  place?: Record<Where, Lines>;
+}
+
+export type Where = 'home' | 'street';
+
+/** Кем звонящий приходится больному: его слово и слово о больном по полу больного. */
+export interface Relation {
+  caller: string;
+  /** пол звонящего: «дочь» — ж */
+  as: 'm' | 'f';
+  patient: { m?: string; f?: string };
+  /** только для больных этого пола и возраста */
+  sex?: 'm' | 'f';
+  age?: [number, number];
+}
+
+/** Вид звонящего — запись callers/<id>.yaml. */
+export interface CallerKind {
+  id: string;
+  name: string;
+  /** говорит о себе: первое лицо, «кто он» не называет */
+  self: boolean;
+  at: Where[];
+  /** доля среди звонящих, кто мог позвонить (оценка) */
+  weight: number;
+  relations: Relation[];
+  /** больной с любым из этих признаков позвонить так не может: не отвечает — сам не позвонит */
+  cannot: string[];
+  /** «не знаю» — когда о признаке не знает */
+  unsure: string[];
+  /** на повтор, когда сказать больше нечего */
+  nothing: string[];
+  estimate: boolean;
+  sources: string[];
+  review: 'draft' | 'checked';
+}
+
+/** Повод — первые слова звонящего: первый по `rank`, чей признак есть и звонящий о нём знает. */
+export interface Reason {
+  id: string;
+  rank: number;
+  /** сколько из тех, кто знает признак повода, с него и начнут (доля 1/10 000, оценка); остальные — со смутного «плохо» */
+  say: number;
+  /** любой из этих признаков; пусто — повод на всякий случай, если ни один не подошёл */
+  when: string[];
+  words: Lines;
+}
+
+export type FormKind = 'emergency' | 'urgent';
+export type Profile = 'stroke' | 'cardio' | 'trauma' | 'neuro' | 'uro' | 'infect' | 'general';
+export const PROFILES: readonly Profile[] = ['stroke', 'cardio', 'trauma', 'neuro', 'uro', 'infect', 'general'];
+
+/** Окно состояния: после него опоздание меняет исход (docs/08-game-design.md, §7). */
+export interface Window {
+  minutes: number;
+  /** от начала болезни, от звонка или от прибытия бригады (там ставят диагноз) */
+  from: 'onset' | 'call' | 'crew';
+  /** только при этих скрытых параметрах болезни «Анамнеза» */
+  when?: Record<string, string[]>;
+  source: string;
+}
+
+/** Болезнь по телефону — запись phone/conditions/<id>.yaml, идентификатор — тот же, что в базе «Анамнеза». */
+export interface PhoneCondition {
+  id: string;
+  /** доля среди вызовов смены, относительный вес (оценка) */
+  weight: number;
+  /** форма вызова по правде; признак с `threat` у больного делает её экстренной всегда */
+  form: FormKind;
+  hospital: Profile;
+  /** доля тех, кого везут в больницу (оценка) */
+  transport: number;
+  /** минут на месте (оценка) */
+  scene: [number, number];
+  /** доля вызовов не из дома: улица, остановка, магазин (оценка) */
+  street: number;
+  /** минут от начала до звонка: [до, вес] по полосам (оценка) */
+  onset: [number, number][];
+  window?: Window;
+  estimate: boolean;
+  sources: string[];
+  notes?: string;
+  review: 'draft' | 'checked';
+}
+
+export interface Phone {
+  findings: Record<string, PhoneFinding>;
+  conditions: Record<string, PhoneCondition>;
+  questions: Record<string, Question>;
+  callers: Record<string, CallerKind>;
+  reasons: Record<string, Reason>;
+}
+
 export interface Db {
   roads: Roads;
   crews: Record<string, CrewKind>;
   cities: Record<string, City>;
   shifts: Record<string, ShiftSetup>;
+  phone: Phone;
 }

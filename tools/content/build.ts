@@ -7,15 +7,18 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
-import type { City, CrewKind, Db, Hospital, Place, Roads, ShiftSetup } from '../../src/content/types';
+import type { ContentDb } from '../../src/content/med';
+import { type City, type CrewKind, type Db, type Hospital, type Place, PROFILES, type Profile, type Roads, type ShiftSetup } from '../../src/content/types';
 import { roadOf } from '../../src/engine/road/graph';
 import { FAR, search } from '../../src/engine/road/route';
 import type { MapData } from '../../src/map/format';
 import { loadMap } from '../../src/map/load';
+import { buildPhone } from './phone';
 
 const ROOT = join(import.meta.dir, '../..');
 const CONTENT = join(ROOT, 'content');
 const OUT = join(ROOT, 'src/content/generated/db.ts');
+const MED_OUT = join(ROOT, 'src/content/generated/med.ts');
 /** дальше — точку записи не привязать к дорогам: значит, она не там */
 const SNAP_M = 300;
 
@@ -38,7 +41,7 @@ function nearest(m: MapData, x: number, y: number): { node: number; m: number } 
   return { node: best, m: Math.sqrt(bd) / 2 };
 }
 
-export function buildDb(dir = CONTENT): { db: Db; errors: string[] } {
+export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string[] } {
   const errors: string[] = [];
   const err = (s: string) => errors.push(s);
 
@@ -77,7 +80,11 @@ export function buildDb(dir = CONTENT): { db: Db; errors: string[] } {
       return { id: String(p.id), name: String(p.name), at, node: s.node };
     };
     const bases = ((c.bases as Raw[]) ?? []).map(place);
-    const hospitals: Hospital[] = ((c.hospitals as Raw[]) ?? []).map(h => ({ ...place(h), profiles: (h.profiles as string[]) ?? [] }));
+    const hospitals: Hospital[] = ((c.hospitals as Raw[]) ?? []).map(h => {
+      const profiles = (h.profiles as Profile[]) ?? [];
+      for (const p of profiles) if (!PROFILES.includes(p)) err(`${id}: ${String(h.id)} has unknown profile ${p}`);
+      return { ...place(h), profiles };
+    });
     if (!bases.length) err(`${id}: no bases`);
     if (!hospitals.length) err(`${id}: no hospitals`);
     const ids = [...bases, ...hospitals].map(p => p.id);
@@ -112,7 +119,10 @@ export function buildDb(dir = CONTENT): { db: Db; errors: string[] } {
     }
     shifts[id] = setup;
   }
-  return { db: { roads, crews, cities, shifts }, errors };
+  // медицина: копия базы «Анамнеза» (tools/content/anamnez.ts) и своё — записи «по телефону» (tools/content/phone.ts)
+  const med = JSON.parse(readFileSync(join(dir, 'med/anamnez.json'), 'utf8')) as ContentDb;
+  const phone = buildPhone(dir, med, Object.values(cities), err);
+  return { db: { roads, crews, cities, shifts, phone }, med, errors };
 }
 
 export function moduleText(db: Db): string {
@@ -125,8 +135,20 @@ export function moduleText(db: Db): string {
   ].join('\n');
 }
 
+export function medText(med: ContentDb): string {
+  return [
+    '// Сделано tools/content/build.ts из content/med/anamnez.json — руками не править. Подмножество базы «Анамнеза»:',
+    '// content/med/FROM.yaml (ADR 0002).',
+    "import type { ContentDb } from '../med';",
+    '',
+    '// строкой через JSON.parse: так тип не выводится из огромного литерала, а Hermes и V8 читают JSON быстрее кода',
+    `export const MED: ContentDb = JSON.parse(${JSON.stringify(JSON.stringify(med))});`,
+    '',
+  ].join('\n');
+}
+
 if (import.meta.main) {
-  const { db, errors } = buildDb();
+  const { db, med, errors } = buildDb();
   if (errors.length) {
     console.error(errors.join('\n'));
     process.exit(1);
@@ -134,7 +156,10 @@ if (import.meta.main) {
   if (!process.argv.includes('--check')) {
     mkdirSync(join(ROOT, 'src/content/generated'), { recursive: true });
     writeFileSync(OUT, moduleText(db));
+    writeFileSync(MED_OUT, medText(med));
   }
-  const n = Object.keys(db.crews).length + Object.keys(db.cities).length + Object.keys(db.shifts).length + 1;
+  const p = db.phone;
+  const n = Object.keys(db.crews).length + Object.keys(db.cities).length + Object.keys(db.shifts).length + 1 +
+    Object.keys(p.findings).length + Object.keys(p.conditions).length + Object.keys(p.questions).length + Object.keys(p.callers).length + Object.keys(p.reasons).length;
   console.log(`содержание: ${n} записей, ошибок нет`);
 }

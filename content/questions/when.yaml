@@ -1,0 +1,15 @@
+group: what
+rank: 2
+text: Когда это началось?
+cost: 15
+opens: []
+about: onset
+tell: { self: sure, relative: usually, neighbour: sometimes, bystander: rarely }
+# минут от начала до звонка
+bands:
+  - { to: 15, words: { self: ["Только что, минут десять"], other: ["Только что, минут десять назад"] } }
+  - { to: 45, words: { self: ["С полчаса уже"], other: ["С полчаса"] } }
+  - { to: 120, words: { self: ["Час-полтора"], other: ["Час, может, полтора"] } }
+  - { to: 360, words: { self: ["Несколько часов уже"], other: ["Несколько часов"] } }
+  - { to: 1440, words: { self: ["С утра"], other: ["С утра ещё"] } }
+  - { to: 100000, words: { self: ["Второй день уже", "Несколько дней"], other: ["Второй день", "Уже несколько дней"] } }

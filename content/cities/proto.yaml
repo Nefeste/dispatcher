@@ -7,6 +7,6 @@ bases:
   - { id: base.north, name: "Подстанция «Север»", at: [3200, 6200] }
   - { id: base.south, name: "Подстанция «Юг»", at: [8600, 12600] }
 hospitals:
-  - { id: hosp.61, name: "Городская больница № 61", at: [9600, 14400], profiles: [stroke, cardio, general] }
+  - { id: hosp.61, name: "Городская больница № 61", at: [9600, 14400], profiles: [stroke, cardio, neuro, uro, general] }
   - { id: hosp.62, name: "Больница скорой помощи № 62", at: [2600, 9200], profiles: [trauma, general] }
-  - { id: hosp.63, name: "Городская больница № 63", at: [6200, 16000], profiles: [general] }
+  - { id: hosp.63, name: "Городская больница № 63", at: [6200, 16000], profiles: [infect, general] }

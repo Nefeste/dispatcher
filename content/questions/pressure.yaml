@@ -1,0 +1,9 @@
+group: history
+rank: 3
+text: Давление мерили?
+cost: 15
+tell: { self: usually, relative: often, neighbour: sometimes, bystander: never }
+opens: [sym.bp_surge]
+none:
+  self: ["Мерил{|а}, обычное"]
+  other: ["Мерили, обычное"]

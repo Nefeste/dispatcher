@@ -1,0 +1,11 @@
+weight: 10
+form: urgent
+hospital: general
+transport: 10
+scene: [15, 25]
+street: 5
+onset: [[360, 30], [1440, 40], [4320, 30]]
+estimate: true
+sources: ["388n, п. 13 «а»", "926n, п. 13", "cr-778, разд. 6"]
+notes: "Неотложная. В больницу — только при подозрении на конский хвост, перелом, опухоль или воспаление (cr-778, разд. 6)."
+review: draft

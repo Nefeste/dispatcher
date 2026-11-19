@@ -1,0 +1,8 @@
+tell: { self: always, relative: usually, neighbour: rarely, bystander: never }
+says:
+  present:
+    self: ["Эпилепсия у меня"]
+    other: ["Эпилепсия у {него|неё}, приступы бывают"]
+estimate: true
+sources: ["anamnez"]
+review: draft

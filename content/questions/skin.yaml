@@ -1,0 +1,9 @@
+group: see
+rank: 2
+text: Какая кожа? Потный, сыпь, отёк?
+cost: 15
+tell: { self: usually, relative: usually, neighbour: usually, bystander: usually }
+opens: [sign.angioedema, sym.hives, sym.sweating, sym.tremor]
+none:
+  self: ["Обычная кожа"]
+  other: ["Кожа обычная, ничего такого"]

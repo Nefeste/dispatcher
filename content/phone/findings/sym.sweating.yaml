@@ -1,0 +1,8 @@
+tell: { self: always, relative: usually, neighbour: usually, bystander: often }
+says:
+  present:
+    self: ["{Весь|Вся} в холодном поту"]
+    other: ["Потный, холодный пот", "{Весь|Вся} мокр{ый|ая}, пот холодный"]
+estimate: true
+sources: ["anamnez"]
+review: draft

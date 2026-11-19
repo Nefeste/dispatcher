@@ -1,0 +1,9 @@
+group: see
+rank: 1
+text: Лицо ровное? Обе руки поднимает? Говорит внятно?
+cost: 25
+tell: { self: sometimes, relative: usually, neighbour: usually, bystander: often }
+opens: [sym.face_droop, sym.weakness_one_side, sym.speech_trouble]
+none:
+  self: ["Да нормально всё с лицом, руки поднимаю"]
+  other: ["Лицо ровное, руки обе поднимает, говорит нормально", "Лицо ровное, руки поднимает"]

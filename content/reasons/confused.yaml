@@ -1,0 +1,6 @@
+rank: 5
+say: 60
+when: [sym.confusion, sym.strange_behavior]
+words:
+  self: []
+  other: ["{Who} как{ой|ая}-то странн{ый|ая}, не понимает, что говорю", "{Who} заговаривается, не узнаёт меня"]

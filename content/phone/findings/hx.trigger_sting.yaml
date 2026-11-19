@@ -1,0 +1,8 @@
+tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
+says:
+  present:
+    self: ["Оса ужалила, минут десять назад"]
+    other: ["Оса {его|её} ужалила, недавно"]
+estimate: true
+sources: ["anamnez"]
+review: draft

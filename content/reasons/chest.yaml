@@ -1,0 +1,6 @@
+rank: 6
+say: 75
+when: [sym.chest_pain_pressing, sym.chest_pain_rest_long, sym.chest_pain_exertion]
+words:
+  self: ["Давит в груди, сильно", "Грудь болит, давит"]
+  other: ["{Who} жалуется: давит в груди", "У {него|неё} боль в груди, за сердце держится"]

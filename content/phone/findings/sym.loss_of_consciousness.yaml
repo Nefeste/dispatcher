@@ -1,0 +1,9 @@
+tell: { self: usually, relative: usually, neighbour: often, bystander: sometimes }
+says:
+  present:
+    self: ["Не помню, кажется, отключил{ся|ась} ненадолго"]
+    other: ["Отключил{ся|ась} на минуту, потом приш{ёл|ла} в себя"]
+estimate: true
+sources: ["anamnez"]
+notes: "Потеря сознания была и прошла: сейчас сознание есть. Экстренная форма — при нарушенном сознании сейчас (`sign.gcs_low`)."
+review: draft

@@ -1,0 +1,10 @@
+tell: { self: always, relative: usually, neighbour: often, bystander: never }
+says:
+  present:
+    self: ["Когда иду, давит в груди, постою — проходит"]
+    other: ["Говорит, при ходьбе в груди давит, постоит — отпускает"]
+threat: "388n, п. 11 «д»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «д»"]
+notes: "Боль за грудиной при нагрузке, впервые или чаще и сильнее, — нестабильная стенокардия, это ОКС (`cr-154`); повод экстренной формы — болевой синдром (п. 11 «д»)."
+review: draft

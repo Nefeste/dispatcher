@@ -1,0 +1,9 @@
+group: vital
+rank: 2
+text: Отвечает на вопросы? Понимает, где находится?
+cost: 20
+tell: { self: sure, relative: always, neighbour: usually, bystander: usually }
+opens: [sym.confusion, sym.strange_behavior, sign.gcs_low]
+none:
+  self: ["Да всё я понимаю"]
+  other: ["Отвечает, всё понимает", "Да, разговаривает нормально"]

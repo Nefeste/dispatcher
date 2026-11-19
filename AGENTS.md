@@ -63,6 +63,7 @@ npm run content                     # content/*.yaml → src/content/generated/ 
 npm run typecheck                   # content + tsc (app) + tsc -p tools
 npm run lint                        # zero warnings; engine purity rules for src/engine
 bun test tools/test                 # i18n guard, version, settings, docs links, workflows, map file, road search
+bun tools/content/anamnez.ts <dir>  # medicine from a Nefeste/anamnez checkout at a pinned commit → content/med/ + FROM.yaml
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
 bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passport assets/map/nn-center.json
 python blender/build.py             # the workplace model: src/art/desk.gen.ts + assets/models/ (bpy==4.5.15, Python 3.11)

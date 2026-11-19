@@ -1,0 +1,9 @@
+group: vital
+rank: 1
+text: В сознании? Глаза открывает?
+cost: 15
+tell: { self: sure, relative: always, neighbour: usually, bystander: usually }
+opens: [sign.gcs_low, sign.postictal]
+none:
+  self: ["Да, я в сознании"]
+  other: ["Да, в сознании, смотрит на меня", "В сознании"]

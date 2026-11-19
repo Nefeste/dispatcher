@@ -1,0 +1,8 @@
+tell: { self: always, relative: usually, neighbour: usually, bystander: sometimes }
+says:
+  present:
+    self: ["Температура тридцать девять"]
+    other: ["Температура высокая, {горячий|горячая}"]
+estimate: true
+sources: ["anamnez"]
+review: draft

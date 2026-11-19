@@ -1,0 +1,6 @@
+rank: 4
+say: 60
+when: [sym.face_droop, sym.speech_trouble, sym.weakness_one_side]
+words:
+  self: ["Лицо как-то перекосило, рука не слушается"]
+  other: ["{Who} вдруг стал{|а} говорить невнятно, лицо перекосило", "{Who} руку поднять не может, и лицо какое-то не такое"]

@@ -1,0 +1,9 @@
+group: see
+rank: 4
+text: Тошнит? Рвота была? Голова кружится?
+cost: 10
+tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
+opens: [sym.vomiting, sym.nausea, sym.dizziness]
+none:
+  self: ["Нет, не тошнит"]
+  other: ["Нет, не тошнит, не рвало"]

@@ -1,0 +1,10 @@
+# Признак по телефону (docs/04-data-model.md, §1): кто о нём знает и что скажет. Доли `tell` — оценка.
+tell: { self: never, relative: usually, neighbour: often, bystander: sometimes }
+says:
+  present:
+    self: []
+    other: ["Глаза открывает, но не отвечает толком", "Еле отвечает, засыпает"]
+threat: "388n, п. 11 «а»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «а»"]
+review: draft

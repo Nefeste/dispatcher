@@ -1,0 +1,10 @@
+tell: { self: never, relative: usually, neighbour: usually, bystander: usually }
+says:
+  present:
+    self: []
+    other: ["Были судороги, трясло {всего|всю}", "Судороги были, минуту-две"]
+threat: "388n, п. 11 «а»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «а»"]
+notes: "Судорожный приступ — с нарушением сознания (п. 11 «а»); статус и серия — экстренная форма и по `cr-741`, 1.6.7."
+review: draft

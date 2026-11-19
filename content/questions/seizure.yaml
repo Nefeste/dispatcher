@@ -1,0 +1,9 @@
+group: see
+rank: 3
+text: Судороги были?
+cost: 10
+tell: { self: often, relative: usually, neighbour: often, bystander: often }
+opens: [sym.seizure]
+none:
+  self: ["Нет, судорог не было"]
+  other: ["Нет, не было судорог"]

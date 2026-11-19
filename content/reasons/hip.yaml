@@ -1,0 +1,6 @@
+rank: 10
+say: 85
+when: [sym.hip_pain, sign.no_weight_bearing]
+words:
+  self: ["Упал{|а}, встать не могу, нога болит"]
+  other: ["{Who} упал{|а}, встать не может", "{Who} упал{|а} дома, на ногу не встаёт"]

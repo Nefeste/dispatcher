@@ -1,0 +1,11 @@
+weight: 6
+form: urgent
+hospital: uro
+transport: 60
+scene: [15, 30]
+street: 5
+onset: [[60, 50], [360, 40], [1440, 10]]
+estimate: true
+sources: ["388n, п. 13 «а»", "907n, п. 9", "cr-7, разд. 6"]
+notes: "Неотложная; экстренная — если боль угрожает жизни (п. 11 «д»): в записи «Анамнеза» такой боли нет."
+review: draft
