@@ -20,15 +20,15 @@ export function Txt({ children, style, dim, title, testID }: { children: React.R
   return <Text testID={testID} style={[styles.text, dim && styles.dim, title && styles.title, style, face(style, !!title)]}>{children}</Text>;
 }
 
-export function Button({ label, onPress, kind = 'primary', disabled, testID }: { label: string; onPress: () => void; kind?: 'primary' | 'ghost'; disabled?: boolean; testID?: string }) {
+export function Button({ label, onPress, kind = 'primary', disabled, testID }: { label: string; onPress: () => void; kind?: 'primary' | 'ghost' | 'onDark'; disabled?: boolean; testID?: string }) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, kind === 'ghost' && styles.ghost, disabled && styles.disabled, pressed && styles.pressed]}>
-      <Text style={[styles.buttonText, kind === 'ghost' && styles.ghostText]}>{label}</Text>
+      style={({ pressed }) => [styles.button, kind === 'ghost' && styles.ghost, kind === 'onDark' && styles.onDark, disabled && styles.disabled, pressed && styles.pressed]}>
+      <Text style={[styles.buttonText, kind === 'ghost' && styles.ghostText, kind === 'onDark' && styles.onDarkText]}>{label}</Text>
     </Pressable>
   );
 }
@@ -52,5 +52,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8 },
   buttonText: { color: C.kumachInk, fontSize: S.body, fontFamily: FONTS.bold },
   ghostText: { color: C.ink },
+  // на тёмной сцене (рабочее место): прозрачная, светлая рамка и текст
+  onDark: { backgroundColor: 'rgba(20,26,31,0.55)', borderWidth: 1, borderColor: 'rgba(230,233,228,0.5)' },
+  onDarkText: { color: '#e6e9e4' },
   card: { backgroundColor: C.paper, borderRadius: R.card, borderWidth: 1, borderColor: C.line, padding: 14, gap: 6 },
 });

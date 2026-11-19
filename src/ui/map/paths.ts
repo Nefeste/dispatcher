@@ -1,5 +1,6 @@
 // Слои карты как пути Skia — собираются один раз при загрузке, жесты двигают только матрицу (docs/02-architecture.md, §5).
-import { FillType, type SkPath, Skia } from '@shopify/react-native-skia';
+// Строятся через PathBuilder: методы изменения SkPath в Skia 2.6.2 устарели.
+import { FillType, type SkPath, type SkPathBuilder, Skia } from '@shopify/react-native-skia';
 import { type MapData, type Polylines, ROAD_CLASSES } from '../../map/format';
 
 export interface MapPaths {
@@ -10,7 +11,7 @@ export interface MapPaths {
   roads: SkPath[];
 }
 
-function addLines(p: SkPath, l: Polylines, from: number, to: number, close: boolean) {
+function addLines(p: SkPathBuilder, l: Polylines, from: number, to: number, close: boolean) {
   for (let i = from; i < to; i++) {
     const a = l.starts[i], b = l.starts[i + 1];
     if (b - a < 2) continue;
@@ -21,16 +22,16 @@ function addLines(p: SkPath, l: Polylines, from: number, to: number, close: bool
 }
 
 export function mapPaths(m: MapData): MapPaths {
-  const water = Skia.Path.Make();
+  const water = Skia.PathBuilder.Make();
   addLines(water, m.water, 0, m.water.starts.length - 1, true);
   water.setFillType(FillType.EvenOdd);
-  const green = Skia.Path.Make();
+  const green = Skia.PathBuilder.Make();
   addLines(green, m.green, 0, m.green.starts.length - 1, true);
   green.setFillType(FillType.EvenOdd);
-  const rail = Skia.Path.Make();
+  const rail = Skia.PathBuilder.Make();
   addLines(rail, m.rail, 0, m.rail.starts.length - 1, false);
-  const roads = Array.from({ length: ROAD_CLASSES }, () => Skia.Path.Make());
+  const roads = Array.from({ length: ROAD_CLASSES }, () => Skia.PathBuilder.Make());
   const { shape, cls } = m.edges;
   for (let e = 0; e < cls.length; e++) addLines(roads[cls[e]], shape, e, e + 1, false);
-  return { water, green, rail, roads };
+  return { water: water.detach(), green: green.detach(), rail: rail.detach(), roads: roads.map(r => r.detach()) };
 }

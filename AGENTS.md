@@ -64,6 +64,7 @@ npm run lint                        # zero warnings; engine purity rules for src
 bun test tools/test                 # i18n guard, version, settings, docs links, workflows, map file, road search
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
 bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passport assets/map/nn-center.json
+python blender/build.py             # the workplace model: src/art/desk.gen.ts + assets/models/ (bpy==4.5.15, Python 3.11)
 npm run export:web                  # web build into dist-web/
 NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts   # the browser scenario, shots in tools/e2e/out/
 ```
