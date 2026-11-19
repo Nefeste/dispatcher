@@ -7,21 +7,10 @@ import { T } from '../../i18n';
 import type { MapData } from '../../map/format';
 import { mapPaths } from '../../ui/map/paths';
 import { MAP } from '../../ui/map/palette';
+import { UI } from '../palette';
 
 export interface Pixels { rgba: Uint8Array; w: number; h: number }
 
-/** Цвета экранов: тёмная тема программы диспетчерской, как вечером на мониторах. */
-const UI = {
-  bg: '#141a1f',
-  panel: '#1d252c',
-  line: '#2c3842',
-  text: '#e6e9e4',
-  dim: '#93a0a6',
-  red: '#e5566a',
-  green: '#7fb3a3',
-  amber: '#d2bd84',
-  blue: '#7ea6c9',
-} as const;
 
 const STATE: Record<string, string> = { free: UI.green, drive: UI.amber, scene: UI.red, transport: UI.blue, back: UI.dim };
 

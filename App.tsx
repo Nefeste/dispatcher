@@ -7,16 +7,19 @@ import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AboutScreen } from './src/screens/AboutScreen';
-import { MapScreen } from './src/screens/MapScreen';
+import { CallScreen } from './src/screens/CallScreen';
+import { PultScreen } from './src/screens/PultScreen';
 import { DeskScreen } from './src/screens/DeskScreen';
+import { InsertScreen } from './src/screens/InsertScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
 import { lessMotionOf } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
 import { FONT_FILES } from './src/ui/fonts';
 import { setLessMotion } from './src/ui/motion';
+import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'map' | 'desk' | 'about';
+type Screen = 'title' | 'map' | 'call' | 'insert' | 'desk' | 'about';
 
 export default function App() {
   // шрифты студии лежат в сборке — грузятся мгновенно; не загрузились — игра идёт системным шрифтом
@@ -35,22 +38,26 @@ export default function App() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (screen === 'title') return false;
-      setScreen('title');
+      setScreen(screen === 'call' || screen === 'insert' ? 'map' : 'title');
       return true;
     });
     return () => sub.remove();
   }, [screen]);
 
+  // сцены тёмные: полоса состояния телефона над ними — тоже (ADR 0009)
+  const scene = screen !== 'title' && screen !== 'about';
   return (
     <GestureHandlerRootView style={styles.root}>
     <SafeAreaProvider>
-      <SafeAreaView style={styles.root}>
-        <StatusBar style="dark" />
+      <SafeAreaView style={[styles.root, scene && styles.dark]}>
+        <StatusBar style={scene ? 'light' : 'dark'} />
         <View style={styles.root}>
           {fontsReady || fontsError ? (
             <>
               {screen === 'title' ? <TitleScreen onMap={() => setScreen('map')} onDesk={() => setScreen('desk')} onAbout={() => setScreen('about')} /> : null}
-              {screen === 'map' ? <MapScreen onBack={() => setScreen('title')} /> : null}
+              {screen === 'map' ? <PultScreen onBack={() => setScreen('title')} onCall={() => setScreen('call')} /> : null}
+              {screen === 'call' ? <CallScreen onBack={() => setScreen('map')} onDecide={() => setScreen('insert')} /> : null}
+              {screen === 'insert' ? <InsertScreen onDone={() => setScreen('map')} /> : null}
               {screen === 'desk' ? <DeskScreen onBack={() => setScreen('title')} /> : null}
               {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} /> : null}
             </>
@@ -62,4 +69,4 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: C.linen } });
+const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: C.linen }, dark: { backgroundColor: SCENE.hallTop } });

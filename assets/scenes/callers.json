@@ -1,0 +1,30 @@
+{
+  "id": "callers",
+  "name": "Звонящие для сцены «Разговор»: люди Microsoft Rocketbox в позе «телефон у уха»",
+  "licence": "люди — Microsoft Rocketbox, MIT (assets/licenses/rocketbox-LICENSE.md); комнаты, поза и рендер — своя работа студии",
+  "made": {
+    "script": "blender/caller.py",
+    "blender": "4.5.15",
+    "engine": "CYCLES",
+    "samples": 192,
+    "denoiser": "OPENIMAGEDENOISE",
+    "seed": 11,
+    "size": [
+      1080,
+      960
+    ]
+  },
+  "rocketbox": {
+    "repo": "microsoft/Microsoft-Rocketbox",
+    "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9"
+  },
+  "callers": {
+    "daughter": {
+      "avatar": "Adults/Female_Adult_02/Export/Female_Adult_02.fbx",
+      "room": "kitchen",
+      "file": "assets/scenes/caller-daughter.jpg",
+      "sha256": "ed513cabdf591ba54edcacfaf8835757dfad2a77495915d4c212bfc68e5942c4",
+      "bytes": 74026
+    }
+  }
+}

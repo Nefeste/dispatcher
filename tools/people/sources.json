@@ -1,0 +1,11 @@
+{
+ "repo": "microsoft/Microsoft-Rocketbox",
+ "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+ "files": {
+  "LICENSE.md": "17474e386e0b9e1a700cc3d06b2b0882a2c376d9c6b49c7f8274409b8f8d2352",
+  "Assets/Avatars/Adults/Female_Adult_02/Export/Female_Adult_02.fbx": "71a9d3495d06e42e33f9276795bd75fea9d4779c5ad47f65490f049ae2b7eaa9",
+  "Assets/Avatars/Adults/Female_Adult_02/Textures/f002_body_color.tga": "94577d184374270beef531394253c864483b9b9cb2c58e30ecd9364e8baa9f29",
+  "Assets/Avatars/Adults/Female_Adult_02/Textures/f002_head_color.tga": "a258f150c9a185d0335b74bd16acb8f4c18eabf469e2e2ea97066e20aa475a66",
+  "Assets/Avatars/Adults/Female_Adult_02/Textures/f002_opacity_color.tga": "6f6bde560371ac39cd65f8f1f26e0e7db8b8c7d6224c4139844a21593c962d45"
+ }
+}

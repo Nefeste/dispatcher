@@ -1,0 +1,32 @@
+{
+  "id": "inserts",
+  "name": "Видеовставка «бригада выезжает»: двор подстанции вечером, машина скорой выезжает из гаража",
+  "licence": "своя работа студии «Горница»; шрифт надписи — Onest (SIL OFL 1.1, assets/fonts/Onest-OFL.txt)",
+  "made": {
+    "script": "blender/insert.py",
+    "blender": "4.5.15",
+    "engine": "CYCLES",
+    "samples": 24,
+    "denoiser": "OPENIMAGEDENOISE",
+    "seed": 5,
+    "size": [
+      540,
+      960
+    ],
+    "fps": 24,
+    "frames": 120,
+    "still": 84,
+    "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "codec": "H.264 (libx264, CRF 26)"
+  },
+  "files": {
+    "assets/scenes/insert-depart.mp4": {
+      "sha256": "50ac02fa558ee21aac3a06f19965b8a7cc4c29b2bab78e8da9550d6390f5035e",
+      "bytes": 86523
+    },
+    "assets/scenes/insert-depart.jpg": {
+      "sha256": "eb67a47af3af76ac2de257c303e2c5dbfb51a5bcf546f2101a951afd9d1bc2b8",
+      "bytes": 25438
+    }
+  }
+}
