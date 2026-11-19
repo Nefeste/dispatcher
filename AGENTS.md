@@ -59,7 +59,8 @@ Reanimated or gesture-handler code from memory — follow «Expo has changed» i
 npm ci                              # dependencies (npm; tests and tools run in Bun)
 npx expo install <package>          # ALWAYS instead of npm/yarn/bun add — SDK-compatible versions
 npx expo start                      # dev server
-npm run typecheck                   # tsc (app) + tsc -p tools
+npm run content                     # content/*.yaml → src/content/generated/ (not in git) + checks; typecheck and test run it first
+npm run typecheck                   # content + tsc (app) + tsc -p tools
 npm run lint                        # zero warnings; engine purity rules for src/engine
 bun test tools/test                 # i18n guard, version, settings, docs links, workflows, map file, road search
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)

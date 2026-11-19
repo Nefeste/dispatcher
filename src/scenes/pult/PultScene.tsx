@@ -26,7 +26,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { T } from '../../i18n';
 import type { MapData } from '../../map/format';
-import { MapView } from '../../ui/map/MapView';
+import { type MapOverlay, MapView } from '../../ui/map/MapView';
 import { FORM, SCENE, UI } from '../palette';
 import { type Quad, type Rect as Box, pultLayout, quadMatrix } from './layout';
 
@@ -35,16 +35,32 @@ const DESK = require('../../../assets/scenes/pult-desk.png');
 /** Местные размеры экранчиков: текст пишется в них, матрица кладёт его в перспективу кадра. */
 const LCD = { w: 200, h: 56 } as const;
 
+/** Вызов, ждущий бригаду, — плашка под картой. */
+export interface WaitingTile {
+  id: string;
+  kind: 'emergency' | 'urgent';
+  /** сколько ждёт, игровых минут */
+  minutes: number;
+}
+
 export interface PultProps {
   width: number;
   height: number;
   map: MapData;
+  /** секунды от полуночи — часы смены */
+  clock: number;
+  /** скорость смены: 0 — пауза */
+  speed: number;
   /** звонков на линии */
   line: number;
-  paused: boolean;
+  waiting: readonly WaitingTile[];
+  /** последняя строка рации или пусто */
+  radio: { crew: number; what: 'scene' | 'base' } | null;
+  overlay?: MapOverlay;
   onPhone: () => void;
   onRadio: () => void;
   onClock: () => void;
+  onSpeed: () => void;
 }
 
 function Lcd({ quad, font, back, ink, text }: { quad: Quad; font: SkFont | null; back: string; ink: string; text: string }) {
@@ -64,7 +80,7 @@ function width(font: SkFont | null, s: string) {
   return font ? font.getTextWidth(s) : 0;
 }
 
-export function PultScene({ width: W, height: H, map, line, paused, onPhone, onRadio, onClock }: PultProps) {
+export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, overlay, onPhone, onRadio, onClock, onSpeed }: PultProps) {
   const L = useMemo(() => pultLayout(W, H), [W, H]);
   const desk = useImage(DESK);
   const bar = useFont(Onest_500Medium, 15);
@@ -73,13 +89,17 @@ export function PultScene({ width: W, height: H, map, line, paused, onPhone, onR
   const tile = useFont(Onest_500Medium, 13);
   const lcd = useFont(Onest_600SemiBold, 28);
   const lineText = T.pult.line(line);
-  const clockText = paused ? `${T.pult.clock} · ${T.pult.paused}` : `${T.pult.clock} · ${T.pult.speed}`;
+  const paused = speed === 0;
+  const clockText = T.pult.clock(clock);
+  const speedText = paused ? T.pult.paused : T.pult.speed(speed);
+  const speedX = 34 + width(bar, clockText) + 14;
+  const radioSays = radio ? T.pult.radioSays(radio.crew, radio.what) : null;
   const mon = L.monitor;
   const deskBack = L.desk.y + L.desk.h * 0.24;
   const deskFront = L.desk.y + L.desk.h * 0.9;
   const [lx, ly, lr] = L.phone.lamp;
   const radioTop = L.radio.tap.y;
-  const bubbleW = width(tile, T.pult.radioSays) + 20;
+  const bubbleW = width(tile, radioSays ?? '') + 20;
   const bubbleX = Math.min(W - bubbleW - 8, L.radio.tap.x + L.radio.tap.w / 2 - bubbleW / 2);
 
   return (
@@ -103,7 +123,7 @@ export function PultScene({ width: W, height: H, map, line, paused, onPhone, onR
       </View>
 
       <View style={[styles.abs, { left: L.map.x, top: L.map.y }]}>
-        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" />
+        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} />
       </View>
 
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -114,18 +134,25 @@ export function PultScene({ width: W, height: H, map, line, paused, onPhone, onR
           <Rect x={14} y={L.bar.y + 12} width={4} height={14} color={paused ? UI.amber : UI.dim} />
           <Rect x={21} y={L.bar.y + 12} width={4} height={14} color={paused ? UI.amber : UI.dim} />
           {bar ? <SkText x={34} y={L.bar.y + 25} text={clockText} font={bar} color={UI.text} /> : null}
+          <RoundedRect x={speedX - 8} y={L.bar.y + 8} width={width(bar, speedText) + 16} height={L.bar.h - 16} r={8} color={paused ? UI.amber : UI.panel} />
+          {bar ? <SkText x={speedX} y={L.bar.y + 25} text={speedText} font={bar} color={paused ? UI.bg : UI.text} /> : null}
           {bar ? <SkText x={W - 14 - width(bar, lineText)} y={L.bar.y + 25} text={lineText} font={bar} color={line > 0 ? UI.red : UI.dim} /> : null}
 
           {/* вызовы, ждущие бригаду */}
           <Rect x={L.waiting.x} y={L.waiting.y} width={L.waiting.w} height={L.waiting.h} color={UI.bg} />
           <Rect x={L.waiting.x} y={L.waiting.y} width={L.waiting.w} height={1} color={UI.line} />
           {head ? <SkText x={12} y={L.waiting.y + 16} text={T.pult.waitingHead} font={head} color={UI.dim} /> : null}
-          {T.pult.waiting.map(([n, letter, form, waited, kind], i) => {
+          {!waiting.length && small ? <SkText x={12} y={L.waiting.y + 44} text={T.pult.waitingNone} font={small} color={UI.dim} /> : null}
+          {waiting.slice(0, 2).map((c, i) => {
+            const [letter, form] = T.pult.forms[c.kind];
+            const n = T.pult.callNo(c.id);
+            const waited = T.pult.waited(c.minutes);
+            const kind = c.kind;
             const tw = (W - 12 * 3) / 2;
             const x = 12 + i * (tw + 12);
             const y = L.waiting.y + 22;
             return (
-              <Group key={n}>
+              <Group key={c.id}>
                 <RoundedRect x={x} y={y} width={tw} height={38} r={6} color={UI.panel} />
                 <Circle cx={x + 15} cy={y + 19} r={10} color={FORM[kind]} />
                 {tile ? <SkText x={x + 15 - width(tile, letter) / 2} y={y + 23.5} text={letter} font={tile} color={UI.bg} /> : null}
@@ -155,15 +182,16 @@ export function PultScene({ width: W, height: H, map, line, paused, onPhone, onR
           ) : null}
 
           {/* рация: экранчик и последняя строка бригады */}
-          <Lcd quad={L.radio.lcd} font={lcd} back={SCENE.lcdRadio} ink={SCENE.lcdRadioInk} text={T.pult.radioLcd} />
-          <RoundedRect x={bubbleX} y={radioTop - 34} width={bubbleW} height={26} r={13} color={UI.panel} opacity={0.94} />
-          {tile ? <SkText x={bubbleX + 10} y={radioTop - 16.5} text={T.pult.radioSays} font={tile} color={UI.text} /> : null}
+          <Lcd quad={L.radio.lcd} font={lcd} back={SCENE.lcdRadio} ink={SCENE.lcdRadioInk} text={radio ? T.pult.radioLcd(radio.crew, radio.what) : T.pult.radioIdle} />
+          {radioSays ? <RoundedRect x={bubbleX} y={radioTop - 34} width={bubbleW} height={26} r={13} color={UI.panel} opacity={0.94} /> : null}
+          {radioSays && tile ? <SkText x={bubbleX + 10} y={radioTop - 16.5} text={radioSays} font={tile} color={UI.text} /> : null}
         </Canvas>
       </View>
 
       <Pressable style={[styles.abs, box(L.phone.tap)]} onPress={onPhone} accessibilityRole="button" accessibilityLabel={T.pult.phoneLabel(line)} testID="pult-phone" />
       <Pressable style={[styles.abs, box(L.radio.tap)]} onPress={onRadio} accessibilityRole="button" accessibilityLabel={T.pult.radioLabel} testID="pult-radio" />
-      <Pressable style={[styles.abs, { left: 0, top: L.bar.y, width: W * 0.5, height: L.bar.h }]} onPress={onClock} accessibilityRole="button" accessibilityLabel={T.pult.clockLabel} testID="pult-clock" />
+      <Pressable style={[styles.abs, { left: 0, top: L.bar.y, width: speedX - 10, height: L.bar.h }]} onPress={onClock} accessibilityRole="button" accessibilityLabel={T.pult.clockLabel} testID="pult-clock" />
+      <Pressable style={[styles.abs, { left: speedX - 10, top: L.bar.y, width: width(bar, speedText) + 20, height: L.bar.h }]} onPress={onSpeed} accessibilityRole="button" accessibilityLabel={T.pult.speedLabel} testID="pult-speed" />
     </View>
   );
 }

@@ -1,6 +1,6 @@
 // Сцена «Разговор» как экран (ADR 0009): пока смены нет (П5), это эталонный кадр — дочь звонит из квартиры матери,
 // вопросы заполняют карточку и двигают счётчик на линии по ценам геймдизайна (§9: принять звонок — 30 игровых
-// секунд). Решение — видеовставка «бригада выезжает», потом пульт.
+// секунд). Решение уходит в пробную смену (src/state/proto.ts): на вызов едет ближайшая свободная бригада.
 import React, { useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
@@ -12,7 +12,7 @@ import { Txt } from '../ui/kit';
 /** Принять звонок, услышать адрес и повод — 30 игровых секунд (docs/08-game-design.md, §9). */
 const ANSWER = 30;
 
-export function CallScreen({ onBack, onDecide }: { onBack: () => void; onDecide: () => void }) {
+export function CallScreen({ onBack, onDecide }: { onBack: () => void; onDecide: (kind: 'emergency' | 'urgent' | 'none', seconds: number) => void }) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [asked, setAsked] = useState<number[]>([]);
   const seconds = ANSWER + asked.reduce((a, i) => a + T.call.questions[i][1], 0);
@@ -23,7 +23,7 @@ export function CallScreen({ onBack, onDecide }: { onBack: () => void; onDecide:
   return (
     <View style={styles.root} onLayout={onLayout}>
       {size ? (
-        <CallScene width={size.w} height={size.h} asked={asked} seconds={seconds} onAsk={i => setAsked(a => (a.includes(i) ? a : [...a, i]))} onForm={kind => (kind === 'none' ? onBack() : onDecide())} />
+        <CallScene width={size.w} height={size.h} asked={asked} seconds={seconds} onAsk={i => setAsked(a => (a.includes(i) ? a : [...a, i]))} onForm={kind => onDecide(kind, seconds)} />
       ) : null}
       <Pressable style={styles.back} onPress={onBack} accessibilityRole="button" testID="call-back">
         <Txt style={styles.backText}>{T.common.back}</Txt>

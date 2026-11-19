@@ -1,0 +1,11 @@
+# Смена прототипа (docs/specs/2026-11-prototype.md, §3, шаг 7): вечер буднего дня, 17:00–19:00, пять бригад на двух
+# подстанциях — четыре общепрофильные и одна реанимационная. Поток и учебные звонки — с частями П4 и П5.
+city: city.proto
+start: 61200      # 17:00, секунды от полуночи
+length: 7200      # 2 часа
+crews:
+  - { id: crew.1, kind: crew.general, base: base.north }
+  - { id: crew.2, kind: crew.general, base: base.north }
+  - { id: crew.3, kind: crew.resus, base: base.south }
+  - { id: crew.4, kind: crew.general, base: base.south }
+  - { id: crew.5, kind: crew.general, base: base.south }

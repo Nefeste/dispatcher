@@ -87,6 +87,12 @@ try {
   await snap(page, 'insert');
   await page.getByTestId('pult').waitFor({ state: 'visible', timeout: 15000 });
   checks++;
+  // П3: часы идут ×4 — посланная бригада едет по улицам и докладывает по рации
+  await page.getByTestId('pult-clock').click();
+  await page.getByTestId('pult-speed').click();
+  await page.getByTestId('pult-speed').click();
+  await page.waitForTimeout(3000);
+  await snap(page, 'pult-crews');
   await page.getByTestId('map-back').click();
   await see(page, 'title-name');
 

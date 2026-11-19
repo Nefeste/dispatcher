@@ -34,7 +34,10 @@ function useWidth(zoom: SharedValue<number>, fit: number, px: number) {
   });
 }
 
-export function MapView({ map, width, height, testID }: { map: MapData; width: number; height: number; testID?: string }) {
+/** Слой знаков поверх улиц: рисуется в единицах карты, `zoom` — чтобы знаки держали свой размер на экране. */
+export type MapOverlay = (zoom: SharedValue<number>) => React.ReactNode;
+
+export function MapView({ map, width, height, testID, overlay }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay }) {
   const paths = useMemo(() => mapPaths(map), [map]);
   // при открытии и при наибольшем отдалении карта заполняет экран целиком, без пустых полос
   const fit = Math.max(width / map.width, height / map.height);
@@ -97,6 +100,7 @@ export function MapView({ map, width, height, testID }: { map: MapData; width: n
             <Path path={paths.roads[2]} color={MAP.road[2]} style="stroke" strokeWidth={w2} strokeCap="round" strokeJoin="round" />
             <Path path={paths.roads[1]} color={MAP.road[1]} style="stroke" strokeWidth={w1} strokeCap="round" strokeJoin="round" />
             <Path path={paths.roads[0]} color={MAP.road[0]} style="stroke" strokeWidth={w0} strokeCap="round" strokeJoin="round" />
+            {overlay ? overlay(zoom) : null}
           </Group>
         </Canvas>
       </GestureDetector>
