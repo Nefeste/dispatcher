@@ -63,7 +63,7 @@ review: draft
 
 ```yaml
 id: city.proto
-map: assets/map/proto.bin     # с паспортом assets/map/proto.json
+map: nn-center               # src/map/generated/nn-center.ts, паспорт assets/map/nn-center.json
 district: { name: "…", box: [x0, y0, x1, y1] }  # см в местной проекции
 bases:                        # подстанции — вымышленные имена и места
   - { id: base.1, name: "Подстанция № 1", at: [x, y] }

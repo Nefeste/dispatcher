@@ -6,7 +6,7 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*', 'dist-web/*', 'src/content/generated/*'],
+    ignores: ['dist/*', 'dist-web/*', 'src/content/generated/*', 'src/map/generated/*'],
   },
   {
     // движок чистый: ни часов, ни случайности, ни экрана (AGENTS.md, docs/02-architecture.md §2)

@@ -20,6 +20,8 @@
   "include": [
     "./**/*.ts",
     "../src/state/settings.ts",
-    "../src/version.ts"
+    "../src/version.ts",
+    "../src/engine/**/*.ts",
+    "../src/map/**/*.ts"
   ]
 }
