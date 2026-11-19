@@ -1,0 +1,17 @@
+# Какие болезни «Анамнеза» берёт «Диспетчер 03» (ADR 0002; docs/02-architecture.md, §4). Состояния прототипа —
+# спецификация прототипа, §3. К ним сборка tools/content/anamnez.ts добавляет то, без чего они не бывают (`requires`),
+# и хронические болезни — сопутствующие у больного; признаки, факторы риска, профессии и правила — все, на которые
+# они ссылаются.
+conditions:
+  - cond.stroke_ischemic
+  - cond.acs
+  - cond.anaphylaxis
+  - cond.hypoglycemia
+  - cond.seizure
+  - cond.asthma_exacerbation
+  - cond.femoral_neck_fracture
+  - cond.concussion
+  - cond.influenza
+  - cond.bp_uncontrolled
+  - cond.renal_colic
+  - cond.low_back_pain

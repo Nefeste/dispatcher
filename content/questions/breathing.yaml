@@ -1,0 +1,9 @@
+group: vital
+rank: 3
+text: Как дышит?
+cost: 15
+tell: { self: always, relative: usually, neighbour: usually, bystander: often }
+opens: [sign.stridor, sym.dyspnea, sym.wheezing]
+none:
+  self: ["Дышу нормально"]
+  other: ["Дышит ровно", "Нормально дышит"]

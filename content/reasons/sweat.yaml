@@ -1,0 +1,6 @@
+rank: 11
+say: 50
+when: [sym.sweating, sym.tremor]
+words:
+  self: ["{Весь|Вся} в поту, руки трясутся"]
+  other: ["{Who} {весь|вся} в поту, руки дрожат"]

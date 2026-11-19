@@ -1,0 +1,9 @@
+tell: { self: always, relative: usually, neighbour: often, bystander: never }
+says:
+  present:
+    self: ["Давит уже давно, больше получаса, не проходит"]
+    other: ["Давит уже давно, больше получаса"]
+threat: "388n, п. 11 «д»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «д»"]
+review: draft

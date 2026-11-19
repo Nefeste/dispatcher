@@ -1,0 +1,6 @@
+rank: 3
+say: 80
+when: [sign.stridor, sign.angioedema]
+words:
+  self: ["Задыхаюсь, горло отекает"]
+  other: ["{Who} задыхается, лицо отекает", "{Who} хрипит, вдохнуть не может"]

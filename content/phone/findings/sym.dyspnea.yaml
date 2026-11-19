@@ -1,0 +1,10 @@
+tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
+says:
+  present:
+    self: ["Воздуха не хватает, задыхаюсь"]
+    other: ["Задыхается, тяжело дышит", "Дышит часто, воздуха не хватает"]
+threat: "388n, п. 11 «б»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «б»"]
+notes: "Одышку звонящий не отличит от лёгкой: признак ведёт к экстренной форме, пока бригада не увидит иначе (п. 11 «б»)."
+review: draft

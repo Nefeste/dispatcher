@@ -1,0 +1,9 @@
+tell: { self: always, relative: usually, neighbour: usually, bystander: usually }
+says:
+  present:
+    self: ["Ударил{ся|ась} головой"]
+    other: ["Ударил{ся|ась} головой, когда упал{|а}"]
+estimate: true
+sources: ["anamnez"]
+notes: "Травма головы сама по себе не повод экстренной формы: экстренная — при нарушенном сознании (`cr-734`, разд. 6), это `sign.gcs_low`."
+review: draft

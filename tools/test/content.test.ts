@@ -4,15 +4,16 @@ import { describe, expect, test } from 'bun:test';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildDb, moduleText } from '../content/build';
+import { buildDb, medText, moduleText } from '../content/build';
 
 const root = join(import.meta.dir, '../..');
 
 describe('содержание', () => {
   test('записи без ошибок; собранный модуль — тот, что дают записи', () => {
-    const { db, errors } = buildDb();
+    const { db, med, errors } = buildDb();
     expect(errors).toEqual([]);
     expect(readFileSync(join(root, 'src/content/generated/db.ts'), 'utf8')).toBe(moduleText(db));
+    expect(readFileSync(join(root, 'src/content/generated/med.ts'), 'utf8')).toBe(medText(med));
   });
 
   test('подстанции и больницы привязаны к дорогам, имена — вымышленные', () => {
@@ -36,7 +37,22 @@ describe('содержание', () => {
       writeFileSync(join(dir, 'cities/proto.yaml'), city);
       const shift = readFileSync(join(dir, 'shifts/proto.yaml'), 'utf8').replace('kind: crew.resus', 'kind: crew.nope');
       writeFileSync(join(dir, 'shifts/proto.yaml'), shift);
+      // записи «по телефону»
+      const f = join(dir, 'phone/findings/sym.face_droop.yaml');
+      writeFileSync(f, readFileSync(f, 'utf8').replace('threat: "388n, п. 11, вводная часть"', 'threat: "928n"'));
+      const g = join(dir, 'phone/findings/sym.hives.yaml');
+      writeFileSync(g, readFileSync(g, 'utf8').replace('sources: ["anamnez"]', 'sources: ["wiki"]'));
+      const q = join(dir, 'questions/seizure.yaml');
+      writeFileSync(q, readFileSync(q, 'utf8').replace('opens: [sym.seizure]', 'opens: [sym.seizure, sym.nope]'));
+      rmSync(join(dir, 'phone/conditions/cond.influenza.yaml'));
+      const r = join(dir, 'reasons/hip.yaml');
+      writeFileSync(r, readFileSync(r, 'utf8').replace('встать не может', 'встать не может, дали аспирин'));
       const { errors } = buildDb(dir);
+      expect(errors.some(e => e.includes('threat must cite 388n'))).toBe(true);
+      expect(errors.some(e => e.includes('unknown source key «wiki»'))).toBe(true);
+      expect(errors.some(e => e.includes('opens sym.nope'))).toBe(true);
+      expect(errors.some(e => e.includes('cond.influenza: in content/med/select.yaml but has no phone record'))).toBe(true);
+      expect(errors.some(e => e.includes('brand name'))).toBe(true);
       expect(errors.some(e => e.includes('real institution'))).toBe(true);
       expect(errors.some(e => e.includes('from the nearest road'))).toBe(true);
       expect(errors.some(e => e.includes('unknown kind'))).toBe(true);

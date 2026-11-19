@@ -1,0 +1,7 @@
+group: what
+rank: 1
+text: Что именно случилось? Расскажите.
+cost: 25
+tell: { self: sure, relative: sure, neighbour: sure, bystander: sure }
+opens: []
+about: more

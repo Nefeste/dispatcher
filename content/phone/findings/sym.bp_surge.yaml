@@ -1,0 +1,9 @@
+tell: { self: always, relative: usually, neighbour: often, bystander: never }
+says:
+  present:
+    self: ["Давление подскочило, двести на сто"]
+    other: ["Давление мерили — высокое, двести"]
+estimate: true
+sources: ["anamnez"]
+notes: "Высокое давление без поражения органов — неотложная форма (`cr-62`, 3.7); криз с поражением органов выдают другие признаки."
+review: draft

@@ -1,0 +1,10 @@
+tell: { self: always, relative: usually, neighbour: often, bystander: rarely }
+says:
+  present:
+    self: ["Давит за грудиной, как камень положили"]
+    other: ["Говорит, давит за грудиной", "Держится за грудь, говорит — давит"]
+threat: "388n, п. 11 «д»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «д»"]
+notes: "Давящая боль за грудиной — повод экстренной формы как внезапный болевой синдром с угрозой жизни (п. 11 «д»); при ОКС — `918n` п. 32, `cr-157`, `cr-154`."
+review: draft

@@ -1,0 +1,9 @@
+group: history
+rank: 2
+text: Не ужалили? Ел{|а} что-то необычное? Лекарство кололи?
+cost: 20
+tell: { self: always, relative: usually, neighbour: sometimes, bystander: rarely }
+opens: [hx.trigger_sting, hx.trigger_food, hx.trigger_drug]
+none:
+  self: ["Нет, ничего такого"]
+  other: ["Нет, ничего такого не было"]

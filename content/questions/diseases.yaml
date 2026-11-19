@@ -1,0 +1,9 @@
+group: history
+rank: 1
+text: Чем болеет? Давление, сахар, астма?
+cost: 20
+tell: { self: always, relative: usually, neighbour: sometimes, bystander: never }
+opens: [hx.hypertension, hx.diabetes, hx.insulin, hx.asthma, hx.epilepsy]
+none:
+  self: ["Ничем не болею"]
+  other: ["Ничем вроде не болеет", "Здоров{|а} был{|а}"]

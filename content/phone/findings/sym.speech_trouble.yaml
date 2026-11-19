@@ -1,0 +1,10 @@
+tell: { self: never, relative: usually, neighbour: usually, bystander: usually }
+says:
+  present:
+    self: []
+    other: ["Говорит невнятно, слова путает", "Речь как у пьяного, хотя не пил{|а}"]
+threat: "388n, п. 11, вводная часть"
+estimate: true
+sources: ["anamnez", "388n, п. 11, вводная часть"]
+notes: "Внезапное нарушение речи — признак ОНМК; вводная часть п. 11, как у слабости в руке и ноге."
+review: draft

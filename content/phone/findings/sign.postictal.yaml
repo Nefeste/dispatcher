@@ -1,0 +1,10 @@
+tell: { self: never, relative: usually, neighbour: often, bystander: often }
+says:
+  present:
+    self: []
+    other: ["После приступа лежит, не отвечает, как будто спит"]
+threat: "388n, п. 11 «а»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «а»"]
+notes: "После судорожного приступа сознание восстанавливается не сразу — это нарушение сознания (п. 11 «а»)."
+review: draft

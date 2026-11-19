@@ -1,0 +1,10 @@
+tell: { self: always, relative: usually, neighbour: usually, bystander: usually }
+says:
+  present:
+    self: ["Губы опухли, язык как чужой"]
+    other: ["Губы распухли, лицо отекает"]
+threat: "388n, п. 11 «б»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «б»"]
+notes: "Отёк губ и языка грозит дыханию; повод экстренной формы — прочтение п. 11 «б» с `cr-263`, разд. 6."
+review: draft

@@ -1,0 +1,9 @@
+tell: { self: never, relative: usually, neighbour: often, bystander: sometimes }
+says:
+  present:
+    self: []
+    other: ["Путается, не понимает, где {он|она}", "Говорит невпопад"]
+threat: "388n, п. 11 «а»"
+estimate: true
+sources: ["anamnez", "388n, п. 11 «а»"]
+review: draft

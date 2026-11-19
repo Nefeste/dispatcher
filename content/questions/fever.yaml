@@ -1,0 +1,9 @@
+group: what
+rank: 7
+text: Температура есть? Кашель?
+cost: 15
+tell: { self: always, relative: usually, neighbour: often, bystander: rarely }
+opens: [sym.fever_hx, sym.cough, sym.myalgia, sym.sore_throat]
+none:
+  self: ["Нет, температуры нет"]
+  other: ["Температуры нет, не кашляет"]

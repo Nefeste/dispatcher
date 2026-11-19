@@ -1,0 +1,9 @@
+group: see
+rank: 5
+text: Встать на ногу может? Нога не вывернута?
+cost: 15
+tell: { self: always, relative: usually, neighbour: usually, bystander: usually }
+opens: [sign.leg_shortened_rotated, sign.no_weight_bearing]
+none:
+  self: ["Стою, хожу"]
+  other: ["Встаёт, ходит", "Ноги нормальные, встаёт"]

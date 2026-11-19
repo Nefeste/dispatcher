@@ -1,0 +1,11 @@
+weight: 5
+form: urgent
+hospital: general
+transport: 40
+scene: [15, 30]
+street: 25
+onset: [[15, 40], [60, 40], [180, 20]]
+estimate: true
+sources: ["388n, п. 13 «а»", "388n, п. 11 «а»", "cr-286, разд. 6", "104n"]
+notes: "Экстренная — при нарушенном сознании (п. 11 «а»; cr-286, разд. 6): это признаки `sym.confusion` и `sign.gcs_low`, они делают форму экстренной сами. Маршрута доставки в порядке нет (104n)."
+review: draft

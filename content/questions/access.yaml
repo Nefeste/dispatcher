@@ -1,0 +1,15 @@
+# как пройти к больному (mos-103: подъезд, этаж, код); что это даёт бригаде — с частью П5
+group: place
+rank: 1
+text: Подъезд, этаж, код домофона?
+cost: 15
+opens: []
+about: place
+tell: { self: sure, relative: sure, neighbour: sure, bystander: sure }
+place:
+  home:
+    self: ["Подъезд {entrance}, этаж {floor}, код {code}"]
+    other: ["Подъезд {entrance}, этаж {floor}, домофон {code}"]
+  street:
+    self: ["Я на улице, у остановки"]
+    other: ["Мы на улице, у остановки, я рядом стою", "Возле магазина, на тротуаре"]

@@ -1,0 +1,10 @@
+tell: { self: sometimes, relative: usually, neighbour: usually, bystander: often }
+says:
+  present:
+    self: ["Лицо как будто перекосило"]
+    other: ["Лицо перекосило, угол рта опустился", "Улыбка кривая, одна сторона лица опустилась"]
+threat: "388n, п. 11, вводная часть"
+estimate: true
+sources: ["anamnez", "388n, п. 11, вводная часть"]
+notes: "Перекошенное лицо — признак ОНМК; вводная часть п. 11, как у слабости в руке и ноге."
+review: draft
