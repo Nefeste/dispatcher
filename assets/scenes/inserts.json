@@ -21,12 +21,12 @@
   },
   "files": {
     "assets/scenes/insert-depart.mp4": {
-      "sha256": "3fe9cfbf6dc46c2a0ef0854b67384887e85028e30fd28919c1ee6f56855d9294",
-      "bytes": 91994
+      "sha256": "50ac02fa558ee21aac3a06f19965b8a7cc4c29b2bab78e8da9550d6390f5035e",
+      "bytes": 86523
     },
     "assets/scenes/insert-depart.jpg": {
-      "sha256": "99fd76d64386c585fb734437e958fab7fd149acea5b0d844ada193e305aa5886",
-      "bytes": 25239
+      "sha256": "eb67a47af3af76ac2de257c303e2c5dbfb51a5bcf546f2101a951afd9d1bc2b8",
+      "bytes": 25438
     }
   }
 }
