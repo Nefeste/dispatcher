@@ -61,7 +61,9 @@ npx expo install <package>          # ALWAYS instead of npm/yarn/bun add — SDK
 npx expo start                      # dev server
 npm run typecheck                   # tsc (app) + tsc -p tools
 npm run lint                        # zero warnings; engine purity rules for src/engine
-bun test tools/test                 # i18n guard, version, settings, docs links, workflows
+bun test tools/test                 # i18n guard, version, settings, docs links, workflows, map file, road search
+bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
+bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passport assets/map/nn-center.json
 npm run export:web                  # web build into dist-web/
 NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts   # the browser scenario, shots in tools/e2e/out/
 ```
@@ -87,7 +89,8 @@ from named sources — are in the charter's `docs/05-rules.md` and are not repea
   and learned); only the review of a finished shift reads the patient's truth. The review judges a decision by what was
   known then, and the outcome by the truth — separately.
 - **Real streets, fictional institutions** (ADR 0004): roads, rivers and bridges come from OpenStreetMap, built into
-  `assets/map/` by `tools/map/build.ts` with a passport (source extract, date, SHA-256, licence); substations and
+  `src/map/generated/<area>.ts` by `tools/map/fetch.ts` + `tools/map/build.ts` with a passport in `assets/map/` (query,
+  OSM date, SHA-256, licence); never edit generated map files by hand; substations and
   hospitals are fictional and never carry the name of a real one. «© участники OpenStreetMap» is always visible on the
   map and in «Об игре». No real call recordings or transcripts — every caller and line is written.
 - **The engine is pure TypeScript** (`src/engine/`): integer seconds, no React, no `Date`, no `Math.random`, seeded named

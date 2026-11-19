@@ -1,5 +1,6 @@
 // Сценарий в браузере (спецификация прототипа, критерий 1): веб-сборка, Chromium без окна, настоящие нажатия.
-// Сейчас (П1) — первый экран → «Об игре» → назад; с каждой частью прототипа путь растёт до сквозного (§3).
+// Сейчас — первый экран → карта района (П2) → «Об игре» → назад; с каждой частью прототипа путь растёт до
+// сквозного (§3).
 // Снимки — tools/e2e/out/. Ошибка в консоли — провал. По образцу shelter: tools/e2e/browser.ts @ 396daee.
 //
 //   npm run export:web && NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts
@@ -48,6 +49,23 @@ try {
   await see(page, 'title-start', 'Начать смену');
   if (!(await page.getByTestId('title-start').isDisabled())) throw new Error('«Начать смену» нажимается, а смены ещё нет');
   await snap(page, 'title');
+
+  // карта района (П2): видна, на ней указание OpenStreetMap; сдвиг мышью не роняет её
+  await page.getByTestId('title-map').click();
+  await see(page, 'map-view');
+  await see(page, 'map-osm', '© участники OpenStreetMap');
+  await page.waitForTimeout(800);
+  await snap(page, 'map');
+  const box = (await page.getByTestId('map-view').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2 - 200, { steps: 12 });
+  await page.mouse.up();
+  await page.mouse.wheel(0, -400);
+  await page.waitForTimeout(500);
+  await snap(page, 'map-moved');
+  await page.getByTestId('map-back').click();
+  await see(page, 'title-name');
 
   await page.getByTestId('title-about').click();
   await see(page, 'about-not-training', 'звоните 103 или 112');
