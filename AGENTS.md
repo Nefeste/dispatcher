@@ -100,8 +100,8 @@ from named sources — are in the charter's `docs/05-rules.md` and are not repea
 - **Portrait only** (ADR 0006).
 - **No server, no network calls**; no location, contacts, camera or microphone permission. `INTERNET` only if the
   owner chooses a purchase (RuStore Pay); the permission white list arrives with the first code.
-- **Scenes, not button columns** (ADR 0009, owner's decision in `Nefeste/uprava#121`): shift screens are one Skia
-  canvas each — the dispatcher's desk with the live map monitor, the caller's picture with the call card — over frames
+- **Scenes, not button columns** (ADR 0009, owner's decision in `Nefeste/uprava#121`): shift screens are full-screen Skia
+  scenes — the dispatcher's desk with the live map monitor, the caller's picture with the call card — over frames
   pre-rendered from Blender scripts and Three.js; live Three.js only where the camera moves. Video inserts only where
   they fit, skippable, never during a call or a choice. Skia stays on version 2.
 - `applicationId` is `games.gornitsa.dispatcher` — eternal (charter ADR 0006; owner's decision in #4).
