@@ -1,6 +1,7 @@
 // Сценарий в браузере (спецификация прототипа, критерий 1): веб-сборка, Chromium без окна, настоящие нажатия.
-// Сейчас — первый экран → карта района (П2) → рабочее место (сцена Three.js) → «Об игре» → назад; с каждой частью
-// прототипа путь растёт до сквозного (§3).
+// Сейчас — первый экран → пульт (сцена: карта района на мониторе, телефон и рация) → разговор (звонящий, вопрос,
+// решение) → рабочее место (сцена Three.js) → «Об игре» → назад; с каждой частью прототипа путь растёт до сквозного
+// (§3).
 // Снимки — tools/e2e/out/. Ошибка в консоли — провал. По образцу shelter: tools/e2e/browser.ts @ 396daee.
 //
 //   npm run export:web && NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts
@@ -51,8 +52,9 @@ try {
   if (!(await page.getByTestId('title-start').isDisabled())) throw new Error('«Начать смену» нажимается, а смены ещё нет');
   await snap(page, 'title');
 
-  // карта района (П2): видна, на ней указание OpenStreetMap; сдвиг мышью не роняет её
+  // пульт (ADR 0009): карта района на мониторе, на ней указание OpenStreetMap; сдвиг мышью не роняет её
   await page.getByTestId('title-map').click();
+  await see(page, 'pult');
   await see(page, 'map-view');
   await see(page, 'map-osm', '© участники OpenStreetMap');
   await page.waitForTimeout(800);
@@ -65,6 +67,26 @@ try {
   await page.mouse.wheel(0, -400);
   await page.waitForTimeout(500);
   await snap(page, 'map-moved');
+  // часы смены ставят паузу; телефон на столе принимает звонок
+  await page.getByTestId('pult-clock').click();
+  await page.getByTestId('pult-phone').click();
+  await see(page, 'call');
+  await page.waitForTimeout(800);
+  await snap(page, 'call');
+  await page.getByTestId('call-q-1').click();
+  await page.getByTestId('call-q-0').click();
+  await page.waitForTimeout(300);
+  if (!(await page.getByTestId('call-q-1').isDisabled())) throw new Error('заданный вопрос нажимается снова');
+  await snap(page, 'call-asked');
+  // решение — видеовставка «бригада выезжает»: ролик или кадр вместо него, потом снова пульт
+  await page.getByTestId('call-form-emergency').click();
+  await see(page, 'insert');
+  await page.waitForTimeout(2500);
+  const video = await page.locator('video').count();
+  console.log(`вставка: ${video ? 'ролик' : 'кадр вместо ролика'}`);
+  await snap(page, 'insert');
+  await page.getByTestId('pult').waitFor({ state: 'visible', timeout: 15000 });
+  checks++;
   await page.getByTestId('map-back').click();
   await see(page, 'title-name');
 

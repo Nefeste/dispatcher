@@ -1,0 +1,27 @@
+{
+  "id": "pult",
+  "name": "Край стола диспетчера для сцены «Пульт»: телефон, рация, клавиатура, гарнитура",
+  "licence": "своя работа студии «Горница»",
+  "made": {
+    "script": "blender/pult.py",
+    "blender": "4.5.15",
+    "engine": "CYCLES",
+    "samples": 256,
+    "denoiser": "OPENIMAGEDENOISE",
+    "seed": 7,
+    "size": [
+      1080,
+      640
+    ]
+  },
+  "files": {
+    "assets/scenes/pult-desk.png": {
+      "sha256": "336b0f8df9af2924cde9c4e8ff496a02d0e3fa9ad8159ba16c96ea46f95deef4",
+      "bytes": 470953
+    },
+    "src/art/pult.gen.ts": {
+      "sha256": "e8018cd0b20b5fe694d166840c3192a3da7d3979599e3f013baabb424904050f",
+      "bytes": 800
+    }
+  }
+}

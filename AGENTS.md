@@ -65,6 +65,10 @@ bun test tools/test                 # i18n guard, version, settings, docs links,
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
 bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passport assets/map/nn-center.json
 python blender/build.py             # the workplace model: src/art/desk.gen.ts + assets/models/ (bpy==4.5.15, Python 3.11)
+python blender/pult.py              # the desk frame of the «Пульт» scene: assets/scenes/pult-desk.png + src/art/pult.gen.ts
+bun tools/people/fetch.ts <dir>     # Rocketbox sources at the pinned commit, SHA-256 checked (tools/people/sources.json)
+python blender/caller.py <dir>      # the caller pictures from those sources: assets/scenes/caller-*.jpg
+python blender/insert.py            # the video insert «бригада выезжает» (Cycles frames + ffmpeg H.264)
 npm run export:web                  # web build into dist-web/
 NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts   # the browser scenario, shots in tools/e2e/out/
 ```
