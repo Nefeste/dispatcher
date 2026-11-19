@@ -4,6 +4,9 @@ import { APP_BUILD, APP_VERSION } from '../version';
 
 const nb = ' ';
 
+/** Бригады по рации: «Четвёртая, на месте». */
+const ORDINAL = ['Первая', 'Вторая', 'Третья', 'Четвёртая', 'Пятая', 'Шестая', 'Седьмая', 'Восьмая'];
+
 /** Русское число: 1 звонок, 2 звонка, 5 звонков. */
 export function plural(n: number, one: string, few: string, many: string): string {
   const m10 = n % 10, m100 = n % 100;
@@ -74,22 +77,29 @@ export const T = {
   },
   /** Сцена «Пульт» (ADR 0009): строки на мониторе, экранчики телефона и рации; данные — пример для эталонного кадра */
   pult: {
-    clock: '17:42',
-    speed: '×1',
+    /** часы смены: часы и минуты от полуночи */
+    clock: (secOfDay: number) => {
+      const m = Math.floor(secOfDay / 60) % 1440;
+      return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    },
+    speed: (x: number) => `×${x}`,
     paused: 'пауза',
     line: (n: number) => `На линии: ${n}`,
     phoneLcd: (n: number) => `ЛИНИЯ ${n}`,
-    radioLcd: '4 · НА МЕСТЕ',
-    radioSays: '«Четвёртая, на месте»',
+    /** рация: экранчик и строка бригады — «Четвёртая, на месте» */
+    radioLcd: (n: number, what: 'scene' | 'base') => `${n} · ${what === 'scene' ? 'НА МЕСТЕ' : 'НА ПОДСТАНЦИИ'}`,
+    radioSays: (n: number, what: 'scene' | 'base') => `«${ORDINAL[n - 1] ?? n}, ${what === 'scene' ? 'на месте' : 'на подстанции'}»`,
+    radioIdle: 'ЭФИР',
     waitingHead: 'Ждут бригаду',
-    /** номер, буква формы (цвет — не единственный знак), форма, сколько ждёт */
-    waiting: [
-      ['№ 38', 'Н', 'неотложная', 'ждёт 12 мин', 'urgent'],
-      ['№ 41', 'Э', 'экстренная', 'ждёт 1 мин', 'emergency'],
-    ] as readonly (readonly [string, string, string, string, 'urgent' | 'emergency'])[],
+    waitingNone: 'Все вызовы с бригадами',
+    /** буква формы (цвет — не единственный знак) и слово */
+    forms: { emergency: ['Э', 'экстренная'], urgent: ['Н', 'неотложная'] } as const,
+    callNo: (id: string) => `№ ${id.split('.')[1]}`,
+    waited: (min: number) => `ждёт ${min} мин`,
     phoneLabel: (n: number) => `Телефон: на линии ${n} ${plural(n, 'звонок', 'звонка', 'звонков')}`,
-    radioLabel: 'Рация: доклад четвёртой бригады',
-    clockLabel: 'Часы смены: поставить на паузу',
+    radioLabel: 'Рация: последний доклад бригады',
+    clockLabel: 'Часы смены: пауза',
+    speedLabel: 'Скорость смены',
   },
   /** Сцена «Разговор» (ADR 0009): звонящий и опросник на мониторе; данные — пример для эталонного кадра. Вопросы
    *  смены придут из content/ с частью П4. */

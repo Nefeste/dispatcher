@@ -1,6 +1,6 @@
 // Корень: экраны переключаются состоянием, без роутера (docs/02-architecture.md, §2). При запуске — шрифты
 // студии и настройки; «Меньше движения» — выбор игрока или система (ADR устава 0023, правило 6).
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, BackHandler, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -17,6 +17,7 @@ import { loadSettings } from './src/state/storage';
 import { FONT_FILES } from './src/ui/fonts';
 import { setLessMotion } from './src/ui/motion';
 import { SCENE } from './src/scenes/palette';
+import { decide, exampleCallNode, noDispatch } from './src/state/proto';
 import { C } from './src/ui/theme';
 
 type Screen = 'title' | 'map' | 'call' | 'insert' | 'desk' | 'about';
@@ -25,6 +26,8 @@ export default function App() {
   // шрифты студии лежат в сборке — грузятся мгновенно; не загрузились — игра идёт системным шрифтом
   const [fontsReady, fontsError] = useFonts(FONT_FILES);
   const [screen, setScreen] = useState<Screen>('title');
+  // видеовставка «бригада выезжает» — один раз за смену (docs/08-game-design.md, §9)
+  const departed = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -56,7 +59,21 @@ export default function App() {
             <>
               {screen === 'title' ? <TitleScreen onMap={() => setScreen('map')} onDesk={() => setScreen('desk')} onAbout={() => setScreen('about')} /> : null}
               {screen === 'map' ? <PultScreen onBack={() => setScreen('title')} onCall={() => setScreen('call')} /> : null}
-              {screen === 'call' ? <CallScreen onBack={() => setScreen('map')} onDecide={() => setScreen('insert')} /> : null}
+              {screen === 'call' ? (
+                <CallScreen
+                  onBack={() => setScreen('map')}
+                  onDecide={(kind, seconds) => {
+                    if (kind === 'none') {
+                      noDispatch(seconds);
+                      return setScreen('map');
+                    }
+                    // на вызов едет ближайшая свободная бригада; первый выезд смены — видеовставка
+                    const sent = decide('call.41', exampleCallNode(), kind, seconds);
+                    setScreen(sent !== null && !departed.current ? 'insert' : 'map');
+                    departed.current = true;
+                  }}
+                />
+              ) : null}
               {screen === 'insert' ? <InsertScreen onDone={() => setScreen('map')} /> : null}
               {screen === 'desk' ? <DeskScreen onBack={() => setScreen('title')} /> : null}
               {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} /> : null}

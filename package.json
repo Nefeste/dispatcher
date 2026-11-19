@@ -1,6 +1,6 @@
 {
   "name": "dispatcher",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "main": "index",
   "private": true,
   "description": "Диспетчер 03 — смена диспетчера скорой помощи в большом городе",
@@ -8,11 +8,12 @@
     "start": "expo start",
     "android": "expo run:android",
     "web": "setup-skia-web public && expo start --web",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tools",
+    "typecheck": "bun tools/content/build.ts && tsc --noEmit && tsc --noEmit -p tools",
     "lint": "expo lint src App.tsx --max-warnings 0",
-    "test": "bun test tools/test",
+    "test": "bun tools/content/build.ts && bun test tools/test",
     "export:web": "setup-skia-web public && expo export -p web --output-dir dist-web",
-    "e2e": "bun tools/e2e/browser.ts"
+    "e2e": "bun tools/e2e/browser.ts",
+    "content": "bun tools/content/build.ts"
   },
   "dependencies": {
     "@expo-google-fonts/kurale": "^0.4.2",
