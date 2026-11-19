@@ -8,7 +8,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AboutScreen } from './src/screens/AboutScreen';
 import { CallScreen } from './src/screens/CallScreen';
-import { EndScreen } from './src/screens/EndScreen';
+import { CallReviewScreen } from './src/screens/CallReviewScreen';
+import { ReviewScreen } from './src/screens/ReviewScreen';
 import { PultScreen } from './src/screens/PultScreen';
 import { DeskScreen } from './src/screens/DeskScreen';
 import { InsertScreen } from './src/screens/InsertScreen';
@@ -21,7 +22,7 @@ import { setLessMotion } from './src/ui/motion';
 import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'map' | 'call' | 'insert' | 'end' | 'desk' | 'about';
+type Screen = 'title' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'desk' | 'about';
 
 // сценарий в браузере ускоряет часы смены: ?pace=50 (только веб-сборка; на телефоне адресной строки нет)
 if (Platform.OS === 'web' && typeof location !== 'undefined') setPace(Number(new URLSearchParams(location.search).get('pace') ?? 1));
@@ -30,6 +31,8 @@ export default function App() {
   // шрифты студии лежат в сборке — грузятся мгновенно; не загрузились — игра идёт системным шрифтом
   const [fontsReady, fontsError] = useFonts(FONT_FILES);
   const [screen, setScreen] = useState<Screen>('title');
+  // какой вызов открыт в разборе
+  const [reviewed, setReviewed] = useState<string | null>(null);
   // видеовставка «бригада выезжает» — один раз за смену (docs/08-game-design.md, §9)
   const departed = useRef(false);
   const settings = useRef<Settings>({ ...DEFAULT_SETTINGS });
@@ -53,7 +56,7 @@ export default function App() {
       if (screen === 'title') return false;
       // разговор кончается решением (§3): «Назад» его не закрывает
       if (screen === 'call') return true;
-      setScreen(screen === 'insert' ? 'map' : 'title');
+      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : 'title');
       return true;
     });
     return () => sub.remove();
@@ -96,7 +99,19 @@ export default function App() {
                 />
               ) : null}
               {screen === 'insert' ? <InsertScreen onDone={toMap} /> : null}
-              {screen === 'end' ? <EndScreen onHome={() => { closeShift(); setScreen('title'); }} /> : null}
+              {screen === 'end' ? (
+                <ReviewScreen
+                  onCall={id => { setReviewed(id); setScreen('callReview'); }}
+                  onAgain={() => {
+                    // «Ещё раз» — та же смена с новым зерном (§3, шаг 10)
+                    departed.current = false;
+                    startShift(undefined, settings.current.autopause);
+                    setScreen('map');
+                  }}
+                  onHome={() => { closeShift(); setScreen('title'); }}
+                />
+              ) : null}
+              {screen === 'callReview' && reviewed ? <CallReviewScreen id={reviewed} onBack={() => setScreen('end')} /> : null}
               {screen === 'desk' ? <DeskScreen onBack={() => setScreen('title')} /> : null}
               {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} /> : null}
             </>

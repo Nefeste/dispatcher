@@ -1,5 +1,5 @@
 rank: 4
-say: 60
+say: 50
 when: [sym.face_droop, sym.speech_trouble, sym.weakness_one_side]
 words:
   self: ["Лицо как-то перекосило, рука не слушается"]

@@ -1,5 +1,5 @@
 rank: 3
-say: 80
+say: 70
 when: [sign.stridor, sign.angioedema]
 words:
   self: ["Задыхаюсь, горло отекает"]

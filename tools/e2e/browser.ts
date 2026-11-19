@@ -1,7 +1,8 @@
 // Сценарий в браузере (спецификация прототипа, критерий 1): веб-сборка, Chromium без окна, настоящие нажатия.
 // Сейчас — первый экран → «Начать смену» → пульт (карта района, автопауза на звонке) → разговор (вопросы по вкладкам,
 // решение, бригада) → видеовставка → вся смена до конца (звонки, ожидание, доклады бригад, выбор больницы) → итог →
-// рабочее место (сцена Three.js) → «Об игре» → назад; к П8 путь растёт до сквозного (§3).
+// разбор (главная ошибка, вызов: по известному и по правде) → рабочее место (сцена Three.js) → «Об игре» → назад;
+// к П8 путь растёт до сквозного (§3).
 // Снимки — tools/e2e/out/. Ошибка в консоли — провал. По образцу shelter: tools/e2e/browser.ts @ 396daee.
 //
 //   npm run export:web && NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts
@@ -135,7 +136,16 @@ try {
   await see(page, 'end-emergency', 'Экстренные с доездом до 20 минут');
   console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта`);
   if (calls < 15 || reports < 3 || picked < 1) throw new Error('смена прошла не вся');
-  await snap(page, 'end');
+  await see(page, 'review-main', 'Главная ошибка');
+  await snap(page, 'review');
+  // разбор вызова: разговор, решение, по известному и по правде — отдельно
+  if (await visible('review-main-call')) await page.getByTestId('review-main-call').click();
+  else await page.getByTestId('review-row-1').click();
+  await see(page, 'call-review-known', 'По известному');
+  await see(page, 'call-review-truth', 'По правде');
+  await snap(page, 'call-review');
+  await page.getByTestId('call-review-back').click();
+  await see(page, 'review-main');
   await page.getByTestId('end-home').click();
   await see(page, 'title-name');
 

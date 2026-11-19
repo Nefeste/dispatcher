@@ -11,6 +11,7 @@ crews:
   - { id: crew.3, kind: crew.resus, base: base.south }
   - { id: crew.4, kind: crew.general, base: base.south }
   - { id: crew.5, kind: crew.general, base: base.south }
+  - { id: crew.6, kind: crew.general, base: base.north }
 # учебные звонки: когда (секунды от начала), что, кто и откуда звонит
 script:
   - { at: 20, condition: cond.stroke_ischemic, caller: caller.relative, where: home }
