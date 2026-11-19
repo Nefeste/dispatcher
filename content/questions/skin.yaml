@@ -1,6 +1,7 @@
 group: see
 rank: 2
 text: Какая кожа? Потный, сыпь, отёк?
+label: Кожа
 cost: 15
 tell: { self: usually, relative: usually, neighbour: usually, bystander: usually }
 opens: [sign.angioedema, sym.hives, sym.sweating, sym.tremor]

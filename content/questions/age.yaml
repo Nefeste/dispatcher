@@ -3,6 +3,8 @@
 group: who
 rank: 1
 text: Сколько лет?
+# поле карточки вызова
+label: Возраст
 cost: 10
 opens: []
 about: age

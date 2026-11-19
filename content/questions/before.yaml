@@ -1,6 +1,7 @@
 group: what
 rank: 3
 text: Было так раньше?
+label: Раньше
 cost: 15
 tell: { self: always, relative: usually, neighbour: sometimes, bystander: never }
 opens: [hx.epilepsy, hx.kidney_stones, hx.asthma]

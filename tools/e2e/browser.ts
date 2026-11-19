@@ -1,7 +1,7 @@
 // Сценарий в браузере (спецификация прототипа, критерий 1): веб-сборка, Chromium без окна, настоящие нажатия.
-// Сейчас — первый экран → пульт (сцена: карта района на мониторе, телефон и рация) → разговор (звонящий, вопрос,
-// решение) → рабочее место (сцена Three.js) → «Об игре» → назад; с каждой частью прототипа путь растёт до сквозного
-// (§3).
+// Сейчас — первый экран → «Начать смену» → пульт (карта района, автопауза на звонке) → разговор (вопросы по вкладкам,
+// решение, бригада) → видеовставка → вся смена до конца (звонки, ожидание, доклады бригад, выбор больницы) → итог →
+// рабочее место (сцена Three.js) → «Об игре» → назад; к П8 путь растёт до сквозного (§3).
 // Снимки — tools/e2e/out/. Ошибка в консоли — провал. По образцу shelter: tools/e2e/browser.ts @ 396daee.
 //
 //   npm run export:web && NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts
@@ -44,42 +44,51 @@ try {
   const page = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2 });
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push(String(e)));
-  await page.goto(`http://localhost:${server.port}/`);
+  // часы смены — в 20 раз быстрее ×1: смена проходится за минуты (src/state/session.ts, setPace)
+  await page.goto(`http://localhost:${server.port}/?pace=20`);
 
   await see(page, 'title-name', 'Диспетчер 03');
   await see(page, 'title-not-training', 'Это игра. Если нужна помощь');
   await see(page, 'title-start', 'Начать смену');
-  if (!(await page.getByTestId('title-start').isDisabled())) throw new Error('«Начать смену» нажимается, а смены ещё нет');
   await snap(page, 'title');
 
-  // пульт (ADR 0009): карта района на мониторе, на ней указание OpenStreetMap; сдвиг мышью не роняет её
-  await page.getByTestId('title-map').click();
+  // смена (П5): пульт — карта района на мониторе, на ней указание OpenStreetMap; сдвиг мышью не роняет её
+  await page.getByTestId('title-start').click();
   await see(page, 'pult');
   await see(page, 'map-view');
   await see(page, 'map-osm', '© участники OpenStreetMap');
-  await page.waitForTimeout(800);
-  await snap(page, 'map');
   const box = (await page.getByTestId('map-view').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2 - 200, { steps: 12 });
+  await page.mouse.move(box.x + box.width / 2 - 60, box.y + box.height / 2 - 80, { steps: 8 });
   await page.mouse.up();
-  await page.mouse.wheel(0, -400);
-  await page.waitForTimeout(500);
-  await snap(page, 'map-moved');
-  // часы смены ставят паузу; телефон на столе принимает звонок
-  await page.getByTestId('pult-clock').click();
+  // первый учебный звонок: автопауза, на линии — один
+  const speed = async () => /Скорость смены: (.+)/.exec((await page.getByTestId('pult-speed').getAttribute('aria-label')) ?? '')?.[1] ?? null;
+  const line = async () => Number(/на линии (\d+)/.exec((await page.getByTestId('pult-phone').getAttribute('aria-label')) ?? '')?.[1] ?? 0);
+  for (let i = 0; i < 100 && (await line()) === 0; i++) await page.waitForTimeout(100);
+  if ((await line()) !== 1) throw new Error('первый звонок не пришёл');
+  if ((await speed()) !== 'пауза') throw new Error(`звонок не поставил паузу: ${await speed()}`);
+  await snap(page, 'pult-ring');
+  checks++;
+
+  // разговор: вопросы — по вкладкам, каждый двигает часы на свою цену; решение — форма, потом бригада
   await page.getByTestId('pult-phone').click();
   await see(page, 'call');
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(500);
   await snap(page, 'call');
-  await page.getByTestId('call-q-1').click();
-  await page.getByTestId('call-q-0').click();
+  await page.getByTestId('call-q-q.conscious').click();
+  await page.getByTestId('call-q-q.breathing').click();
+  await page.getByTestId('call-tab-see').click();
+  await page.getByTestId('call-q-q.face').click();
+  await page.getByTestId('call-tab-who').click();
+  await page.getByTestId('call-q-q.age').click();
   await page.waitForTimeout(300);
-  if (!(await page.getByTestId('call-q-1').isDisabled())) throw new Error('заданный вопрос нажимается снова');
   await snap(page, 'call-asked');
-  // решение — видеовставка «бригада выезжает»: ролик или кадр вместо него, потом снова пульт
   await page.getByTestId('call-form-emergency').click();
+  await see(page, 'call-crews', 'Кого послать');
+  await snap(page, 'call-crews');
+  await page.getByTestId('call-crew-0').click();
+  // первый выезд — видеовставка «бригада выезжает»: ролик или кадр вместо него, потом снова пульт
   await see(page, 'insert');
   await page.waitForTimeout(2500);
   const video = await page.locator('video').count();
@@ -87,13 +96,47 @@ try {
   await snap(page, 'insert');
   await page.getByTestId('pult').waitFor({ state: 'visible', timeout: 15000 });
   checks++;
-  // П3: часы идут ×4 — посланная бригада едет по улицам и докладывает по рации
-  await page.getByTestId('pult-clock').click();
-  await page.getByTestId('pult-speed').click();
-  await page.getByTestId('pult-speed').click();
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1500);
   await snap(page, 'pult-crews');
-  await page.getByTestId('map-back').click();
+
+  // дальше — вся смена до конца: звонки, ожидание, доклады бригад, выбор больницы (часы ускорены: ?pace=)
+  const visible = async (id: string) => (await page.getByTestId(id).count()) > 0 && page.getByTestId(id).first().isVisible();
+  // экран живой: часы идут, строки пересобираются — касание, которое не успело, просто повторится на следующем шаге
+  const tap = (id: string) => page.getByTestId(id).first().click({ timeout: 1500 }).then(() => true, () => false);
+  let calls = 1, reports = 0, held = 0, picked = 0, shotReport = false, shotWaiting = false, lastTile = 0;
+  for (let i = 0; i < 3000; i++) {
+    if (await visible('end')) break;
+    if (await visible('report')) {
+      if (!shotReport) { await snap(page, 'report'); shotReport = true; }
+      if (await tap('report-h-0')) reports++;
+    } else if (await visible('call-crews')) {
+      // каждый третий — подождёт: потом его пошлют с пульта
+      if (calls % 3 === 0 || !(await visible('call-crew-0'))) { if (await tap('call-hold')) held++; }
+      else await tap('call-crew-0');
+    } else if (await visible('call')) {
+      await tap('call-q-q.conscious');
+      await tap('call-q-q.breathing');
+      if (await tap(calls % 2 ? 'call-form-urgent' : 'call-form-emergency')) calls++;
+    } else if (await visible('insert')) {
+      await page.waitForTimeout(200);
+    } else if (await visible('crews')) {
+      if (!shotWaiting) { await snap(page, 'pult-waiting'); shotWaiting = true; }
+      if (await visible('crews-0')) { if (await tap('crews-0')) picked++; }
+      else await tap('crews-close');
+    } else if (await visible('pult')) {
+      const now = await speed();
+      if ((await line()) > 0) await tap('pult-phone');
+      else if (now === 'пауза') await tap('pult-clock');
+      else if (now === '×1') await tap('pult-speed');
+      else if (Date.now() - lastTile > 2000 && (await visible('pult-waiting-0'))) { lastTile = Date.now(); await tap('pult-waiting-0'); }
+      else await page.waitForTimeout(150);
+    } else await page.waitForTimeout(100);
+  }
+  await see(page, 'end-emergency', 'Экстренные с доездом до 20 минут');
+  console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта`);
+  if (calls < 15 || reports < 3 || picked < 1) throw new Error('смена прошла не вся');
+  await snap(page, 'end');
+  await page.getByTestId('end-home').click();
   await see(page, 'title-name');
 
   // рабочее место: модель из Blender на Three.js, экраны мониторов — Skia; палец поворачивает взгляд

@@ -1,6 +1,7 @@
 group: see
 rank: 3
 text: Судороги были?
+label: Судороги
 cost: 10
 tell: { self: often, relative: usually, neighbour: often, bystander: often }
 opens: [sym.seizure]

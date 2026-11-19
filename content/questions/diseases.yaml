@@ -1,6 +1,7 @@
 group: history
 rank: 1
 text: Чем болеет? Давление, сахар, астма?
+label: Болезни
 cost: 20
 tell: { self: always, relative: usually, neighbour: sometimes, bystander: never }
 opens: [hx.hypertension, hx.diabetes, hx.insulin, hx.asthma, hx.epilepsy]

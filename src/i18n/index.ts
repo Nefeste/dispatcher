@@ -7,6 +7,10 @@ const nb = ' ';
 /** Бригады по рации: «Четвёртая, на месте». */
 const ORDINAL = ['Первая', 'Вторая', 'Третья', 'Четвёртая', 'Пятая', 'Шестая', 'Седьмая', 'Восьмая'];
 
+export type RadioWhat = 'scene' | 'report' | 'auto' | 'free' | 'base' | 'recall';
+const RADIO = { scene: 'на месте', report: 'везём, куда?', stay: 'помощь на месте, свободна', auto: 'везём в предложенную', free: 'свободна', base: 'на подстанции', recall: 'разворачиваемся на экстренный' } as const;
+const RADIO_LCD = { scene: 'НА МЕСТЕ', report: 'ДОКЛАД', stay: 'СВОБОДНА', auto: 'ВЕЗЁТ', free: 'СВОБОДНА', base: 'НА ПОДСТАНЦИИ', recall: 'РАЗВОРОТ' } as const;
+
 /** Русское число: 1 звонок, 2 звонка, 5 звонков. */
 export function plural(n: number, one: string, few: string, many: string): string {
   const m10 = n % 10, m100 = n % 100;
@@ -26,9 +30,9 @@ export const T = {
     /** ADR 0007: на первом экране, в «Об игре» и в карточке магазина */
     notTraining: `Это игра. Если нужна помощь —${nb}звоните 103 или 112.`,
     start: 'Начать смену',
-    soon: 'Смена появится в следующих частях прототипа',
+    resume: 'Продолжить смену',
+    shift: 'Вечер буднего дня, 17:00–19:00 · пять бригад, три больницы',
     desk: 'Рабочее место',
-    map: 'Пульт',
     about: 'Об игре',
   },
   map: {
@@ -75,7 +79,7 @@ export const T = {
       bars: ['Ждут звонка', 'Говорят', 'Бригады на вызовах'],
     },
   },
-  /** Сцена «Пульт» (ADR 0009): строки на мониторе, экранчики телефона и рации; данные — пример для эталонного кадра */
+  /** Сцена «Пульт» (ADR 0009): строки на мониторе, экранчики телефона и рации */
   pult: {
     /** часы смены: часы и минуты от полуночи */
     clock: (secOfDay: number) => {
@@ -87,8 +91,8 @@ export const T = {
     line: (n: number) => `На линии: ${n}`,
     phoneLcd: (n: number) => `ЛИНИЯ ${n}`,
     /** рация: экранчик и строка бригады — «Четвёртая, на месте» */
-    radioLcd: (n: number, what: 'scene' | 'base') => `${n} · ${what === 'scene' ? 'НА МЕСТЕ' : 'НА ПОДСТАНЦИИ'}`,
-    radioSays: (n: number, what: 'scene' | 'base') => `«${ORDINAL[n - 1] ?? n}, ${what === 'scene' ? 'на месте' : 'на подстанции'}»`,
+    radioLcd: (n: number, what: RadioWhat, transport = true) => `${n} · ${RADIO_LCD[what === 'report' && !transport ? 'stay' : what]}`,
+    radioSays: (n: number, what: RadioWhat, transport = true) => `«${ORDINAL[n - 1] ?? n}, ${RADIO[what === 'report' && !transport ? 'stay' : what]}»`,
     radioIdle: 'ЭФИР',
     waitingHead: 'Ждут бригаду',
     waitingNone: 'Все вызовы с бригадами',
@@ -96,32 +100,24 @@ export const T = {
     forms: { emergency: ['Э', 'экстренная'], urgent: ['Н', 'неотложная'] } as const,
     callNo: (id: string) => `№ ${id.split('.')[1]}`,
     waited: (min: number) => `ждёт ${min} мин`,
+    repeats: (n: number) => (n > 0 ? ` · звонят ${n + 1}-й раз` : ''),
+    closing: 'Смена кончилась: новых звонков нет — доведите вызовы',
+    tileLabel: (no: number, form: string, min: number) => `Вызов № ${no}, ${form}, ждёт ${min} минут. Выбрать бригаду`,
     phoneLabel: (n: number) => `Телефон: на линии ${n} ${plural(n, 'звонок', 'звонка', 'звонков')}`,
     radioLabel: 'Рация: последний доклад бригады',
     clockLabel: 'Часы смены: пауза',
-    speedLabel: 'Скорость смены',
+    speedLabel: (now: string) => `Скорость смены: ${now}`,
   },
-  /** Сцена «Разговор» (ADR 0009): звонящий и опросник на мониторе; данные — пример для эталонного кадра. Вопросы
-   *  смены придут из content/ с частью П4. */
+  /** Сцена «Разговор» (ADR 0009): звонящий и опросник на мониторе; вопросы и ответы — из content/ (часть П4) */
   call: {
-    who: 'Дочь',
-    first: '«Маме плохо, не встаёт»',
-    head: 'Пульт 7 · Вызов № 41',
+    /** вкладки опросника по группам вопросов (content/questions, group) */
+    tabs: { who: 'Кто', vital: 'Сознание', what: 'Что было', see: 'Видно', history: 'Болезни', place: 'Место' } as const,
+    headNo: (no: number) => `Пульт 7 · Вызов № ${no}`,
     timer: (s: number) => `на линии ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`,
-    fields: [
-      ['Адрес', 'ул. Большая Покровская, 12, кв. 5'],
-      ['Кто звонит', 'дочь'],
-      ['Повод', 'маме плохо, не встаёт'],
-      ['Возраст', '78 лет'],
-    ] as readonly (readonly [string, string])[],
-    groups: ['Кто', 'Сознание и дыхание', 'Что случилось', 'Что видите', 'Болезни', 'Место'],
-    /** вопрос, цена в игровых секундах, поле карточки и ответ звонящего */
-    questions: [
-      ['В сознании ли?', 15, 'Сознание', 'в сознании', '«Да, смотрит на меня, отвечает»'],
-      ['Дышит ли?', 15, 'Дыхание', 'дышит', '«Дышит, говорит со мной»'],
-      ['Когда началось?', 20, 'Началось', 'час назад', '«Час назад, как проснулась»'],
-      ['Упала ли?', 15, 'Падение', 'не падала', '«Нет, не падала, просто не может встать»'],
-    ] as readonly (readonly [string, number, string, string, string])[],
+    repeat: 'звонят второй раз',
+    reason: 'Повод',
+    quote: (s: string) => `«${s}»`,
+    tabLabel: (name: string) => `Вопросы: ${name}`,
     cost: (s: number) => `${s} с`,
     forms: [
       ['Э', 'Экстренная', 'emergency'],
@@ -130,6 +126,49 @@ export const T = {
     ] as readonly (readonly [string, string, 'emergency' | 'urgent' | 'none'])[],
     questionLabel: (q: string, s: number) => `Спросить: ${q} Стоит ${s} секунд`,
     formLabel: (f: string) => `Решение: ${f}`,
+  },
+  /** Выбор бригады (docs/08-game-design.md, §5) — на мониторе после решения и по касанию вызова, ждущего бригаду */
+  crews: {
+    head: (no: number) => `Кого послать на вызов № ${no}`,
+    row: (no: number, kind: string, min: number) => `Бригада ${no} · ${kind} · ${min} мин`,
+    redirect: 'снять с неотложного',
+    none: 'Свободных бригад нет — вызов подождёт',
+    hold: 'Оставить ждать',
+    close: 'Закрыть',
+    label: (no: number, kind: string, min: number, redirect: boolean) => `Послать бригаду ${no}, ${kind}, доедет за ${min} минут${redirect ? ', снять её с неотложного' : ''}`,
+  },
+  /** Доклад бригады (§5): что нашла и куда везти */
+  report: {
+    head: (crew: number, no: number) => `Бригада ${crew} · вызов № ${no}`,
+    says: (diagnosis: string) => `Подозрение: ${diagnosis}. Везём — куда?`,
+    row: (name: string) => name,
+    sub: (min: number, profiles: string) => `${min} мин · ${profiles}`,
+    offered: 'предлагает бригада',
+    auto: (s: number) => `Нет ответа — через ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} повезут в предложенную`,
+    label: (name: string, min: number) => `Везти в ${name}, ${min} минут`,
+  },
+  /** Профили больниц: строка под именем */
+  profiles: { stroke: 'сосудистый центр', cardio: 'кардиология', trauma: 'травма', neuro: 'неврология', uro: 'урология', infect: 'инфекция', general: 'общий' } as const,
+  /** Конец смены (§7, «Итог смены»): три числа; разбор — с частью П6 */
+  end: {
+    title: 'Смена окончена',
+    emergency: (inNorm: number, all: number) => `Экстренные с доездом до 20 минут: ${inNorm} из ${all}`,
+    urgent: (min: number | null) => (min === null ? 'Неотложных вызовов не было' : `Неотложные ждали бригаду: ${min} мин по медиане`),
+    accepted: (n: number) => `Принято звонков: ${n}`,
+    review: 'Разбор вызовов появится в следующей части прототипа',
+    home: 'На заглавный экран',
+  },
+  /** Почему команду не приняли (src/engine/shift.ts, Refusal) */
+  refusal: {
+    over: 'Смена закончилась',
+    talking: 'Сначала закончите разговор',
+    noRing: 'На линии никого',
+    notOpen: 'Разговор не открыт',
+    unknown: 'Так нельзя',
+    noForm: 'Сначала решите форму вызова',
+    crewBusy: 'Бригада занята',
+    noRoute: 'Бригада туда не доедет',
+    notReport: 'Бригада уже не ждёт ответа',
   },
   insert: {
     skip: 'Коснитесь, чтобы пропустить',

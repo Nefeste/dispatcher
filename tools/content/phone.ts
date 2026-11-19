@@ -131,14 +131,15 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
   const ranks = new Set<string>();
   for (const [id, r] of files(join(dir, 'questions'), 'q')) {
     const q: Question = {
-      id, group: r.group as QuestionGroup, rank: Number(r.rank), text: String(r.text ?? ''), cost: Number(r.cost), opens: (r.opens as string[]) ?? [],
+      id, group: r.group as QuestionGroup, rank: Number(r.rank), text: String(r.text ?? ''), label: String(r.label ?? ''), cost: Number(r.cost), opens: (r.opens as string[]) ?? [],
       ...(r.none ? { none: lines(id, r.none, 'none') } : {}), ...(r.about ? { about: r.about as Question['about'] } : {}),
       tell: tellOf(id, r.tell), ...(r.answer ? { answer: lines(id, r.answer, 'answer') } : {}),
       ...(r.years ? { years: r.years as [string, string, string] } : {}),
       ...(r.bands ? { bands: (r.bands as Raw[]).map(b => ({ to: Number(b.to), words: lines(id, b.words, 'bands') })) } : {}),
       ...(r.place ? { place: Object.fromEntries(Object.entries(r.place as Raw).map(([k, v]) => [k, lines(id, v, `place.${k}`)])) as Record<Where, Lines> } : {}),
     };
-    texts.push([`${id}: text`, q.text]);
+    texts.push([`${id}: text`, q.text], [`${id}: label`, q.label]);
+    if (!q.label) err(`${id}: no label for the call card`);
     if (!QUESTION_GROUPS.includes(q.group)) err(`${id}: unknown group ${q.group}`);
     if (ranks.has(`${q.group}:${q.rank}`)) err(`${id}: rank ${q.rank} taken in ${q.group}`);
     ranks.add(`${q.group}:${q.rank}`);
@@ -168,10 +169,11 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
   for (const [id, r] of files(join(dir, 'callers'), 'caller')) {
     const k: CallerKind = {
       id, name: String(r.name ?? ''), self: r.self === true, at: (r.at as Where[]) ?? [], weight: Number(r.weight), relations: (r.relations as Relation[]) ?? [],
-      cannot: (r.cannot as string[]) ?? [], unsure: (r.unsure as string[]) ?? [], nothing: (r.nothing as string[]) ?? [],
+      cannot: (r.cannot as string[]) ?? [], unsure: (r.unsure as string[]) ?? [], nothing: (r.nothing as string[]) ?? [], again: (r.again as string[]) ?? [],
       estimate: r.estimate === true, sources: sources(id, r.sources), review: review(id, r.review),
     };
-    for (const s of [...k.unsure, ...k.nothing]) texts.push([`${id}: words`, s]);
+    for (const s of [...k.unsure, ...k.nothing, ...k.again]) texts.push([`${id}: words`, s]);
+    if (!k.again.length) err(`${id}: needs again words for a repeat call`);
     if (!(CALLERS as readonly string[]).includes(basename(id.replace('caller.', '')))) err(`${id}: unknown caller kind`);
     if (!(k.weight > 0)) err(`${id}: weight must be positive`);
     if (!k.at.length || k.at.some(a => a !== 'home' && a !== 'street')) err(`${id}: at must list home and/or street`);

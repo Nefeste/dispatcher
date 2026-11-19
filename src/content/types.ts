@@ -42,6 +42,15 @@ export interface ShiftCrew {
   base: string;
 }
 
+/** Учебный звонок смены: когда, что, кто и откуда звонит. */
+export interface ScriptedRing {
+  /** секунды от начала смены */
+  at: number;
+  condition: string;
+  caller: string;
+  where: 'home' | 'street';
+}
+
 export interface ShiftSetup {
   id: string;
   city: string;
@@ -49,7 +58,17 @@ export interface ShiftSetup {
   start: number;
   /** длина, секунды */
   length: number;
+  /** время года — от него болезни «Анамнеза» */
+  season: 'winter' | 'spring' | 'summer' | 'autumn';
   crews: ShiftCrew[];
+  /** учебные звонки — до потока */
+  script: ScriptedRing[];
+}
+
+/** Поток звонков: сколько в час — с какого часа суток (оценка). */
+export interface Flow {
+  estimate: boolean;
+  hours: { from: number; perHour: number }[];
 }
 
 // --- медицина по телефону (часть П4; docs/04-data-model.md, §1; ADR 0002) ----------------------------------------
@@ -97,6 +116,8 @@ export interface Question {
   rank: number;
   /** слова вопроса; `{м|ж}` — по полу больного: диспетчер знает его из первых слов */
   text: string;
+  /** поле карточки вызова: «Дыхание» */
+  label: string;
   /** цена, игровые секунды (docs/08-game-design.md, §9) */
   cost: number;
   /** признаки, которые он открывает, по порядку: звонящий называет первые два, что есть */
@@ -127,6 +148,8 @@ export interface Relation {
   patient: { m?: string; f?: string };
   /** только для больных этого пола и возраста */
   sex?: 'm' | 'f';
+  /** картинка звонящего для сцены «Разговор» (assets/scenes/callers.json); нет — тёмная сцена */
+  picture?: string;
   age?: [number, number];
 }
 
@@ -146,6 +169,8 @@ export interface CallerKind {
   unsure: string[];
   /** на повтор, когда сказать больше нечего */
   nothing: string[];
+  /** первые слова повторного звонка: бригады всё нет */
+  again: string[];
   estimate: boolean;
   sources: string[];
   review: 'draft' | 'checked';
@@ -209,6 +234,7 @@ export interface Phone {
 
 export interface Db {
   roads: Roads;
+  flow: Flow;
   crews: Record<string, CrewKind>;
   cities: Record<string, City>;
   shifts: Record<string, ShiftSetup>;

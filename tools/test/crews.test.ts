@@ -1,13 +1,14 @@
-// Бригады и их путь по улицам (часть П3; docs/02-architecture.md, §3 и §5): путь — настоящие рёбра графа с
+// Бригады и их путь по улицам (части П3, П5; docs/02-architecture.md, §3 и §5): путь — настоящие рёбра графа с
 // растущим временем; место на пути непрерывно и совпадает с узлами в их моменты; полный круг бригады — подстанция,
-// вызов, на месте, обратно; время доезда из одного обратного поиска совпадает с прямым путём каждой бригады.
+// вызов, на месте, больница, обратно; время доезда из одного обратного поиска совпадает с прямым путём каждой бригады.
 import { describe, expect, test } from 'bun:test';
 import { DB } from '../../src/content/generated/db';
-import { crewAtBase, etas, free, hourPct, nodeNow, send, step } from '../../src/engine/crews';
+import { atBase, atHospital, crewAtBase, crewNext, etas, free, home, hourPct, nodeNow, onScene, send, toHospital } from '../../src/engine/crews';
 import { edgeTimes, roadOf } from '../../src/engine/road/graph';
 import { arrival, passed, pointAt, routeOf } from '../../src/engine/road/pos';
 import { FAR } from '../../src/engine/road/route';
 import { loadMap } from '../../src/map/load';
+import { slots } from '../../src/scenes/pult/slots';
 
 const city = DB.cities['city.proto'];
 const map = loadMap(city.map);
@@ -66,32 +67,37 @@ describe('путь', () => {
 describe('бригада', () => {
   const SCENE = 15 * 60 * 1000;
 
-  test('круг: подстанция → едет → на месте → возвращается → подстанция', () => {
+  test('круг: подстанция → едет → на месте → везёт → в больнице → возвращается → подстанция', () => {
     let c = crewAtBase('crew.4', 'crew.general', south);
     expect(free(c)).toBe(true);
-    c = send(road, times, c, 'call.41', hosp, 0)!;
+    c = send(road, times, c, 'call.41', north, 0)!;
     expect(c.state).toBe('drive');
     expect(free(c)).toBe(false);
-    const there = arrival(c.route!);
-    expect(step(road, times, c, there - 1, SCENE).state).toBe('drive');
-    const on = step(road, times, c, there, SCENE);
-    expect(on.state).toBe('scene');
-    expect(on.at).toBe(hosp);
-    const back = step(road, times, on, there + SCENE, SCENE);
-    expect(back.state).toBe('back');
-    expect(back.call).toBeNull();
-    expect(free(back)).toBe(true);
-    const home = step(road, times, back, arrival(back.route!), SCENE);
-    expect(home.state).toBe('base');
-    expect(home.at).toBe(south);
-    // тот же итог одним шагом через всё время
-    expect(step(road, times, c, arrival(back.route!) + 1, SCENE)).toEqual(home);
+    const there = crewNext(c);
+    expect(there).toBe(arrival(c.route!));
+    c = onScene(c, there + SCENE);
+    expect(c.state).toBe('scene');
+    expect(c.at).toBe(north);
+    expect(crewNext(c)).toBe(there + SCENE);
+    c = toHospital(road, times, c, hosp, there + SCENE)!;
+    expect(c.state).toBe('transport');
+    expect(c.route!.nodes[0]).toBe(north);
+    const inHosp = crewNext(c);
+    c = atHospital(c, inHosp + SCENE);
+    expect([c.state, c.at]).toEqual(['hospital', hosp]);
+    c = home(road, times, c, inHosp + SCENE);
+    expect(c.state).toBe('back');
+    expect(c.call).toBeNull();
+    expect(free(c)).toBe(true);
+    c = atBase(c);
+    expect([c.state, c.at]).toEqual(['base', south]);
+    expect(crewNext(c)).toBe(0xffffffff);
   });
 
   test('с дороги домой бригаду посылают от того места, где она сейчас', () => {
     let c = crewAtBase('crew.1', 'crew.general', north);
     c = send(road, times, c, 'call.1', hosp, 0)!;
-    c = step(road, times, c, arrival(c.route!) + SCENE, SCENE);
+    c = home(road, times, onScene(c, crewNext(c)), crewNext(c));
     expect(c.state).toBe('back');
     const t = c.route!.start + Math.floor(c.route!.at[c.route!.at.length - 1] / 2);
     const from = nodeNow(c, t);
@@ -103,6 +109,7 @@ describe('бригада', () => {
   test('время доезда одним обратным поиском — как прямой путь каждой свободной бригады; занятая — не едет', () => {
     const crews = DB.shifts['shift.proto'].crews.map(s => crewAtBase(s.id, s.kind, city.bases.find(b => b.id === s.base)!.node));
     crews[2] = send(road, times, crews[2], 'call.x', hosp, 0)!;
+    expect(free(crews[2])).toBe(false);
     const to = city.hospitals[1].node;
     const eta = etas(road, times, crews, to, 1000);
     crews.forEach((c, i) => {
@@ -116,5 +123,11 @@ describe('бригада', () => {
     expect(hourPct(DB.roads.hours, 17 * 3600 + 30 * 60)).toBe(75);
     expect(hourPct(DB.roads.hours, 2 * 3600)).toBe(120);
     expect(hourPct(DB.roads.hours, 23 * 3600 + 59 * 60)).toBe(120);
+  });
+
+  test('знаки бригад в одном месте не ложатся друг на друга', () => {
+    const crews = DB.shifts['shift.proto'].crews.map(c => crewAtBase(c.id, c.kind, city.bases.find(b => b.id === c.base)!.node));
+    const off = slots(crews);
+    for (let i = 0; i < crews.length; i++) for (let j = i + 1; j < crews.length; j++) if (crews[i].at === crews[j].at) expect(off[i]).not.toEqual(off[j]);
   });
 });

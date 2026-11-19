@@ -1,6 +1,7 @@
 group: what
 rank: 4
 text: Упал{|а}? Ударил{ся|ась} головой?
+label: Падение
 cost: 15
 tell: { self: always, relative: usually, neighbour: often, bystander: often }
 opens: [sym.head_injury, sym.loss_of_consciousness, sym.hip_pain]

@@ -1,6 +1,7 @@
 group: what
 rank: 6
 text: Какая боль? Отдаёт куда-нибудь?
+label: Какая боль
 cost: 20
 tell: { self: always, relative: often, neighbour: sometimes, bystander: rarely }
 opens: [sym.chest_pain_rest_long, sym.pain_radiation, sym.colicky_pain, sym.groin_radiation, sym.sciatica]

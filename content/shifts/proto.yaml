@@ -1,11 +1,18 @@
 # Смена прототипа (docs/specs/2026-11-prototype.md, §3, шаг 7): вечер буднего дня, 17:00–19:00, пять бригад на двух
-# подстанциях — четыре общепрофильные и одна реанимационная. Поток и учебные звонки — с частями П4 и П5.
+# подстанциях — четыре общепрофильные и одна реанимационная. Сначала — три учебных звонка (§3, шаги 4–6; подсказки к
+# ним — с частью П8), потом поток по content/flow.yaml.
 city: city.proto
 start: 61200      # 17:00, секунды от полуночи
 length: 7200      # 2 часа
+season: autumn    # время года: от него — болезни «Анамнеза»
 crews:
   - { id: crew.1, kind: crew.general, base: base.north }
   - { id: crew.2, kind: crew.general, base: base.north }
   - { id: crew.3, kind: crew.resus, base: base.south }
   - { id: crew.4, kind: crew.general, base: base.south }
   - { id: crew.5, kind: crew.general, base: base.south }
+# учебные звонки: когда (секунды от начала), что, кто и откуда звонит
+script:
+  - { at: 20, condition: cond.stroke_ischemic, caller: caller.relative, where: home }
+  - { at: 240, condition: cond.influenza, caller: caller.self, where: home }
+  - { at: 480, condition: cond.hypoglycemia, caller: caller.bystander, where: street }

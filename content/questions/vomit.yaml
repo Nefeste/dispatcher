@@ -1,6 +1,7 @@
 group: see
 rank: 4
 text: Тошнит? Рвота была? Голова кружится?
+label: Тошнота
 cost: 10
 tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
 opens: [sym.vomiting, sym.nausea, sym.dizziness]
