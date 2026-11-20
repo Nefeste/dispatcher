@@ -23,10 +23,11 @@ import { DB } from './src/content/generated/db';
 import { NO_LINEUP } from './src/engine/shift';
 import { lineupOf } from './src/engine/station';
 import { readStation } from './src/state/station';
+import { introNote } from './src/state/stationView';
 import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
 import { mark } from './src/state/marks';
 import { hideSplash, keepSplash } from './src/state/splash';
-import { closeShift, resumeShift, session, setCue, setPace, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
+import { closeShift, resumeShift, session, setCue, setPace, setSoftOutcome, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
 import { DEFAULT_SETTINGS, lessMotionOf, type Settings } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
 import { FONT_FILES } from './src/ui/fonts';
@@ -68,6 +69,7 @@ export default function App() {
       systemMotion.current = system;
       setLessMotion(lessMotionOf(s, system));
       setFeedback(s);
+      setSoftOutcome(s.softOutcome);
       preloadSounds();
     });
     return () => { alive = false; };
@@ -95,7 +97,8 @@ export default function App() {
     mark('loaded');
     // смена недели выходит с бригадами и укладками станции (срез, С2)
     void readStation().then(st => {
-      startShift(picked, undefined, settings.current.autopause, DB.shifts[picked]?.week ? lineupOf(st) : NO_LINEUP);
+      const week = Boolean(DB.shifts[picked]?.week);
+      startShift(picked, undefined, settings.current.autopause, week ? lineupOf(st) : NO_LINEUP, week ? introNote(st, picked) : null);
       setInsert('start');
       setScreen('insert');
     });

@@ -4,10 +4,10 @@ import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
 import { reviewView } from '../state/reviewView';
-import { useSession } from '../state/session';
+import { softOutcome, useSession } from '../state/session';
 import { Button, Card, Txt } from '../ui/kit';
 import { C, S } from '../ui/theme';
-import { mistakeText, mistakeWhy } from './reviewWords';
+import { mistakeText, mistakeWhy, tierWord } from './reviewWords';
 
 export function CallReviewScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const x = useSession();
@@ -52,6 +52,7 @@ export function CallReviewScreen({ id, onBack }: { id: string; onBack: () => voi
       <Card style={styles.verdict} testID="call-review-truth">
         <Txt style={styles.vHead}>{T.review.byTruth}</Txt>
         <Txt>{T.review.reality(d.condition, d.sex, d.age)}</Txt>
+        <Txt style={d.row.tier === 'died' ? styles.bad : undefined} testID="call-review-tier">{tierWord(d.row.tier, softOutcome())}</Txt>
         <Txt>{T.review.arrived(d.wait, d.normMin)}</Txt>
         {d.window ? <Txt>{T.review.window(d.window.minutes, d.window.met, Math.ceil(d.window.over / 60_000))}</Txt> : null}
       </Card>

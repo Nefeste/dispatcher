@@ -65,6 +65,13 @@ try {
   await see(page, 'settings-sound', 'Звук');
   await page.getByTestId('settings-haptics').click();
   await page.getByTestId('settings-haptics').click();
+  // «Мягкий исход» (срез, С3) — выключен по умолчанию, переключается и пишется сразу
+  await see(page, 'settings-softOutcome', 'Мягкий исход');
+  await see(page, 'settings-softOutcome', 'выкл.');
+  await page.getByTestId('settings-softOutcome').click();
+  await see(page, 'settings-softOutcome', 'вкл.');
+  await page.getByTestId('settings-softOutcome').click();
+  await see(page, 'settings-softOutcome', 'выкл.');
   await snap(page, 'settings');
   await page.getByTestId('settings-back').click();
   await see(page, 'title-start');

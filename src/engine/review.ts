@@ -34,7 +34,13 @@ export interface Outcome {
   window: WindowResult | null;
   /** везли: в больницу ли нужного профиля и ближайшая такая */
   hospital: { chosen: string; ok: boolean; right: string | null; transfer: number } | null;
+  /** больной умер до приезда бригады (срез, С3; только по записи `fatal` с источником) */
+  died: boolean;
+  /** исход тремя ступенями (§7 геймдизайна): вовремя, с опозданием, не дождался помощи */
+  tier: Tier;
 }
+
+export type Tier = 'ok' | 'late' | 'died';
 
 export type Mistake =
   /** без выезда, а помощь была нужна */
@@ -119,7 +125,8 @@ export function outcomeOf(ctx: ShiftCtx, s: Shift, call: CallRec): Outcome {
     const limit = w.minutes * 60_000;
     window = { minutes: w.minutes, from: w.from, met: span !== null && span <= limit, over: span === null ? limit : Math.max(0, span - limit) };
   }
-  return { form, wait, norm, late, window, hospital };
+  const tier: Tier = call.died ? 'died' : late > 0 || (window && !window.met) || (hospital && !hospital.ok) ? 'late' : 'ok';
+  return { form, wait, norm, late, window, hospital, died: call.died, tier };
 }
 
 /** Вопрос, который открыл бы угрозу, если бы его задали до решения, и звонящий знал ответ. */

@@ -1,17 +1,18 @@
 // Настройки (docs/08-game-design.md, §10): автопауза на звонке, звук, отклик телефона, «Меньше движения» (ADR устава
-// 0023, правило 6: не выбрано — как в системе телефона). Пишутся сразу; размер текста — с выпуском.
+// 0023, правило 6: не выбрано — как в системе телефона), «Мягкий исход» (срез, С3). Пишутся сразу; размер текста — с
+// выпуском.
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { setFeedback } from '../audio/feedback';
 import { T } from '../i18n';
-import { setAutopause } from '../state/session';
+import { setAutopause, setSoftOutcome } from '../state/session';
 import { lessMotionOf, type Settings } from '../state/settings';
 import { saveSettings } from '../state/storage';
 import { Button, Txt } from '../ui/kit';
 import { setLessMotion } from '../ui/motion';
 import { C, R, S } from '../ui/theme';
 
-type Key = 'autopause' | 'sound' | 'haptics' | 'lessMotion';
+type Key = 'autopause' | 'sound' | 'haptics' | 'lessMotion' | 'softOutcome';
 
 export function SettingsScreen({ settings, system, onChange, onBack }: { settings: Settings; system: boolean; onChange: (s: Settings) => void; onBack: () => void }) {
   const [s, setS] = useState(settings);
@@ -24,11 +25,12 @@ export function SettingsScreen({ settings, system, onChange, onBack }: { setting
     setFeedback(next);
     setLessMotion(lessMotionOf(next, system));
     setAutopause(next.autopause);
+    setSoftOutcome(next.softOutcome);
   };
   return (
     <ScrollView contentContainerStyle={styles.root} testID="settings">
       <Txt title>{T.settings.title}</Txt>
-      {(['autopause', 'sound', 'haptics', 'lessMotion'] as const).map(k => (
+      {(['autopause', 'sound', 'haptics', 'lessMotion', 'softOutcome'] as const).map(k => (
         <Pressable
           key={k}
           onPress={() => toggle(k)}

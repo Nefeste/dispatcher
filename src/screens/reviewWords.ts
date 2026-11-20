@@ -22,3 +22,8 @@ export function mistakeWhy(v: MistakeView): string {
   const m = v.m;
   return m.kind === 'overTriage' ? T.review.why.overTriage(v.cleared ?? []) : T.review.why[m.kind]();
 }
+
+/** Исход вызова словом (срез, С3; §7 геймдизайна): третья ступень — по «Мягкому исходу». */
+export function tierWord(tier: 'ok' | 'late' | 'died', soft: boolean): string {
+  return tier === 'died' && soft ? T.review.tier.grave : T.review.tier[tier];
+}

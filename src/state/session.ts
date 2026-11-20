@@ -9,6 +9,7 @@ import { DB } from '../content/generated/db';
 import { MED } from '../content/generated/med';
 import { type Command, type Lineup, type Logged, NO_LINEUP, type Notice, newShift, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
 import { loadMap } from '../map/load';
+import type { IntroNote } from './stationView';
 import { KEYS, readRaw, writeRaw } from './storage';
 
 /** ×1 — игровая минута за 2,5 с настоящего времени (docs/08-game-design.md, §9): в 24 раза быстрее. */
@@ -23,8 +24,9 @@ export const FIRST_SHIFT = 'shift.week-1';
 /** Версия формата сохранения: изменился смысл — новая версия и шаг миграции (docs/04-data-model.md, §3).
  *  2 — 0.13.0: укладки и бригады станции меняют жизнь смены, у первой смены другие номера бригад; команды смены 0.12.0
  *  переигрались бы в другую смену — такая смена не продолжается (шага миграции нет: переиграть её по старым правилам
- *  нечем). */
-const SAVE_V = 2;
+ *  нечем).
+ *  3 — 0.14.0: смерть до приезда бригады (больного не везут) и повторный звонок после отказа меняют жизнь смены. */
+const SAVE_V = 3;
 
 export interface Session {
   ctx: ShiftCtx;
@@ -38,6 +40,8 @@ export interface Session {
   resume: Speed | null;
   /** ввод новой смены ещё на экране: часы стоят, пока игрок его не закрыл */
   intro: boolean;
+  /** письмо старшего врача о тяжёлой ошибке прошлой смены — на вводе (срез, С3) */
+  note: IntroNote | null;
   /** сколько настоящего времени идёт смена, мс: «время игры» в итоге (§5) */
   played: number;
   /** номер изменения: растёт с каждым шагом, экран перерисовывается по нему */
@@ -117,9 +121,9 @@ export function useSession(): Session | null {
 
 /** Новая смена `shiftId` с тем, что дала станция. Зерно — от часов телефона: случайность смены живёт в состоянии,
  *  движок её не берёт сам. */
-export function startShift(shiftId: string, seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true, lineup: Lineup = NO_LINEUP): Session {
+export function startShift(shiftId: string, seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true, lineup: Lineup = NO_LINEUP, note: IntroNote | null = null): Session {
   const ctx = ctxOf(shiftId);
-  cur = { ctx, s: newShift(ctx, seed, lineup), log: [], speed: 0, looked: 0, autopause, resume: null, intro: true, played: 0, v: 0 };
+  cur = { ctx, s: newShift(ctx, seed, lineup), log: [], speed: 0, looked: 0, autopause, resume: null, intro: true, note, played: 0, v: 0 };
   lastTouch = Date.now();
   void save();
   emit();
@@ -177,7 +181,7 @@ export async function resumeShift(autopause = true): Promise<Session | null> {
   const ctx = ctxOf(sv.setup);
   const s = replay(ctx, sv.seed, sv.log, lineupFrom(sv.lineup));
   if (sv.t > s.t) advanceShift(ctx, s, sv.t - s.t);
-  cur = { ctx, s, log: sv.log, speed: 0, looked: s.notices.length, autopause, resume: null, intro: false, played: sv.played ?? 0, v: 0 };
+  cur = { ctx, s, log: sv.log, speed: 0, looked: s.notices.length, autopause, resume: null, intro: false, note: null, played: sv.played ?? 0, v: 0 };
   lastTouch = Date.now();
   emit();
   return cur;
@@ -199,6 +203,15 @@ function touch(x: Session): void {
   if (!x.s.over) x.played += Math.min(GAP, Math.max(0, now - lastTouch));
   lastTouch = now;
 }
+
+/** «Мягкий исход» (срез, С3): какими словами говорить о третьей ступени исхода — рация, итог, разбор. Слова, не смена:
+ *  движок о настройке не знает. */
+let soft = false;
+export function setSoftOutcome(on: boolean): void {
+  soft = on;
+  emit();
+}
+export const softOutcome = (): boolean => soft;
 
 /** Настройка «Автопауза» поменялась — идущая смена слушается сразу. */
 export function setAutopause(on: boolean): void {

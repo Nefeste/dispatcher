@@ -4,7 +4,7 @@
 import { DB } from '../content/generated/db';
 import type { Db } from '../content/types';
 import { KIT, RESTOCK } from '../engine/rules';
-import { canDecide, CREW_PRICE, type Decision, type Entry, type Letter, STATION, type Station, type StationRefusal } from '../engine/station';
+import { canDecide, consequenceOf, CREW_PRICE, type Decision, type Entry, type Letter, STATION, type Station, type StationRefusal } from '../engine/station';
 import { crewNo } from './callView';
 import { weekShifts } from './week';
 
@@ -82,4 +82,21 @@ export function stationView(st: Station, db: Db = DB): StationView {
     kits: choice({ d: 'kits' }),
     journal: st.journal.map(e => ({ ...e, n: nOf(e.after), no: e.crew ? crewNo(e.crew) : null, baseName: e.base ? baseName(e.base) : null })).reverse(),
   };
+}
+
+/** Письмо в начале смены (срез, С3; спецификация, §4, «последствие доходит»): тяжёлая ошибка прошлой смены —
+ *  служебная проверка или отказ в выезде с поводом — на вводе следующей по неделе смены. Иначе — null. */
+export interface IntroNote {
+  /** номер смены недели, о которой письмо */
+  n: number;
+  inquiries: number[];
+  refusals: number;
+}
+
+export function introNote(st: Station, shiftId: string, db: Db = DB): IntroNote | null {
+  const c = consequenceOf(st);
+  const n = db.shifts[shiftId]?.week?.n;
+  const after = c ? db.shifts[c.after]?.week?.n : undefined;
+  if (!c || n === undefined || after === undefined || n !== after + 1) return null;
+  return { n: after, inquiries: c.inquiries, refusals: c.refusals };
 }

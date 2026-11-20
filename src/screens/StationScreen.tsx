@@ -7,6 +7,7 @@ import { T } from '../i18n';
 import { ProgramPanel, type PanelRow } from '../scenes/panel';
 import type { StationItem } from '../scenes/station/layout';
 import { StationScene } from '../scenes/station/StationScene';
+import { softOutcome } from '../state/session';
 import { decideAndSave, readStation } from '../state/station';
 import { type Choice, type StationView, stationView } from '../state/stationView';
 import { Dialog, type DialogSpec } from '../ui/dialog';
@@ -56,6 +57,8 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
           S.letter.score(l.n, l.day, l.inNorm, l.emergency),
           S.letter.income(l.income, view.num.perShift, view.num.perInNorm),
           l.thanks ? S.letter.thanks(view.num.thanks) : S.letter.mistakes,
+          ...(l.deaths ? [S.letter.deaths(l.deaths, softOutcome())] : []),
+          ...(l.inquiries.length ? [S.letter.inquiry(l.inquiries)] : []),
           ...(l.longWaits ? [S.letter.longWaits(l.longWaits)] : []),
           ...(l.refusals ? [S.letter.refusals(l.refusals)] : []),
           ...(l.fine ? [S.letter.fine(l.fine)] : []),
@@ -77,7 +80,7 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
   } else if (open === 'ledger') {
     const rows = view.journal.map(e => {
       const what =
-        e.kind === 'shift' ? S.ledger.shift(e.n) : e.kind === 'thanks' ? S.ledger.thanks(e.n) : e.kind === 'complaint' ? S.ledger.complaint(e.n)
+        e.kind === 'shift' ? S.ledger.shift(e.n) : e.kind === 'thanks' ? S.ledger.thanks(e.n) : e.kind === 'complaint' ? S.ledger.complaint(e.n) : e.kind === 'inquiry' ? S.ledger.inquiry(e.n)
           : e.kind === 'crew' ? S.ledger.crew(e.no ?? 0, e.baseName ?? '') : S.ledger.kits;
       return `${what}: ${S.ledger.amount(e.amount)}`;
     });

@@ -1,10 +1,11 @@
-// «Виртуальный диспетчер» недели (срез, docs/specs/2026-11-vertical-slice.md, §4; части С1 и С2).
+// «Виртуальный диспетчер» недели (срез, docs/specs/2026-11-vertical-slice.md, §4; части С1–С3).
 // - Каждая смена «Первой недели» по отдельности — тем же ботам, что смена прототипа (tools/sim/shift.ts), по N зёрен:
 //   смена проходится и по силам «по правилам» (С1).
 // - Неделя целиком со станцией (С2): семь смен подряд, итог каждой идёт на станцию, станция решает по своему правилу
 //   («без решений» или «лучшие» — укладки и бригады, пока хватает фонда), следующая смена выходит с её бригадами и
 //   укладками. Порог «станция не решает смену»: «по правилам» без решений — не хуже чем на 10 п. п. экстренных в норму,
-//   чем с лучшими; «без вопросов» с лучшими решениями — хуже «по правилам» без них. Пороги ставок добавит С3.
+//   чем с лучшими; «без вопросов» с лучшими решениями — хуже «по правилам» без них. Ставки (С3): смертей до приезда
+//   бригады у «по правилам» — не больше одной за неделю, у «без вопросов» — хотя бы втрое больше.
 //
 //   bun tools/sim/week.ts [смен=30] [недель=100] [--bots rules,noQuestions] [--write]   # --write — отчёт в docs/reports/
 import { writeFileSync } from 'node:fs';
@@ -60,6 +61,9 @@ export interface WeekRow {
   /** писем с благодарностью и жалоб за неделю — среднее */
   thanks: number;
   complaints: number;
+  /** смертей до приезда бригады и служебных проверок за неделю — среднее (срез, С3) */
+  deaths: number;
+  inquiries: number;
 }
 
 const ctxs = new Map<string, ShiftCtx>();
@@ -70,15 +74,16 @@ const ctxOf = (id: string) => {
 };
 
 /** Одна неделя бота с правилом станции: зёрна смен — от номера недели. */
-export function runWeek(w: number, bot: string, policy: Policy): { st: Station; emergency: number; inNorm: number; decisions: number } {
+export function runWeek(w: number, bot: string, policy: Policy): { st: Station; emergency: number; inNorm: number; decisions: number; deaths: number } {
   let st = newStation();
-  let emergency = 0, inNorm = 0, decisions = 0;
+  let emergency = 0, inNorm = 0, decisions = 0, deaths = 0;
   WEEK.forEach((sh, i) => {
     const ctx = ctxOf(sh.id);
     const { s } = play(ctx, w * 100 + i + 1, BOTS[bot], lineupOf(st));
     const rep = reportOf(ctx, s);
     emergency += rep.emergency;
     inNorm += rep.inNorm;
+    deaths += rep.deaths;
     st = afterShift(st, rep);
     for (const d of policyMoves(st, WEEK[i + 1]?.id ?? null, policy)) {
       const y = decide(st, d);
@@ -88,14 +93,14 @@ export function runWeek(w: number, bot: string, policy: Policy): { st: Station; 
       }
     }
   });
-  return { st, emergency, inNorm, decisions };
+  return { st, emergency, inNorm, decisions, deaths };
 }
 
 export function weekRuns(weeks: number, bots: readonly string[]): WeekRow[] {
   const rows: WeekRow[] = [];
   for (const bot of bots) {
     for (const policy of ['none', 'best'] as const) {
-      const r: WeekRow = { bot, policy, weeks, emergency: 0, inNorm: 0, fund: 0, extra: 0, decisions: 0, thanks: 0, complaints: 0 };
+      const r: WeekRow = { bot, policy, weeks, emergency: 0, inNorm: 0, fund: 0, extra: 0, decisions: 0, thanks: 0, complaints: 0, deaths: 0, inquiries: 0 };
       for (let w = 1; w <= weeks; w++) {
         const x = runWeek(w, bot, policy);
         r.emergency += x.emergency;
@@ -105,8 +110,10 @@ export function weekRuns(weeks: number, bots: readonly string[]): WeekRow[] {
         r.decisions += x.decisions;
         r.thanks += x.st.journal.filter(e => e.kind === 'thanks').length;
         r.complaints += x.st.journal.filter(e => e.kind === 'complaint').length;
+        r.deaths += x.deaths;
+        r.inquiries += x.st.journal.filter(e => e.kind === 'inquiry').length;
       }
-      for (const k of ['fund', 'extra', 'decisions', 'thanks', 'complaints'] as const) r[k] /= weeks;
+      for (const k of ['fund', 'extra', 'decisions', 'thanks', 'complaints', 'deaths', 'inquiries'] as const) r[k] /= weeks;
       rows.push(r);
     }
   }
@@ -117,8 +124,8 @@ const share = (r: { emergency: number; inNorm: number }) => (r.emergency ? (100 
 
 export function weekRunsReport(rows: readonly WeekRow[]): string {
   const name = (r: WeekRow) => `${BOTS[r.bot].name}, ${r.policy === 'none' ? 'без решений станции' : 'лучшие решения'}`;
-  const out = ['| Диспетчер и станция | Экстренных в норму за неделю | Решений | Бригад станции | Благодарностей | Жалоб | Фонд в конце |', '|---|---|---|---|---|---|---|'];
-  for (const r of rows) out.push(`| ${name(r)} | ${share(r).toFixed(1)} % (${r.inNorm} из ${r.emergency}) | ${r.decisions.toFixed(1)} | ${r.extra.toFixed(1)} | ${r.thanks.toFixed(1)} | ${r.complaints.toFixed(1)} | ${r.fund.toFixed(0)} тыс. |`);
+  const out = ['| Диспетчер и станция | Экстренных в норму за неделю | Смертей до приезда | Проверок | Решений | Бригад станции | Благодарностей | Жалоб | Фонд в конце |', '|---|---|---|---|---|---|---|---|---|'];
+  for (const r of rows) out.push(`| ${name(r)} | ${share(r).toFixed(1)} % (${r.inNorm} из ${r.emergency}) | ${r.deaths.toFixed(2)} | ${r.inquiries.toFixed(2)} | ${r.decisions.toFixed(1)} | ${r.extra.toFixed(1)} | ${r.thanks.toFixed(1)} | ${r.complaints.toFixed(1)} | ${r.fund.toFixed(0)} тыс. |`);
   return out.join('\n');
 }
 
@@ -132,6 +139,17 @@ export function weekVerdict(rows: readonly WeekRow[]): string[] {
     out.push(`- «по правилам» с лучшими решениями лучше, чем без решений, на ${d.toFixed(1)} п. п. — порог не больше 10: ${d <= 10 ? 'да' : 'нет'}`);
   }
   if (rn && nb) out.push(`- «без вопросов» с лучшими решениями ${share(nb).toFixed(1)} % против «по правилам» без решений ${share(rn).toFixed(1)} % — хуже: ${share(nb) < share(rn) ? 'да' : 'нет'}`);
+  // ставки ощутимы (срез, С3): «по правилам» — не больше одной смерти за неделю (и без решений станции, и с ними),
+  // «без вопросов» — хотя бы втрое больше при тех же решениях станции. Сравнение — при лучших решениях: без них «по
+  // правилам» теряет больных из-за нехватки бригад, а не из-за разговора (решение агента, спецификация среза, §12)
+  if (rn) out.push(`- «по правилам» без решений: ${rn.deaths.toFixed(2)} смерти до приезда бригады за неделю — порог не больше 1: ${rn.deaths <= 1 ? 'да' : 'нет'}`);
+  if (rb) out.push(`- «по правилам» с лучшими решениями: ${rb.deaths.toFixed(2)} — порог не больше 1: ${rb.deaths <= 1 ? 'да' : 'нет'}`);
+  if (rb && nb) {
+    const k = rb.deaths ? nb.deaths / rb.deaths : Infinity;
+    out.push(`- «без вопросов» с лучшими решениями: ${nb.deaths.toFixed(2)} — в ${Number.isFinite(k) ? k.toFixed(1) : '∞'} раза больше — порог хотя бы втрое: ${nb.deaths > 0 && k >= 3 ? 'да' : 'нет'}`);
+  }
+  const nn = get('noQuestions', 'none');
+  if (rn && nn) out.push(`- без решений станции: «без вопросов» ${nn.deaths.toFixed(2)}, «по правилам» ${rn.deaths.toFixed(2)} — в ${rn.deaths ? (nn.deaths / rn.deaths).toFixed(1) : '∞'} раза (для сведения)`);
   return out;
 }
 

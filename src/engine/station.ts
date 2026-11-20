@@ -3,7 +3,7 @@
 // итог (`ShiftReport`: три числа, жалобы, ошибки с ценой, укладки) — правду о больных она не читает (критерий 3 среза).
 // Чистый TypeScript: состояние — обычный объект, каждая функция возвращает новое; та же цепочка итогов и решений — та же
 // станция байт в байт (золотая неделя).
-import { review } from './review';
+import { type Mistake, review } from './review';
 import { KIT, NORM_URGENT } from './rules';
 import type { Lineup, Shift, ShiftCtx } from './shift';
 import { totals } from './totals';
@@ -14,6 +14,7 @@ export const STATION = {
   perInNorm: 10_000,
   thanks: 30_000,
   complaint: 15_000,
+  inquiry: 50_000,
   carB: 200_000,
   feldsher: 60_000,
   kits: 20_000,
@@ -40,6 +41,11 @@ export interface ShiftReport {
   refusals: number;
   /** ошибок разбора с ценой в минутах */
   costly: number;
+  /** смертей до приезда бригады (третья ступень исхода, срез С3) */
+  deaths: number;
+  /** служебных проверок: смерть, где решение шло против услышанного — угроза прозвучала, а форма неотложная; «без
+   *  выезда» при поводе; неотложному бригаду, пока ждали экстренные (§15 геймдизайна) — номера вызовов */
+  inquiries: number[];
   /** сколько вызовов осталось в укладке каждой бригады; пополняющая — полная */
   kits: Record<string, number>;
 }
@@ -47,18 +53,26 @@ export interface ShiftReport {
 export function reportOf(ctx: ShiftCtx, s: Shift): ShiftReport {
   const t = totals(ctx, s);
   const r = review(ctx, s);
-  let longWaits = 0, refusals = 0, costly = 0;
+  let longWaits = 0, refusals = 0, costly = 0, deaths = 0;
+  const inquiries: number[] = [];
   for (const c of r.calls) {
     if (c.outcome.form === 'urgent' && c.decided !== 'none' && (c.outcome.wait === null || c.outcome.wait > NORM_URGENT)) longWaits++;
     for (const m of c.mistakes) {
       if (m.m.kind === 'noDispatch') refusals++;
       if (m.cost > 0) costly++;
     }
+    if (c.outcome.died) {
+      deaths++;
+      if (c.mistakes.some(m => AGAINST_HEARD.includes(m.m.kind))) inquiries.push(Number(c.id.split('.')[1]));
+    }
   }
   const kits: Record<string, number> = {};
   for (const c of s.crews) kits[c.id] = c.state === 'restock' ? KIT : c.kit;
-  return { shift: s.setup, emergency: t.emergency, inNorm: t.inNorm, longWaits, refusals, costly, kits };
+  return { shift: s.setup, emergency: t.emergency, inNorm: t.inNorm, longWaits, refusals, costly, deaths, inquiries, kits };
 }
+
+/** Ошибки, где решение шло против услышанного: из-за них смерть ведёт к служебной проверке. */
+const AGAINST_HEARD: readonly Mistake['kind'][] = ['underTriage', 'noDispatch', 'order'];
 
 /** Письмо старшего врача после смены: итог, благодарность, жалобы родных. Слова — src/i18n (T.station.letter). */
 export interface Letter {
@@ -70,11 +84,14 @@ export interface Letter {
   thanks: boolean;
   longWaits: number;
   refusals: number;
-  /** вычет за жалобы, рубли */
+  /** смертей до приезда бригады; служебные проверки — номера вызовов */
+  deaths: number;
+  inquiries: number[];
+  /** вычет за жалобы и служебные проверки, рубли */
   fine: number;
 }
 
-export type EntryKind = 'shift' | 'thanks' | 'complaint' | 'crew' | 'kits';
+export type EntryKind = 'shift' | 'thanks' | 'complaint' | 'inquiry' | 'crew' | 'kits';
 
 /** Строка журнала фонда: что пришло или ушло, рубли со знаком. */
 export interface Entry {
@@ -119,7 +136,9 @@ export function afterShift(st: Station, rep: ShiftReport): Station {
   const journal: Entry[] = [...st.journal, { kind: 'shift', amount: income, after: rep.shift }];
   if (thanks) journal.push({ kind: 'thanks', amount: STATION.thanks, after: rep.shift });
   for (let i = 0; i < complaints; i++) journal.push({ kind: 'complaint', amount: -STATION.complaint, after: rep.shift });
-  const fund = st.fund + income + (thanks ? STATION.thanks : 0) - complaints * STATION.complaint;
+  for (let i = 0; i < rep.inquiries.length; i++) journal.push({ kind: 'inquiry', amount: -STATION.inquiry, after: rep.shift });
+  const fine = complaints * STATION.complaint + rep.inquiries.length * STATION.inquiry;
+  const fund = st.fund + income + (thanks ? STATION.thanks : 0) - fine;
   const kits: Record<string, number> = { ...st.kits };
   for (const [id, n] of Object.entries(rep.kits)) {
     if (n >= KIT) delete kits[id];
@@ -127,7 +146,10 @@ export function afterShift(st: Station, rep: ShiftReport): Station {
   }
   return {
     fund, extra: st.extra, kits, journal,
-    letter: { after: rep.shift, emergency: rep.emergency, inNorm: rep.inNorm, income, thanks, longWaits: rep.longWaits, refusals: rep.refusals, fine: complaints * STATION.complaint },
+    letter: {
+      after: rep.shift, emergency: rep.emergency, inNorm: rep.inNorm, income, thanks, longWaits: rep.longWaits, refusals: rep.refusals,
+      deaths: rep.deaths, inquiries: rep.inquiries, fine,
+    },
     done: [...st.done, rep.shift], decided: 0,
   };
 }
@@ -165,6 +187,14 @@ export function decide(st: Station, d: Decision): Station | StationRefusal {
     };
   }
   return { ...st, fund: st.fund - price, kits: {}, journal: [...st.journal, { kind: 'kits', amount: -price, after }], decided: st.decided + 1 };
+}
+
+/** Тяжёлая ошибка прошлой смены — служебная проверка или отказ в выезде, когда повод был (спецификация среза, §4,
+ *  «последствие доходит»): письмо старшего врача в начале следующей смены, всегда. Нет — null. */
+export function consequenceOf(st: Station): Pick<Letter, 'after' | 'inquiries' | 'refusals'> | null {
+  const l = st.letter;
+  if (!l || (!l.inquiries.length && !l.refusals)) return null;
+  return { after: l.after, inquiries: l.inquiries, refusals: l.refusals };
 }
 
 /** Что станция даёт следующей смене: свои бригады и укладки. */

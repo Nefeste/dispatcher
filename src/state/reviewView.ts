@@ -3,7 +3,7 @@
 // минуте решения) и по правде (что было и вовремя ли помощь). Слова — src/i18n (T.review); здесь — данные.
 import { MED } from '../content/generated/med';
 import type { FormKind } from '../content/types';
-import { type CallReview, heardAt, type Mistake, review } from '../engine/review';
+import { type CallReview, heardAt, type Mistake, review, type Tier } from '../engine/review';
 import type { CallRec, Shift, ShiftCtx } from '../engine/shift';
 import { ask, render } from '../engine/talk';
 import { type Totals, totals } from '../engine/totals';
@@ -24,6 +24,8 @@ export interface ReviewRow {
   transfer: boolean;
   mistakes: number;
   unlucky: boolean;
+  /** исход тремя ступенями (§7 геймдизайна) */
+  tier: Tier;
 }
 
 export interface MistakeView {
@@ -68,6 +70,8 @@ export interface CallDetail {
 
 export interface ReviewView {
   totals: Totals;
+  /** сколько больных умерли до приезда бригады (третья ступень исхода) */
+  deaths: number;
   rows: ReviewRow[];
   main: { row: ReviewRow; mistake: MistakeView } | null;
   detail: (id: string) => CallDetail | null;
@@ -89,7 +93,7 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
     return {
       id: c.id, no: callNo(c.id), clock: clockOf(x.ringAt), first: x.first?.words ?? '', decided: c.decided, real: c.outcome.form,
       late: c.outcome.wait === null ? null : Math.ceil(c.outcome.late / 60_000), transfer: Boolean(c.outcome.hospital && !c.outcome.hospital.ok),
-      mistakes: c.mistakes.length, unlucky: c.unlucky,
+      mistakes: c.mistakes.length, unlucky: c.unlucky, tier: c.outcome.tier,
     };
   };
   const hospitalName = (id: string) => ctx.city.hospitals.find(h => h.id === id)?.name ?? id;
@@ -146,5 +150,5 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
       mistakes: c.mistakes.map((_, i) => mistakeOf(c, i)), unlucky: c.unlucky,
     };
   };
-  return { totals: totals(ctx, s), rows, main, detail };
+  return { totals: totals(ctx, s), deaths: rows.filter(x => x.tier === 'died').length, rows, main, detail };
 }

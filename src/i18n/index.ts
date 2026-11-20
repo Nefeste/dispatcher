@@ -7,9 +7,9 @@ const nb = ' ';
 /** Бригады по рации: «Четвёртая, на месте». */
 const ORDINAL = ['Первая', 'Вторая', 'Третья', 'Четвёртая', 'Пятая', 'Шестая', 'Седьмая', 'Восьмая'];
 
-export type RadioWhat = 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'recall';
-const RADIO = { scene: 'на месте', report: 'везём, куда?', stay: 'помощь на месте, свободна', auto: 'везём в предложенную', free: 'свободна', restock: 'укладка пустая, едем пополнять', base: 'на подстанции', recall: 'разворачиваемся на экстренный' } as const;
-const RADIO_LCD = { scene: 'НА МЕСТЕ', report: 'ДОКЛАД', stay: 'СВОБОДНА', auto: 'ВЕЗЁТ', free: 'СВОБОДНА', restock: 'УКЛАДКА', base: 'НА ПОДСТАНЦИИ', recall: 'РАЗВОРОТ' } as const;
+export type RadioWhat = 'scene' | 'report' | 'died' | 'grave' | 'auto' | 'free' | 'restock' | 'base' | 'recall';
+const RADIO = { scene: 'на месте', report: 'везём, куда?', stay: 'помощь на месте, свободна', died: 'смерть до нашего приезда', grave: 'помощь опоздала, состояние тяжёлое', auto: 'везём в предложенную', free: 'свободна', restock: 'укладка пустая, едем пополнять', base: 'на подстанции', recall: 'разворачиваемся на экстренный' } as const;
+const RADIO_LCD = { scene: 'НА МЕСТЕ', report: 'ДОКЛАД', stay: 'СВОБОДНА', died: 'СМЕРТЬ', grave: 'ТЯЖЁЛЫЙ', auto: 'ВЕЗЁТ', free: 'СВОБОДНА', restock: 'УКЛАДКА', base: 'НА ПОДСТАНЦИИ', recall: 'РАЗВОРОТ' } as const;
 
 /** Игровые рубли фонда станции: «320 тыс. ₽», «−15 тыс. ₽». */
 function money(rub: number): string {
@@ -232,6 +232,7 @@ export const T = {
       letterScore: (n: number, inNorm: number, all: number) => `Смена ${n}: ${inNorm} из ${all}`,
       letterThanks: 'Благодарность',
       letterComplaints: (k: number) => `Жалоб: ${k}`,
+      letterInquiry: 'Служебная проверка',
       rosterHead: (n: number) => `На смену ${n}`,
       rosterDone: 'Неделя пройдена',
       rosterRow: (no: number, base: string, kit: number, all: number) => `${no} · ${base} · ${kit}/${all}`,
@@ -249,7 +250,9 @@ export const T = {
       mistakes: 'В разборе смены есть ошибки, которые стоили больным времени, — посмотрите, где решение было против услышанного.',
       longWaits: (k: number) => `Родные жалуются: неотложный вызов ждал бригаду дольше двух часов — ${k} ${plural(k, 'раз', 'раза', 'раз')}.`,
       refusals: (k: number) => `Родные жалуются: «без выезда», когда повод к выезду был, — ${k} ${plural(k, 'раз', 'раза', 'раз')}.`,
-      fine: (rub: number) => `С фонда за жалобы — ${money(rub)}.`,
+      fine: (rub: number) => `С фонда за жалобы и проверки — ${money(rub)}.`,
+      deaths: (k: number, soft: boolean) => (soft ? `Помощь опоздала, состояние тяжёлое — ${k} ${plural(k, 'больной', 'больных', 'больных')}.` : `Умерли до приезда бригады — ${k} ${plural(k, 'больной', 'больных', 'больных')}.`),
+      inquiry: (nos: number[]) => `Служебная проверка по ${nos.length > 1 ? 'вызовам' : 'вызову'} № ${nos.join(', ')}: решение шло против того, что сказал звонящий.`,
       end: 'Что выйдет на следующую смену — решать вам: табель и укладки на столе.',
     },
     roster: {
@@ -276,6 +279,7 @@ export const T = {
       shift: (n: number) => `Смена ${n}: за смену и экстренные в норму`,
       thanks: (n: number) => `Смена ${n}: премия — благодарность`,
       complaint: (n: number) => `Смена ${n}: жалоба родных`,
+      inquiry: (n: number) => `Смена ${n}: служебная проверка`,
       crew: (no: number, base: string) => `Бригада ${no} на подстанции «${base}»: машина и люди`,
       kits: 'Укладки пополнены',
       amount: (rub: number) => `${rub > 0 ? '+' : rub < 0 ? '−' : ''}${money(Math.abs(rub))}`,
@@ -305,6 +309,7 @@ export const T = {
     sound: { name: 'Звук', hint: 'Звонок телефона и щелчок рации' },
     haptics: { name: 'Отклик', hint: 'Телефон коротко отзывается на новый звонок' },
     lessMotion: { name: 'Меньше движения', hint: 'Без роликов и плавных переходов; не выбрано — как в телефоне' },
+    softOutcome: { name: 'Мягкий исход', hint: 'Вместо слов о смерти — «помощь опоздала, состояние тяжёлое»; на станции последствия те же' },
   },
   /** Загрузка смены (§3, шаг 2): что грузится сейчас */
   loading: {
@@ -319,6 +324,13 @@ export const T = {
       'Звонок ставит смену на паузу: в разговоре время идёт только от вопросов.',
     ],
     go: 'Начать',
+    /** тяжёлая ошибка прошлой смены — письмо старшего врача в начале этой (срез, С3; спецификация, §4) */
+    consequence: (n: number, inquiries: number[], refusals: number) =>
+      [
+        `Старший врач о смене ${n}:`,
+        ...(inquiries.length ? [`служебная проверка по ${inquiries.length > 1 ? 'вызовам' : 'вызову'} № ${inquiries.join(', ')} — решение шло против того, что сказал звонящий.`] : []),
+        ...(refusals ? [`отказ в выезде, когда повод был, — ${refusals} ${plural(refusals, 'раз', 'раза', 'раз')}. Родные жалуются.`] : []),
+      ].join(' '),
   },
   tutorial: {
     ring: 'Звонок на линии — коснитесь телефона, чтобы принять',
@@ -344,6 +356,9 @@ export const T = {
     form: { emergency: 'Э', urgent: 'Н', none: '—' } as const,
     formWord: { emergency: 'экстренная', urgent: 'неотложная', none: 'без выезда' } as const,
     late: (min: number | null) => (min === null ? 'без бригады' : min === 0 ? 'в норму' : `+${min} мин`),
+    /** исход тремя ступенями (срез, С3; §7 геймдизайна); `grave` — «Мягкий исход» */
+    tier: { ok: 'Помощь вовремя', late: 'С опозданием', died: 'Смерть до приезда бригады', grave: 'Помощь опоздала, состояние тяжёлое' } as const,
+    deaths: (n: number, soft: boolean) => (soft ? `Помощь опоздала, состояние тяжёлое: ${n}` : `Смерть до приезда бригады: ${n}`),
     transfer: 'перевод',
     hasMistake: 'ошибка',
     unluckyMark: 'не знали',

@@ -18,7 +18,8 @@ export interface WaitingView {
 
 export interface RadioView {
   crew: number;
-  what: Extract<NoticeKind, 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'recall'>;
+  /** `died` — доклад: больной умер до приезда бригады (срез, С3); слова «Мягкого исхода» выбирает экран */
+  what: Extract<NoticeKind, 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'recall'> | 'died';
   /** у доклада: везут или помощь на месте */
   transport: boolean;
 }
@@ -68,7 +69,8 @@ export function pultView(ctx: ShiftCtx, s: Shift): PultView {
   for (let i = s.notices.length - 1; i >= 0; i--) {
     const n = s.notices[i];
     if (!RADIO.includes(n.kind) || !n.crew) continue;
-    radio = { crew: crewNo(n.crew), what: n.kind as RadioView['what'], transport: Boolean(n.call && s.calls.find(c => c.id === n.call)?.transport) };
+    const call = n.call ? s.calls.find(c => c.id === n.call) : undefined;
+    radio = { crew: crewNo(n.crew), what: n.kind === 'report' && call?.died ? 'died' : (n.kind as RadioView['what']), transport: Boolean(call?.transport) };
     break;
   }
   const r = s.calls.find(c => c.state === 'report');
