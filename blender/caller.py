@@ -36,7 +36,7 @@ _K = float(os.environ.get('CALLER_PREVIEW_SCALE', '1'))
 W, H = (1080, 960) if not PREVIEW else (int(360 * _K), int(320 * _K))
 # ось кисти к ладони и сгиб пальцев (градусы по осям кости) — подобраны по кадру
 PALM = os.environ.get('CALLER_PALM', 'TRACK_Z')
-CURL = tuple(float(x) for x in os.environ.get('CALLER_CURL', '0,0,-55').split(','))
+CURL = tuple(float(x) for x in os.environ.get('CALLER_CURL', '0,0,-45').split(','))
 SAMPLES = 192 if not PREVIEW else 16
 SEED = 11
 
@@ -269,10 +269,19 @@ def pose_call(arm):
     up = Vector((0, 0, 1))
     # запястье — под телефоном у уха: телефон в ладони прижат к уху (точки лица — по костям глаза и угла рта)
     top, bottom = phone_line(arm)
-    # запястье — за серединой телефона, ладонь к щеке, тыльная сторона наружу (до 0.11.0 ладонь смотрела наружу, а
-    # запястье — на 7,5 см ниже: кисть выглядела вывихнутой, пальцы — подушечками к камере; владелец, 20.11.2026)
-    hr, hu, hf = (float(x) for x in os.environ.get('CALLER_HAND', '0.04,-0.045,-0.02').split(','))
-    ear = target('ik_ear', (top + bottom) / 2 + right * hr + up * hu + fwd * hf)
+    # хват — по фотографиям людей с телефоном у уха (Викисклад, 20.11.2026; docs/13-art.md, «Звонящий»): запястье — у
+    # нижнего переднего края телефона, у челюсти; пальцы — поперёк тыльной стороны телефона, к затылку, и обхватывают его
+    # дальний край; ладонь — к щеке; предплечье уходит вниз. У 0.11.0 пальцы смотрели вверх вдоль телефона — владелец:
+    # «кисть всё ещё неудовлетворительно».
+    z = (top - bottom).normalized()
+    out = (right - z * right.dot(z)).normalized()
+    # пальцы — назад к затылку (по горизонтали), чуть вверх и внутрь, к голове: кончики ложатся за ухом
+    fb, fu, fi = (float(x) for x in os.environ.get('CALLER_FINGERS', '0.85,0.35,0.25').split(','))
+    fingers = (-fwd * fb + up * fu - out * fi).normalized()
+    # середина ладони — над серединой телефона (он — у щеки, `phone_in_hand`), запястье — на `wl` назад по пальцам
+    wl, wo = (float(x) for x in os.environ.get('CALLER_WRIST', '0.08,0.025').split(','))
+    phone = (top + bottom) / 2 + right * 0.012
+    ear = target('ik_ear', phone - fingers * wl + out * wo)
     # локоть — вбок и вниз, на уровне груди: плечо почти вдоль тела, предплечье поднимается к уху (у 0.9.0 подсказка
     # стояла на 65 см ниже головы и вперёд — локоть уходил перед грудь, рука шла вертикально от пояса; игра владельца
     # 20.11.2026: «искривлена рука, которая держит телефон»)
@@ -294,10 +303,10 @@ def pose_call(arm):
     ik_l.pole_angle = 0
     ik_l.use_tail = False
     ik_l.chain_count = 2
-    # кисть: пальцы — вверх вдоль телефона, ладонь — к голове; пальцы согнуты вокруг телефона
+    # кисть: пальцы — по `fingers`; ладонь — к голове; пальцы согнуты вокруг телефона
     axes, lo, hi = head_box(arm)
     center = at(axes, *[(x + y) / 2 for x, y in zip(lo, hi)])
-    up_t = target('hand_up', top + up * 0.05)
+    up_t = target('hand_up', ear.location + fingers * 0.3)
     tr = pb['Bip01 R Hand'].constraints.new('DAMPED_TRACK')
     tr.target = up_t
     tr.track_axis = 'TRACK_Y'
@@ -315,6 +324,16 @@ def pose_call(arm):
     pb['Bip01 Head'].rotation_mode = 'XYZ'
     pb['Bip01 Head'].rotation_euler = (0, math.radians(8), 0)
     bpy.context.view_layer.update()
+    if os.environ.get('CALLER_DEBUG'):
+        hm = arm.matrix_world @ pb['Bip01 R Hand'].matrix
+        f = lambda v: '(' + ', '.join(f'{c:+.2f}' for c in v) + ')'
+        print('DEBUG right', f(right), 'fwd', f(fwd), 'z', f(z), 'out', f(out), 'fingers', f(fingers))
+        print('DEBUG hand x', f(hm.col[0].xyz.normalized()), 'y', f(hm.col[1].xyz.normalized()), 'z', f(hm.col[2].xyz.normalized()))
+        print('DEBUG wrist', f(hm.translation), 'target', f(ear.location), 'aim', f(up_t.location), 'phone top', f(top), 'bottom', f(bottom))
+        mid = arm.matrix_world @ pb['Bip01 R Finger2'].head
+        print('DEBUG middle finger base', f(mid))
+        print('DEBUG head', f(head), 'REye', f(bone_head(arm, 'Bip01 REye')), 'LEye', f(bone_head(arm, 'Bip01 LEye')))
+        print('DEBUG head box center', f(center), 'camera side ~ head + (0.3, -1.3)')
     return ear
 
 
