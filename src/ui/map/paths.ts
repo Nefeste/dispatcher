@@ -9,6 +9,25 @@ export interface MapPaths {
   rail: SkPath;
   /** по классу дороги: 0 — магистрали … 3 — местные */
   roads: SkPath[];
+  /** Те же дороги и железная дорога кусками по сетке района (`TILES`): Skia не обводит кусок, который целиком за
+   *  краем экрана, — при приближении рисуется только видимое (замер на телефоне владельца, 0.10.1). Пустых нет. */
+  tiles: { roads: SkPath[][]; rail: SkPath[] };
+}
+
+/** Сетка кусков: столбцов и строк. Район — около 6 × 9 км, кусок — около километра. */
+export const TILES = { cols: 6, rows: 9 } as const;
+
+/** Номер куска сетки, в который попадает точка карты. */
+export function tileOf(m: MapData, x: number, y: number): number {
+  const c = Math.min(TILES.cols - 1, Math.max(0, Math.floor((x / m.width) * TILES.cols)));
+  const r = Math.min(TILES.rows - 1, Math.max(0, Math.floor((y / m.height) * TILES.rows)));
+  return r * TILES.cols + c;
+}
+
+/** Кусок ломаной `i` — по середине её первой и последней точки. */
+function lineTile(m: MapData, l: Polylines, i: number): number {
+  const a = l.starts[i], b = l.starts[i + 1] - 1;
+  return tileOf(m, (l.pts[a * 2] + l.pts[b * 2]) / 2, (l.pts[a * 2 + 1] + l.pts[b * 2 + 1]) / 2);
 }
 
 function addLines(p: SkPathBuilder, l: Polylines, from: number, to: number, close: boolean) {
@@ -41,5 +60,20 @@ export function mapPaths(m: MapData): MapPaths {
   const roads = Array.from({ length: ROAD_CLASSES }, () => Skia.PathBuilder.Make());
   const { shape, cls } = m.edges;
   for (let e = 0; e < cls.length; e++) addLines(roads[cls[e]], shape, e, e + 1, false);
-  return { water: water.detach(), green: green.detach(), rail: rail.detach(), roads: roads.map(r => r.detach()) };
+  // куски: по классу дороги и куску сетки; пустые не нужны
+  const n = TILES.cols * TILES.rows;
+  const roadTiles = Array.from({ length: ROAD_CLASSES }, () => new Map<number, SkPathBuilder>());
+  const piece = (map: Map<number, SkPathBuilder>, t: number) => {
+    let b = map.get(t);
+    if (!b) map.set(t, (b = Skia.PathBuilder.Make()));
+    return b;
+  };
+  for (let e = 0; e < cls.length; e++) if (shape.starts[e + 1] - shape.starts[e] >= 2) addLines(piece(roadTiles[cls[e]], lineTile(m, shape, e)), shape, e, e + 1, false);
+  const railTiles = new Map<number, SkPathBuilder>();
+  for (let i = 0; i < m.rail.starts.length - 1; i++) if (m.rail.starts[i + 1] - m.rail.starts[i] >= 2) addLines(piece(railTiles, lineTile(m, m.rail, i)), m.rail, i, i + 1, false);
+  const ordered = (map: Map<number, SkPathBuilder>) => Array.from({ length: n }, (_, t) => map.get(t)).filter((b): b is SkPathBuilder => !!b).map(b => b.detach());
+  return {
+    water: water.detach(), green: green.detach(), rail: rail.detach(), roads: roads.map(r => r.detach()),
+    tiles: { roads: roadTiles.map(ordered), rail: ordered(railTiles) },
+  };
 }

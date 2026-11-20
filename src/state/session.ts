@@ -228,8 +228,16 @@ export function tick(realMs: number): void {
   advanceShift(x.ctx, x.s, Math.round(realMs * SPEED_X1 * x.speed * pace));
   const changed = Math.floor(x.s.t / 60_000) !== minute;
   if (changed && Date.now() - lastSave > 5000) void save();
-  after(x, changed ? -1 : rev);
+  // доклад ждёт ответа (автопауза выключена): его отсчёт в секундах — на экране, перерисовать раз в четверть секунды
+  const now = Date.now();
+  const countdown = now - lastCountdown >= COUNTDOWN_MS && x.s.calls.some(c => c.state === 'report');
+  if (countdown) lastCountdown = now;
+  after(x, changed || countdown ? -1 : rev);
 }
+
+/** Отсчёт доклада на экране — не чаще раза в `COUNTDOWN_MS` настоящего времени. */
+const COUNTDOWN_MS = 250;
+let lastCountdown = 0;
 
 /** Команда диспетчера: принята — в журнал сохранения. */
 export function command(cmd: Command): Refusal | null {

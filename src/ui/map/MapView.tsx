@@ -1,8 +1,13 @@
 // Карта района на Skia (docs/02-architecture.md, §5): слои — готовые пути, камера — общие значения Reanimated.
 // Сдвиг — одним пальцем, масштаб — двумя вокруг точки между ними; ширина дорог на экране не зависит от масштаба
 // (издалека — тоньше). По образцу anamnez: src/render/map/BuildMap.tsx @ d05c615 (камера и жесты).
-import { Canvas, Group, Path, Rect } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+//
+// Два холста (0.10.1, по замеру на телефоне владельца): нижний — улицы, вода, зелень, железная дорога — не
+// перерисовывается никогда, только камера двигает его матрицу; дороги — кусками по сетке района, и Skia не обводит
+// куски за краем экрана. Верхний — свет часа и знаки смены: он перерисовывается, когда меняется смена, и больше не тянет
+// за собой запись всей карты.
+import { Canvas, Group, Path, Rect, type Transforms3d } from '@shopify/react-native-skia';
+import React, { memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { type SharedValue, useDerivedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated';
@@ -11,7 +16,7 @@ import { T } from '../../i18n';
 import { FONTS } from '../fonts';
 import { C } from '../theme';
 import { CASING_PX, MAP, ROAD_PX } from './palette';
-import { cachedMapPaths } from './paths';
+import { cachedMapPaths, type MapPaths } from './paths';
 
 /** Во сколько раз можно приблизить от «район заполняет экран». */
 const MAX_ZOOM = 12;
@@ -44,6 +49,41 @@ const LAP_MS = 4000;
 
 /** Слой знаков поверх улиц: рисуется в единицах карты, `zoom` — чтобы знаки держали свой размер на экране. */
 export type MapOverlay = (zoom: SharedValue<number>) => React.ReactNode;
+
+/** Улицы, вода, зелень и железная дорога: пропсы — готовые пути и общие значения камеры, поэтому холст не
+ *  перерисовывается, когда перерисовывается то, что над ним. */
+// стиль холста — плоским объектом: Canvas Skia в вебе кладёт его прямо в стиль элемента, массив там не годится
+const MapLayers = memo(function MapLayers({ paths, width, height, transform, zoom, fit }: {
+  paths: MapPaths; width: number; height: number; transform: SharedValue<Transforms3d>; zoom: SharedValue<number>; fit: number;
+}) {
+  const w0 = useWidth(zoom, fit, ROAD_PX[0]);
+  const w1 = useWidth(zoom, fit, ROAD_PX[1]);
+  const w2 = useWidth(zoom, fit, ROAD_PX[2]);
+  const w3 = useWidth(zoom, fit, ROAD_PX[3]);
+  const c0 = useWidth(zoom, fit, ROAD_PX[0] + CASING_PX * 2);
+  const c1 = useWidth(zoom, fit, ROAD_PX[1] + CASING_PX * 2);
+  const c2 = useWidth(zoom, fit, ROAD_PX[2] + CASING_PX * 2);
+  const rail = useWidth(zoom, fit, 1.2);
+  const t = paths.tiles;
+  const roads = (c: number, color: string, w: SharedValue<number>, key: string) =>
+    t.roads[c].map((p, i) => <Path key={`${key}${i}`} path={p} color={color} style="stroke" strokeWidth={w} strokeCap="round" strokeJoin="round" />);
+  return (
+    <Canvas style={{ position: 'absolute', left: 0, top: 0, width, height }}>
+      <Group transform={transform}>
+        <Path path={paths.green} color={MAP.green} />
+        <Path path={paths.water} color={MAP.water} />
+        {t.rail.map((p, i) => <Path key={`rl${i}`} path={p} color={MAP.rail} style="stroke" strokeWidth={rail} />)}
+        {roads(3, MAP.road[3], w3, 'r3')}
+        {roads(2, MAP.casing, c2, 'c2')}
+        {roads(1, MAP.casing, c1, 'c1')}
+        {roads(0, MAP.casing, c0, 'c0')}
+        {roads(2, MAP.road[2], w2, 'r2')}
+        {roads(1, MAP.road[1], w1, 'r1')}
+        {roads(0, MAP.road[0], w0, 'r0')}
+      </Group>
+    </Canvas>
+  );
+});
 
 export function MapView({ map, width, height, testID, overlay, dusk = 0, autopilot }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number; autopilot?: Autopilot }) {
   const paths = useMemo(() => cachedMapPaths(map), [map]);
@@ -102,36 +142,19 @@ export function MapView({ map, width, height, testID, overlay, dusk = 0, autopil
     }
   }, autopilot !== undefined);
 
-  const transform = useDerivedValue(() => [{ translateX: tx.get() }, { translateY: ty.get() }, { scale: zoom.get() }]);
-  const w0 = useWidth(zoom, fit, ROAD_PX[0]);
-  const w1 = useWidth(zoom, fit, ROAD_PX[1]);
-  const w2 = useWidth(zoom, fit, ROAD_PX[2]);
-  const w3 = useWidth(zoom, fit, ROAD_PX[3]);
-  const c0 = useWidth(zoom, fit, ROAD_PX[0] + CASING_PX * 2);
-  const c1 = useWidth(zoom, fit, ROAD_PX[1] + CASING_PX * 2);
-  const c2 = useWidth(zoom, fit, ROAD_PX[2] + CASING_PX * 2);
-  const rail = useWidth(zoom, fit, 1.2);
+  const transform = useDerivedValue<Transforms3d>(() => [{ translateX: tx.get() }, { translateY: ty.get() }, { scale: zoom.get() }]);
 
   return (
     <View testID={testID} style={[styles.box, { width, height }]}>
       <GestureDetector gesture={gesture}>
-        <Canvas style={{ width, height }}>
-          <Group transform={transform}>
-            <Path path={paths.green} color={MAP.green} />
-            <Path path={paths.water} color={MAP.water} />
-            <Path path={paths.rail} color={MAP.rail} style="stroke" strokeWidth={rail} />
-            <Path path={paths.roads[3]} color={MAP.road[3]} style="stroke" strokeWidth={w3} strokeCap="round" strokeJoin="round" />
-            <Path path={paths.roads[2]} color={MAP.casing} style="stroke" strokeWidth={c2} strokeCap="round" strokeJoin="round" />
-            <Path path={paths.roads[1]} color={MAP.casing} style="stroke" strokeWidth={c1} strokeCap="round" strokeJoin="round" />
-            <Path path={paths.roads[0]} color={MAP.casing} style="stroke" strokeWidth={c0} strokeCap="round" strokeJoin="round" />
-            <Path path={paths.roads[2]} color={MAP.road[2]} style="stroke" strokeWidth={w2} strokeCap="round" strokeJoin="round" />
-            <Path path={paths.roads[1]} color={MAP.road[1]} style="stroke" strokeWidth={w1} strokeCap="round" strokeJoin="round" />
-            <Path path={paths.roads[0]} color={MAP.road[0]} style="stroke" strokeWidth={w0} strokeCap="round" strokeJoin="round" />
-          </Group>
-          {/* свет часа (спецификация, §6): к вечеру карта темнеет, знаки поверх — нет */}
-          {dusk > 0 ? <Rect x={0} y={0} width={width} height={height} color={MAP.night} opacity={dusk * MAP.nightMax} /> : null}
-          <Group transform={transform}>{overlay ? overlay(zoom) : null}</Group>
-        </Canvas>
+        <View style={{ width, height }}>
+          <MapLayers paths={paths} width={width} height={height} transform={transform} zoom={zoom} fit={fit} />
+          <Canvas style={{ position: 'absolute', left: 0, top: 0, width, height }} pointerEvents="none">
+            {/* свет часа (спецификация, §6): к вечеру карта темнеет, знаки поверх — нет */}
+            {dusk > 0 ? <Rect x={0} y={0} width={width} height={height} color={MAP.night} opacity={dusk * MAP.nightMax} /> : null}
+            <Group transform={transform}>{overlay ? overlay(zoom) : null}</Group>
+          </Canvas>
+        </View>
       </GestureDetector>
       {/* ADR 0004: указание OpenStreetMap видно на карте всегда */}
       <Text style={styles.osm} testID="map-osm">{T.map.osm}</Text>

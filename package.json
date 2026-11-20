@@ -1,6 +1,6 @@
 {
   "name": "dispatcher",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "main": "index",
   "private": true,
   "description": "Диспетчер 03 — смена диспетчера скорой помощи в большом городе",
@@ -29,6 +29,7 @@
     "expo-gl": "~57.0.3",
     "expo-haptics": "~57.0.3",
     "expo-sharing": "~57.0.26",
+    "expo-splash-screen": "~57.0.11",
     "expo-status-bar": "~57.0.1",
     "expo-video": "~57.0.5",
     "react": "19.2.3",
