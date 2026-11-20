@@ -12,8 +12,8 @@ export function perHour(flow: Flow, secOfDay: number): number {
   return n;
 }
 
-/** Через сколько мс следующий звонок, если сейчас `secOfDay`. */
-export function gapAfter(flow: Flow, secOfDay: number, rng: Rng): number {
-  const mean = Math.floor(3_600_000 / perHour(flow, secOfDay));
+/** Через сколько мс следующий звонок, если сейчас `secOfDay`; `pct` — поток смены в процентах от кривой. */
+export function gapAfter(flow: Flow, secOfDay: number, rng: Rng, pct = 100): number {
+  const mean = Math.floor((3_600_000 * 100) / (perHour(flow, secOfDay) * pct));
   return Math.floor((mean * (300 + rng.int(1401))) / 1000);
 }

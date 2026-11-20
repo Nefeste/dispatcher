@@ -10,6 +10,7 @@ import { AboutScreen } from './src/screens/AboutScreen';
 import { CallScreen } from './src/screens/CallScreen';
 import { CallReviewScreen } from './src/screens/CallReviewScreen';
 import { LoadingScreen } from './src/screens/LoadingScreen';
+import { WeekScreen } from './src/screens/WeekScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
 import { PultScreen } from './src/screens/PultScreen';
@@ -20,7 +21,7 @@ import { TitleScreen } from './src/screens/TitleScreen';
 import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
 import { mark } from './src/state/marks';
 import { hideSplash, keepSplash } from './src/state/splash';
-import { closeShift, resumeShift, setCue, setPace, startShift } from './src/state/session';
+import { closeShift, resumeShift, setCue, setPace, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
 import { DEFAULT_SETTINGS, lessMotionOf, type Settings } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
 import { FONT_FILES } from './src/ui/fonts';
@@ -28,7 +29,7 @@ import { setLessMotion } from './src/ui/motion';
 import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'desk' | 'bench' | 'settings' | 'about';
+type Screen = 'title' | 'week' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'desk' | 'bench' | 'settings' | 'about';
 
 keepSplash();
 setCue(cue);
@@ -76,6 +77,8 @@ export default function App() {
   const toMap = useCallback(() => setScreen('map'), []);
   // загрузка кончилась: продолжить сохранённую смену или начать новую
   const resuming = useRef(false);
+  // какую смену недели грузить (выбор смены или сохранённая)
+  const [picked, setPicked] = useState(FIRST_SHIFT);
   const onLoaded = useCallback(() => {
     if (resuming.current) {
       resuming.current = false;
@@ -85,10 +88,10 @@ export default function App() {
     }
     departed.current = false;
     mark('loaded');
-    startShift(undefined, settings.current.autopause);
+    startShift(picked, undefined, settings.current.autopause);
     setInsert('start');
     setScreen('insert');
-  }, []);
+  }, [picked]);
   const toCall = useCallback(() => setScreen('call'), []);
   const toEnd = useCallback(() => setScreen('end'), []);
 
@@ -116,13 +119,14 @@ export default function App() {
             <>
               {screen === 'title' ? (
                 <TitleScreen
-                  onStart={() => {
-                    mark('startTap');
-                    setScreen('loading');
-                  }}
+                  onStart={() => setScreen('week')}
                   onResume={() => {
-                    resuming.current = true;
-                    setScreen('loading');
+                    void savedShift().then(id => {
+                      if (!id) return;
+                      setPicked(id);
+                      resuming.current = true;
+                      setScreen('loading');
+                    });
                   }}
                   onDesk={() => setScreen('desk')}
                   onBench={() => setScreen('bench')}
@@ -133,7 +137,17 @@ export default function App() {
                   onAbout={() => setScreen('about')}
                 />
               ) : null}
-              {screen === 'loading' ? <LoadingScreen onReady={onLoaded} /> : null}
+              {screen === 'week' ? (
+                <WeekScreen
+                  onPick={id => {
+                    mark('startTap');
+                    setPicked(id);
+                    setScreen('loading');
+                  }}
+                  onBack={() => setScreen('title')}
+                />
+              ) : null}
+              {screen === 'loading' ? <LoadingScreen shiftId={picked} onReady={onLoaded} /> : null}
               {screen === 'map' ? <PultScreen onBack={() => setScreen('title')} onCall={toCall} onEnd={toEnd} /> : null}
               {screen === 'call' ? (
                 <CallScreen
@@ -167,7 +181,7 @@ export default function App() {
                     closeShift();
                     setScreen('loading');
                   }}
-                  onHome={() => { closeShift(); setScreen('title'); }}
+                  onHome={() => { closeShift(); setScreen('week'); }}
                 />
               ) : null}
               {screen === 'callReview' && reviewed ? <CallReviewScreen id={reviewed} onBack={() => setScreen('end')} /> : null}

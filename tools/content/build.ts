@@ -117,7 +117,15 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
     const setup: ShiftSetup = {
       id, city: String(s.city ?? ''), start: Number(s.start), length: Number(s.length), season: s.season as ShiftSetup['season'],
       crews: (s.crews as ShiftSetup['crews']) ?? [], script: (s.script as ShiftSetup['script']) ?? [],
+      flowPct: s.flow === undefined ? 100 : Number(s.flow), hospitals: (s.hospitals as string[] | undefined) ?? null,
+      week: (s.week as ShiftSetup['week'] | undefined) ?? null,
     };
+    if (!Number.isInteger(setup.flowPct) || setup.flowPct < 10 || setup.flowPct > 300) err(`${id}: flow must be a whole percent, 10…300`);
+    if (setup.week) {
+      const w = setup.week;
+      if (!(Number.isInteger(w.n) && w.n >= 1 && w.n <= 7)) err(`${id}: week.n must be 1…7`);
+      if (!w.day || !w.what) err(`${id}: week needs day and what`);
+    }
     if (!['winter', 'spring', 'summer', 'autumn'].includes(setup.season)) err(`${id}: season must be winter, spring, summer or autumn`);
     const city = cities[setup.city];
     if (!city) err(`${id}: no city ${setup.city}`);
@@ -130,8 +138,16 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
       if (!crews[c.kind]) err(`${id}: ${c.id} has unknown kind ${c.kind}`);
       if (city && !city.bases.some(b => b.id === c.base)) err(`${id}: ${c.id} has unknown base ${c.base}`);
     }
+    if (setup.hospitals) {
+      if (!setup.hospitals.length) err(`${id}: hospitals, if given, must not be empty`);
+      for (const h of setup.hospitals) if (city && !city.hospitals.some(x => x.id === h)) err(`${id}: unknown hospital ${h}`);
+    }
     shifts[id] = setup;
   }
+
+  // «Первая неделя»: семь смен, номера 1…7 — каждый один раз
+  const week = Object.values(shifts).filter(s => s.week).map(s => s.week!.n).sort((a, b) => a - b);
+  if (week.length && week.join(',') !== '1,2,3,4,5,6,7') err(`week shifts must be numbered 1…7 once each, got ${week.join(',')}`);
 
   // медицина: копия базы «Анамнеза» (tools/content/anamnez.ts) и своё — записи «по телефону» (tools/content/phone.ts)
   const med = JSON.parse(readFileSync(join(dir, 'med/anamnez.json'), 'utf8')) as ContentDb;

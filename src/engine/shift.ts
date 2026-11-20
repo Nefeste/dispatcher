@@ -34,7 +34,10 @@ export interface ShiftCtx {
 export function shiftCtx(db: Db, med: ContentDb, setupId: string, map: MapData): ShiftCtx {
   const setup = db.shifts[setupId];
   if (!setup) throw new Error(`shiftCtx: unknown shift ${setupId}`);
-  return { db, med, setup, city: db.cities[setup.city], map, road: roadOf(map), times: new Map() };
+  // больницы смены — часть больниц города (первая смена недели — одна)
+  const all = db.cities[setup.city];
+  const city = setup.hospitals ? { ...all, hospitals: all.hospitals.filter(h => setup.hospitals!.includes(h.id)) } : all;
+  return { db, med, setup, city, map, road: roadOf(map), times: new Map() };
 }
 
 /** Время рёбер в момент `t` смены: по часу суток. */
@@ -185,7 +188,7 @@ export function newShift(ctx: ShiftCtx, seed: number): Shift {
   };
   // поток — после последнего учебного звонка
   const last = ctx.setup.script.length ? ctx.setup.script[ctx.setup.script.length - 1].at * 1000 : 0;
-  s.nextRing = last + gapAfter(ctx.db.flow, ctx.setup.start + Math.floor(last / 1000), rngOf(s, 'flow:0'));
+  s.nextRing = last + gapAfter(ctx.db.flow, ctx.setup.start + Math.floor(last / 1000), rngOf(s, 'flow:0'), ctx.setup.flowPct);
   return s;
 }
 
@@ -338,7 +341,7 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
   } else if (!script && s.nextRing === t && t < end) {
     ring(ctx, s, null);
     s.flowN += 1;
-    s.nextRing = t + gapAfter(ctx.db.flow, ctx.setup.start + Math.floor(t / 1000), rngOf(s, `flow:${s.flowN}`));
+    s.nextRing = t + gapAfter(ctx.db.flow, ctx.setup.start + Math.floor(t / 1000), rngOf(s, `flow:${s.flowN}`), ctx.setup.flowPct);
   }
   for (const c of [...s.crews]) if (crewNext(c) === t) crewEvent(ctx, s, crewOf(s, c.id)!);
   for (const c of s.calls) {

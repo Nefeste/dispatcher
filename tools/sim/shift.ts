@@ -34,8 +34,8 @@ const median = (xs: number[]) => {
   return s.length ? s[Math.floor((s.length - 1) / 2)] : 0;
 };
 
-export function simulate(n: number, bots: readonly string[], from = 1): SimRow[] {
-  const ctx = shiftCtx(DB, MED, 'shift.proto', loadMap(DB.cities['city.proto'].map));
+export function simulate(n: number, bots: readonly string[], from = 1, shiftId = 'shift.proto'): SimRow[] {
+  const ctx = shiftCtx(DB, MED, shiftId, loadMap(DB.cities[DB.shifts[shiftId].city].map));
   return bots.map(id => {
     const bot = BOTS[id];
     const row: SimRow = { bot: id, name: bot.name, shifts: n, emergency: 0, inNorm: 0, urgentMedian: 0, calls: 0, end: 0, mistakes: {} };
@@ -57,7 +57,7 @@ export function simulate(n: number, bots: readonly string[], from = 1): SimRow[]
   });
 }
 
-const pct = (r: SimRow) => (r.emergency ? (100 * r.inNorm) / r.emergency : 0);
+export const pct = (r: SimRow) => (r.emergency ? (100 * r.inNorm) / r.emergency : 0);
 
 export function report(rows: readonly SimRow[]): string {
   const head = '| Диспетчер | Экстренных в норму | Неотложные ждут, медиана | Звонков за смену | Смена кончается | Ошибок разбора за смену |';

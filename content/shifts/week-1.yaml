@@ -1,0 +1,19 @@
+# «Первая неделя», смена 1 (docs/08-game-design.md, §8; срез — docs/specs/2026-11-vertical-slice.md, часть С1).
+# Числа — §8 геймдизайна; строка «что нового» — только то, что в игре уже есть (виды бригад и поликлиника — часть С5,
+# ночь — С6: тогда и строка поменяется).
+week: { n: 1, day: "Понедельник, утро", what: "Обучение: три учебных звонка с подсказками, три бригады, одна больница" }
+city: city.proto
+start: 28800
+length: 7200
+season: autumn
+flow: 45
+hospitals: [hosp.61]
+crews:
+  - { id: crew.1, kind: crew.general, base: base.north }
+  - { id: crew.2, kind: crew.general, base: base.south }
+  - { id: crew.3, kind: crew.general, base: base.south }
+# учебные звонки — те же, что в прототипе (content/shifts/proto.yaml): что, кто, откуда, когда от начала смены
+script:
+  - { at: 20, condition: cond.hypoglycemia, caller: caller.relative, where: home, params: { severity: severe }, first: clear }
+  - { at: 240, condition: cond.influenza, caller: caller.self, where: home, first: clear }
+  - { at: 480, condition: cond.seizure, caller: caller.bystander, where: street, first: vague }

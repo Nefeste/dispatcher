@@ -1,0 +1,16 @@
+# «Первая неделя», смена 2 (docs/08-game-design.md, §8; срез — docs/specs/2026-11-vertical-slice.md, часть С1).
+# Числа — §8 геймдизайна; строка «что нового» — только то, что в игре уже есть (виды бригад и поликлиника — часть С5,
+# ночь — С6: тогда и строка поменяется).
+week: { n: 2, day: "Понедельник, вечер", what: "Вечерний час пик, весь район, реанимационная бригада" }
+city: city.proto
+start: 61200
+length: 7200
+season: autumn
+flow: 100
+crews:
+  - { id: crew.1, kind: crew.general, base: base.north }
+  - { id: crew.2, kind: crew.general, base: base.north }
+  - { id: crew.3, kind: crew.resus, base: base.south }
+  - { id: crew.4, kind: crew.general, base: base.south }
+  - { id: crew.5, kind: crew.general, base: base.south }
+  - { id: crew.6, kind: crew.general, base: base.north }
