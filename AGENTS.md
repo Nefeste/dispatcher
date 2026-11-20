@@ -64,6 +64,7 @@ npm run typecheck                   # content + tsc (app) + tsc -p tools
 npm run lint                        # zero warnings; engine purity rules for src/engine
 bun test tools/test                 # i18n, content, medicine copies, talk, shift, review, golden shift, virtual dispatcher (~25 s)
 bun tools/sim/shift.ts 100 --write  # virtual dispatcher: four rule bots × 100 shifts → docs/reports/virtual-dispatcher.md
+bun tools/sim/week.ts 30 --write    # the same for each shift of «Первая неделя» → docs/reports/virtual-dispatcher-week.md
 bun tools/test/golden.ts --write    # re-record the golden shifts when the shift's life changes on purpose
 bun tools/content/anamnez.ts <dir>  # medicine from a Nefeste/anamnez checkout at a pinned commit → content/med/ + FROM.yaml
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
