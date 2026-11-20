@@ -9,7 +9,7 @@ import type { Db } from '../../src/content/types';
 import { FAR } from '../../src/engine/road/route';
 import { review } from '../../src/engine/review';
 import { ASK_AFTER } from '../../src/engine/rules';
-import { advance, apply, nextEvent, newShift, type Shift, type ShiftCtx, shiftCtx } from '../../src/engine/shift';
+import { advance, apply, asking, nextEvent, newShift, type Shift, type ShiftCtx, shiftCtx } from '../../src/engine/shift';
 import { afterShift, decide, lineupOf, newStation, RESUS_PRICE, type ShiftReport, type Station } from '../../src/engine/station';
 import { loadMap } from '../../src/map/load';
 import { stationView } from '../../src/state/stationView';
@@ -29,7 +29,7 @@ function allResus(db: Db): Db {
 function playOwn(ctx: ShiftCtx, seed: number): Shift {
   const s = newShift(ctx, seed);
   for (let i = 0; i < 20000 && !s.over; i++) {
-    const ask = s.calls.find(c => c.state === 'ask');
+    const ask = s.calls.find(c => asking(c) === 'resus');
     const cmd = ask ? { c: 'second' as const, call: ask.id } : botMove(ctx, s, BOTS.rules);
     if (cmd) expect(apply(ctx, s, cmd)).toBeNull();
     else {

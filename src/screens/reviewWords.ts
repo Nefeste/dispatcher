@@ -14,6 +14,10 @@ export function mistakeText(v: MistakeView): string {
     case 'hospital': return T.review.mistake.hospital(v.hospital!.chosen, v.hospital!.right);
     case 'crew': return T.review.mistake.crew();
     case 'noSecond': return T.review.mistake.noSecond(v.crewNo ?? 0);
+    case 'door': return T.review.mistake.door(v.cost, m.waited);
+    case 'address': return T.review.mistake.address(v.cost);
+    case 'alone': return T.review.mistake.alone(v.cost);
+    case 'taken': return T.review.mistake.taken(v.bypassed ?? []);
     case 'overTriage': return T.review.mistake.overTriage(v.said ?? '');
   }
 }

@@ -7,7 +7,7 @@
 import type { FormKind } from '../content/types';
 import { formByTruth } from './form';
 import { FAR, search } from './road/route';
-import { NORM_EMERGENCY, NORM_URGENT } from './rules';
+import { NORM_EMERGENCY, NORM_URGENT, SNAG_PHONE } from './rules';
 import type { CallRec, Shift, ShiftCtx } from './shift';
 import { timesAt } from './shift';
 import { ask, type Heard } from './talk';
@@ -38,6 +38,8 @@ export interface Outcome {
   died: boolean;
   /** бригада на месте просила реанимационную (срез, С4): приехала ли и через сколько от звонка, мс */
   second: { came: number | null } | null;
+  /** от звонка до того, как бригада начала помогать (вошла в подъезд), мс; null — не начала */
+  reached: number | null;
   /** исход тремя ступенями (§7 геймдизайна): вовремя, с опозданием, не дождался помощи */
   tier: Tier;
 }
@@ -59,6 +61,15 @@ export type Mistake =
   | { kind: 'crew'; crew: string }
   /** бригада на месте просила реанимационную, свободная была, а её не послали (388н, прил. 2, п. 17; срез, С4) */
   | { kind: 'noSecond'; crew: string }
+  /** экстренный: бригада стояла у закрытого подъезда — «Подъезд, этаж, код?» не спросили; `waited` — и не перезвонили
+   *  (срез, С4, вторая половина) */
+  | { kind: 'door'; waited: boolean }
+  /** экстренный: адрес не тот, а уточнить у звонящего не стали — бригада искала сама */
+  | { kind: 'address' }
+  /** экстренный: на месте второй пострадавший, свободная бригада была, а первая осталась одна — дольше на месте */
+  | { kind: 'alone' }
+  /** ко второму пострадавшему послали бригаду, пока экстренные ждали (388н, п. 12) */
+  | { kind: 'taken'; bypassed: string[] }
   /** экстренная без услышанной угрозы — бригада ушла раньше, чем нужно было */
   | { kind: 'overTriage' };
 
@@ -82,7 +93,9 @@ export interface Review {
 }
 
 /** Порядок важности ошибок при равной цене: сперва то, что ближе к жизни. */
-const WEIGHT: Record<Mistake['kind'], number> = { noDispatch: 8, underTriage: 7, missedQuestion: 6, noSecond: 5, order: 4, hospital: 3, crew: 2, overTriage: 1 };
+const WEIGHT: Record<Mistake['kind'], number> = {
+  noDispatch: 12, underTriage: 11, missedQuestion: 10, noSecond: 9, door: 8, address: 7, alone: 6, order: 5, taken: 4, hospital: 3, crew: 2, overTriage: 1,
+};
 
 /** Что было услышано к моменту `t`: первые слова и ответы на вопросы, заданные раньше. */
 export function heardAt(call: CallRec, t: number): Map<string, Heard> {
@@ -132,8 +145,11 @@ export function outcomeOf(ctx: ShiftCtx, s: Shift, call: CallRec): Outcome {
   // нужная бригада — реанимационная, если её просили: не приехала — помощь «меньшая, чем нужно» (§7)
   const second = call.second ? { came: call.second.came === null ? null : call.second.came - call.ringAt } : null;
   const short = second !== null && second.came === null;
-  const tier: Tier = call.died ? 'died' : late > 0 || short || (window && !window.met) || (hospital && !hospital.ok) ? 'late' : 'ok';
-  return { form, wait, norm, late, window, hospital, died: call.died, second, tier };
+  // помощь — когда бригада у больного: у закрытого подъезда она уже приехала, но ещё не помогает
+  const reached = call.inAt === null ? null : call.inAt - call.ringAt;
+  const lateHelp = reached !== null && reached > norm;
+  const tier: Tier = call.died ? 'died' : late > 0 || lateHelp || short || (window && !window.met) || (hospital && !hospital.ok) ? 'late' : 'ok';
+  return { form, wait, norm, late, window, hospital, died: call.died, second, reached, tier };
 }
 
 /** Вопрос, который открыл бы угрозу, если бы его задали до решения, и звонящий знал ответ. */
@@ -192,6 +208,7 @@ export function reviewCall(ctx: ShiftCtx, s: Shift, call: CallRec): CallReview {
     const cost = call.hospitalAt !== null ? Math.ceil((call.hospitalAt - call.second.at) / 60_000) : 0;
     mistakes.push({ m: { kind: 'noSecond', crew: call.second.by }, cost });
   }
+  mistakes.push(...snagMistakes(ctx, s, call));
   return {
     id: call.id,
     decided: first?.form ?? null,
@@ -201,6 +218,36 @@ export function reviewCall(ctx: ShiftCtx, s: Shift, call: CallRec): CallReview {
     mistakes,
     unlucky: unlucky && !mistakes.length,
   };
+}
+
+/** Форма вызова, которую решил диспетчер к минуте `t`: по ней судят решение на месте (ADR 0005, «по известному»). */
+function formAt(call: CallRec, t: number): FormKind | 'none' | null {
+  let f: FormKind | 'none' | null = null;
+  for (const d of call.decisions) if (d.t <= t) f = d.form;
+  return f;
+}
+
+/** Ошибки решений на месте не про медицину (срез, С4, вторая половина): цена — на сколько позже бригада помогала. */
+function snagMistakes(ctx: ShiftCtx, s: Shift, call: CallRec): { m: Mistake; cost: number }[] {
+  const g = call.snag;
+  if (!g || g.answer === null) return [];
+  const mins = (ms: number) => Math.max(0, Math.ceil(ms / 60_000));
+  const emergency = formAt(call, g.at) === 'emergency';
+  const alone = g.answer === 'wait' || g.answer === 'auto';
+  if (g.kind === 'door' && emergency) {
+    // минута на звонок за кодом — тоже цена: «как пройти» можно было спросить в разговоре
+    return [{ m: { kind: 'door', waited: alone }, cost: mins((g.done ?? s.t) - g.at) }];
+  }
+  if (g.kind === 'address' && emergency && alone) return [{ m: { kind: 'address' }, cost: mins((g.done ?? s.t) - g.at - SNAG_PHONE) }];
+  if (g.kind === 'victim' && emergency && alone && g.free) return [{ m: { kind: 'alone' }, cost: mins(g.wait) }];
+  if (g.kind === 'victim' && g.answer === 'send' && g.bypassed.length) {
+    const cost = g.bypassed.reduce((a, id) => {
+      const other = s.calls.find(c => c.id === id);
+      return Math.max(a, other ? mins(outcomeOf(ctx, s, other).late) : 0);
+    }, 0);
+    return [{ m: { kind: 'taken', bypassed: g.bypassed }, cost }];
+  }
+  return [];
 }
 
 /** Разбор закрытой смены: каждый вызов и главная ошибка — самая дорогая в минутах. */

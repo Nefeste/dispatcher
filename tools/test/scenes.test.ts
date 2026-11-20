@@ -82,14 +82,16 @@ describe('видеовставки', () => {
       if (file.endsWith('.mp4')) total += f.bytes;
     }
     expect(total).toBeLessThanOrEqual(6 * 1024 * 1024);
-    // две вставки (§5): «начало смены» и «бригада выезжает», каждая — 4–8 с (docs/08-game-design.md, §11)
-    expect(Object.keys(p.made).sort()).toEqual(['depart', 'start']);
+    // вставки смены (§9 геймдизайна): «начало смены» и «бригада выезжает» — 4–8 с; на месте вызова (срез, С4):
+    // «у подъезда», «на остановке», «в квартире» — 3–5 с (спецификация среза, §4)
+    expect(Object.keys(p.made).sort()).toEqual(['depart', 'door', 'flat', 'start', 'stop']);
     for (const [kind, m] of Object.entries(p.made as Record<string, { codec: string; frames: number; fps: number }>)) {
       expect(Object.keys(p.files)).toContain(`assets/scenes/insert-${kind}.mp4`);
       expect(Object.keys(p.files)).toContain(`assets/scenes/insert-${kind}.jpg`);
       expect(m.codec).toContain('H.264');
-      expect(m.frames / m.fps).toBeGreaterThanOrEqual(4);
-      expect(m.frames / m.fps).toBeLessThanOrEqual(8);
+      const [lo, hi] = kind === 'depart' || kind === 'start' ? [4, 8] : [3, 5];
+      expect(m.frames / m.fps).toBeGreaterThanOrEqual(lo);
+      expect(m.frames / m.fps).toBeLessThanOrEqual(hi);
     }
   });
 });

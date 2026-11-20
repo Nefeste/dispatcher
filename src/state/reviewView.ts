@@ -119,7 +119,7 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
     const { m, cost } = c.mistakes[i];
     const x = call(c.id);
     const v: MistakeView = { m, cost };
-    if (m.kind === 'order') v.bypassed = m.bypassed.map(callNo);
+    if (m.kind === 'order' || m.kind === 'taken') v.bypassed = m.bypassed.map(callNo);
     if (m.kind === 'noSecond') v.crewNo = crewNo(m.crew);
     if (m.kind === 'hospital') v.hospital = { chosen: hospitalName(m.chosen), right: hospitalName(m.right) };
     if (m.kind === 'underTriage' && m.threats.length) v.heard = saidAbout(x, m.threats[0]);

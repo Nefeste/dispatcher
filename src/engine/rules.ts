@@ -31,3 +31,20 @@ export const ASK_WAIT = 2 * MIN;
 export const KIT = 4;
 /** Пополнить пустую укладку на подстанции. */
 export const RESTOCK = 20 * MIN;
+// Бригада на месте просит решение не про медицину (срез, С4, вторая половина; решение владельца #34, вариант 2; §5 и §9
+// геймдизайна). Слова и время, не медицинские факты: числа — правило игры, их подбирает «виртуальный диспетчер».
+/** Перезвонить звонящему — узнать код домофона, уточнить адрес: минута диспетчера, мир идёт. */
+export const SNAG_PHONE = 1 * MIN;
+/** Доли вызовов, где бригада попросит решение (1/10 000); на вызов — не больше одной просьбы. Подъезд закрыт — только
+ *  дома и только если диспетчер не спросил «Подъезд, этаж, код домофона?». */
+export const DOOR_CHANCE = 2000;
+export const ADDRESS_CHANCE = 600;
+export const VICTIM_CHANCE = 500;
+/** Ждать у подъезда, пока откроют сами. */
+export const DOOR_WAIT: readonly [number, number] = [4 * MIN, 12 * MIN];
+/** Адрес не тот: верный — в стольких минутах езды; искать самим — столько. */
+export const ADDRESS_NEAR: readonly [number, number] = [1 * MIN, 4 * MIN];
+export const ADDRESS_SEARCH: readonly [number, number] = [5 * MIN, 12 * MIN];
+/** Второй пострадавший: бригада ко второму работает на месте столько; одна бригада задерживается на столько. */
+export const VICTIM_SCENE: readonly [number, number] = [15 * MIN, 25 * MIN];
+export const VICTIM_EXTRA: readonly [number, number] = [10 * MIN, 20 * MIN];

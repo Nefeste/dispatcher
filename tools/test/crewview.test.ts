@@ -34,7 +34,9 @@ test('карточка посреди смены: вызов у занятых, 
       const card = crewCard(ctx, s, c.id)!;
       cards++;
       states.add(card.state);
-      expect(Object.keys(card).sort()).toEqual(['call', 'hospital', 'id', 'kind', 'kit', 'minutes', 'no', 'state']);
+      expect(Object.keys(card).sort()).toEqual(['call', 'hospital', 'id', 'kind', 'kit', 'minutes', 'no', 'place', 'state']);
+      // на месте — где: подъезд, квартира, остановка (вставка по касанию, срез С4); в пути и на подстанции — нигде
+      expect(card.place === null).toBe(card.state !== 'scene');
       if (card.state === 'base') expect(card.call).toBeNull();
       if (card.state === 'drive' || card.state === 'scene' || card.state === 'transport') expect(card.call).not.toBeNull();
       if (card.state === 'transport') expect(card.hospital).not.toBeNull();

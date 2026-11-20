@@ -27,8 +27,9 @@ export const FIRST_SHIFT = 'shift.week-1';
  *  нечем).
  *  3 — 0.14.0: смерть до приезда бригады (больного не везут) и повторный звонок после отказа меняют жизнь смены.
  *  4 — 0.15.0: просьба бригады о реанимационной и обученные станцией бригады меняют жизнь смены.
- *  5 — 0.16.0: у ночной смены 4 другой поток звонков. */
-const SAVE_V = 5;
+ *  5 — 0.16.0: у ночной смены 4 другой поток звонков.
+ *  6 — 0.17.0: просьбы бригады на месте не про медицину (подъезд, адрес, второй пострадавший) меняют жизнь смены. */
+const SAVE_V = 6;
 
 export interface Session {
   ctx: ShiftCtx;
@@ -123,7 +124,7 @@ export function useSession(): Session | null {
 
 /** Новая смена `shiftId` с тем, что дала станция. Зерно — от часов телефона: случайность смены живёт в состоянии,
  *  движок её не берёт сам. */
-export function startShift(shiftId: string, seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true, lineup: Lineup = NO_LINEUP, note: IntroNote | null = null): Session {
+export function startShift(shiftId: string, seed = fixedSeed ?? (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true, lineup: Lineup = NO_LINEUP, note: IntroNote | null = null): Session {
   const ctx = ctxOf(shiftId);
   cur = { ctx, s: newShift(ctx, seed, lineup), log: [], speed: 0, looked: 0, autopause, resume: null, intro: true, note, played: 0, v: 0 };
   lastTouch = Date.now();
@@ -242,14 +243,16 @@ let cueFn: CueFn = () => {};
 export function setCue(f: CueFn): void {
   cueFn = f;
 }
-const RADIO: readonly Notice['kind'][] = ['scene', 'ask', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
+const RADIO: readonly Notice['kind'][] = ['scene', 'ask', 'door', 'address', 'victim', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
+/** Просьбы бригады на месте — мир встаёт по автопаузе, пока ждут ответа. */
+const ASKS: readonly Notice['kind'][] = ['ask', 'door', 'address', 'victim'];
 
 /** Новые извещения: звук и автопауза на звонке, докладе и повторном звонке (ADR 0003; настройка «автопауза»). */
 function look(x: Session, fresh: readonly Notice[]): void {
   if (fresh.some(n => n.kind === 'ring' || n.kind === 'repeat')) cueFn('ring');
   else if (fresh.some(n => RADIO.includes(n.kind))) cueFn('radio');
   if (!x.autopause) return;
-  const stop = fresh.some(n => n.kind === 'ring' || n.kind === 'repeat' || (n.kind === 'report' && x.s.calls.find(c => c.id === n.call)?.state === 'report') || (n.kind === 'ask' && x.s.calls.find(c => c.id === n.call)?.state === 'ask'));
+  const stop = fresh.some(n => n.kind === 'ring' || n.kind === 'repeat' || (n.kind === 'report' && x.s.calls.find(c => c.id === n.call)?.state === 'report') || (ASKS.includes(n.kind) && x.s.calls.find(c => c.id === n.call)?.state === 'ask'));
   if (!stop) return;
   if (x.speed !== 0) x.resume = x.speed;
   x.speed = 0;
@@ -318,6 +321,13 @@ export function setSpeed(speed: Speed): void {
 export function togglePause(): void {
   if (!cur) return;
   setSpeed(cur.speed === 0 ? (cur.resume ?? 1) : 0);
+}
+
+/** Для сценария в браузере: зерно каждой новой смены (`?seed=` веб-сборки) — смена с тем же потоком звонков и теми же
+ *  просьбами бригад на месте. На телефоне — нет: зерно от часов. */
+let fixedSeed: number | null = null;
+export function setSeed(k: number): void {
+  fixedSeed = Number.isInteger(k) && k > 0 ? k >>> 0 : null;
 }
 
 /** Для сценария в браузере: во сколько раз быстрее ×1 идут часы (`?pace=` веб-сборки). На телефоне — 1. */

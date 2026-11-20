@@ -14,7 +14,10 @@ import { gapAfter } from './flow';
 import { edgeTimes, type Road, roadOf } from './road/graph';
 import { arrival, passed } from './road/pos';
 import { FAR, search } from './road/route';
-import { AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, DECIDE, HANDOVER, NORM_EMERGENCY, NORM_URGENT, REPEAT, REPORT_WAIT } from './rules';
+import {
+  ADDRESS_CHANCE, ADDRESS_NEAR, ADDRESS_SEARCH, AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, DECIDE, DOOR_CHANCE, DOOR_WAIT, HANDOVER, NORM_EMERGENCY,
+  NORM_URGENT, REPEAT, REPORT_WAIT, SNAG_PHONE, VICTIM_CHANCE, VICTIM_EXTRA, VICTIM_SCENE,
+} from './rules';
 import { formByKnown, formByTruth, threatsHeard } from './form';
 import { ask as askCaller, type Answer, firstWords, type Heard, type Learned } from './talk';
 import type { MapData } from '../map/format';
@@ -78,6 +81,36 @@ export interface SecondCrew {
   /** реанимационная: какая и когда приехала */
   crew: string | null;
   came: number | null;
+}
+
+/** Просьба бригады на месте не про медицину (срез, С4, вторая половина; решение владельца #34, вариант 2): не можем
+ *  попасть в подъезд, адрес не тот, на месте второй пострадавший. Слова и время — не медицинские факты. */
+export type SnagKind = 'door' | 'address' | 'victim';
+
+export interface Snag {
+  kind: SnagKind;
+  /** когда попросила и какая бригада */
+  at: number;
+  by: string;
+  /** до какого момента ждёт ответа диспетчера */
+  until: number;
+  /** перезвонили звонящему, послали ещё бригаду, «ждите» / «сами»; не ответили — `auto`; null — ждёт ответа */
+  answer: 'phone' | 'send' | 'wait' | 'auto' | null;
+  answeredAt: number | null;
+  /** когда бригада снова за делом: войдёт, поедет по верному адресу; null — ещё не решено */
+  next: number | null;
+  /** когда это случилось; null — ещё нет */
+  done: number | null;
+  /** сколько ждали бы сами: у подъезда, искать адрес; у второго пострадавшего — на сколько дольше одна бригада, мс */
+  wait: number;
+  /** второй пострадавший — что было перед глазами, когда решили: была ли свободная бригада; экстренные, ждавшие бригаду */
+  free: boolean;
+  bypassed: string[];
+  /** бригада ко второму пострадавшему и сколько она работает на месте, мс */
+  crew: string | null;
+  scene: number;
+  /** адрес не тот: где больной на самом деле — узел дорог */
+  node: number | null;
 }
 
 export interface Asked {
@@ -148,9 +181,16 @@ export interface CallRec {
   /** когда бригада на месте попросит реанимационную; null — не попросит (срез, С4) */
   askAt: number | null;
   second: SecondCrew | null;
+  /** когда бригада начала помогать больному: вошла в подъезд, нашла адрес; null — ещё нет */
+  inAt: number | null;
+  /** просьба не про медицину, которая случится на этом вызове, — бросок при звонке; экран её не видит */
+  plan: SnagKind | null;
+  /** когда бригада попросит про второго пострадавшего; null — не попросит */
+  snagAt: number | null;
+  snag: Snag | null;
 }
 
-export type NoticeKind = 'ring' | 'scene' | 'ask' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'repeat' | 'recall' | 'end';
+export type NoticeKind = 'ring' | 'scene' | 'ask' | SnagKind | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'repeat' | 'recall' | 'end';
 
 export interface Notice {
   t: number;
@@ -214,12 +254,22 @@ export type Command =
   | { c: 'hold'; call: string }
   | { c: 'hospital'; call: string; hospital: string }
   /** ответ на просьбу бригады на месте: послать реанимационную `crew` или «везите сами» (`crew` нет) */
-  | { c: 'second'; call: string; crew?: string };
+  | { c: 'second'; call: string; crew?: string }
+  /** ответ на просьбу не про медицину: перезвонить звонящему, послать ещё бригаду `crew`, «ждите» / «справитесь сами» */
+  | { c: 'snag'; call: string; act: 'phone' | 'send' | 'wait'; crew?: string };
 
 /** Почему команду не приняли; слова — src/i18n (T.refusal). */
 export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus';
 
 const lengthOf = (ctx: ShiftCtx) => ctx.setup.length * 1000;
+
+/** О чём бригада на месте ждёт ответа сейчас: реанимационная, просьба не про медицину; null — ни о чём. */
+export function asking(call: CallRec): 'resus' | SnagKind | null {
+  if (call.state !== 'ask') return null;
+  if (call.snag && call.snag.answer === null) return call.snag.kind;
+  if (call.second && call.second.answer === null) return 'resus';
+  return null;
+}
 const rngOf = (s: Shift, name: string) => Rng.seeded(s.seed).fork(name);
 
 export function newShift(ctx: ShiftCtx, seed: number, lineup: Lineup = NO_LINEUP): Shift {
@@ -264,9 +314,21 @@ function ring(ctx: ShiftCtx, s: Shift, scripted: ShiftSetup['script'][number] | 
     id, truth, node, state: 'ring', ringAt: s.t, answeredAt: null, openedAt: null, first: null, asked: [], heard: {}, age: null, onset: null, form: null, decidedAt: null, decisions: [],
     crew: null, sentAt: null, arrivedAt: null, reportAt: null, suggested: null, transport, hospital: null, transportAt: null, hospitalAt: null, doneAt: null,
     scene, repeatAt: null, repeats: 0, recalled: [], bypassed: [], died: false, callbackAt: null, askAt: null, second: null,
+    inAt: null, plan: null, snagAt: null, snag: null,
   });
+  const call = s.calls[s.calls.length - 1];
+  // просьба не про медицину — только у вызовов потока (учебный звонок учит своему) и не там, где попросят реанимационную
+  if (!scripted && !needsResus(ctx, call)) call.plan = planOf(r.fork('snag').int(10_000));
   s.rings.push({ id: `ring.${s.n}`, call: id, at: s.t, repeat: false, again: false, refused: false, againAt: s.t + repeatIn(s, `line:${s.n}`) });
   s.notices.push({ t: s.t, kind: 'ring', call: id });
+}
+
+/** Какая просьба не про медицину случится на вызове — по броску 0…9999 (§9 геймдизайна). */
+function planOf(u: number): SnagKind | null {
+  if (u < ADDRESS_CHANCE) return 'address';
+  if (u < ADDRESS_CHANCE + VICTIM_CHANCE) return 'victim';
+  if (u < ADDRESS_CHANCE + VICTIM_CHANCE + DOOR_CHANCE) return 'door';
+  return null;
 }
 
 /** Учебный случай: у больного есть признак основной болезни, который знает телефон; у экстренной — признак угрозы. */
@@ -327,18 +389,25 @@ function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
     call.crew = crew.id;
     setCrew(s, onScene(crew, s.t + call.scene));
     s.notices.push({ t: s.t, kind: 'scene', call: call.id, crew: crew.id });
-  } else if (crew.state === 'drive' && call) {
-    setCrew(s, onScene(crew, s.t + call.scene));
-    call.state = 'scene';
-    call.arrivedAt = s.t;
-    // приехали слишком поздно: по записи с источником состояние убивает без помощи в срок (третья ступень исхода)
-    if (diedBefore(ctx, s, call)) {
-      call.died = true;
-      call.transport = false;
-    }
-    // нужны специальные методы — общепрофильная попросит реанимационную (срез, С4)
-    else if (crew.kind !== 'crew.resus' && needsResus(ctx, call)) call.askAt = s.t + ASK_AFTER;
+  } else if (crew.state === 'drive' && call && call.snag?.crew === crew.id) {
+    // ко второму пострадавшему приехала ещё бригада: работает на месте своё время, первая — своё
+    setCrew(s, onScene(crew, s.t + call.snag.scene));
     s.notices.push({ t: s.t, kind: 'scene', call: call.id, crew: crew.id });
+  } else if (crew.state === 'scene' && call && call.snag?.crew === crew.id) {
+    // отработала со вторым пострадавшим — свободна, укладка на вызов меньше
+    const worked = used({ ...crew, call: null });
+    setCrew(s, home(ctx.road, times, worked, s.t));
+    s.notices.push({ t: s.t, kind: worked.kit ? 'free' : 'restock', call: call.id, crew: crew.id });
+  } else if (crew.state === 'drive' && call) {
+    // у адреса: подъезд закрыт, а как пройти не спросили; адрес не тот — бригада ждёт ответа; иначе — к больному
+    const snag = call.snag ? null : arrivalSnag(ctx, s, call, crew);
+    if (snag) {
+      if (snag.kind === 'door') call.arrivedAt = s.t;
+      call.snag = snag;
+      call.state = 'ask';
+      setCrew(s, onScene(crew, FAR));
+      s.notices.push({ t: s.t, kind: snag.kind, call: call.id, crew: crew.id });
+    } else reach(ctx, s, call, crew);
   } else if (crew.state === 'scene' && call && call.state === 'scene') {
     // отработала на месте — укладка на вызов меньше; доклад: везти — ждёт ответа диспетчера, не везти — свободна, а с
     // пустой укладкой — едет пополнять
@@ -383,6 +452,66 @@ function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
   }
 }
 
+/** Бригада у больного: работает на месте; приехали слишком поздно — по записи с источником состояние убивает без помощи в
+ *  срок (третья ступень исхода); нужны специальные методы — общепрофильная попросит реанимационную (срез, С4); на месте
+ *  второй пострадавший — попросит ещё бригаду. */
+function reach(ctx: ShiftCtx, s: Shift, call: CallRec, crew: Crew): void {
+  setCrew(s, onScene(crew, s.t + call.scene));
+  call.state = 'scene';
+  if (call.arrivedAt === null) call.arrivedAt = s.t;
+  call.inAt = s.t;
+  if (diedBefore(ctx, s, call)) {
+    call.died = true;
+    call.transport = false;
+  } else if (crew.kind !== 'crew.resus' && needsResus(ctx, call)) call.askAt = s.t + ASK_AFTER;
+  else if (call.plan === 'victim' && !call.snag) call.snagAt = s.t + ASK_AFTER;
+  s.notices.push({ t: s.t, kind: 'scene', call: call.id, crew: crew.id });
+}
+
+/** Просьба у адреса: подъезд закрыт (дома, и «Подъезд, этаж, код?» не спрошено) или адрес не тот (верный — рядом). */
+function arrivalSnag(ctx: ShiftCtx, s: Shift, call: CallRec, crew: Crew): Snag | null {
+  const r = rngOf(s, `snag:${call.id}`);
+  const base = { at: s.t, by: crew.id, until: s.t + ASK_WAIT, answer: null, answeredAt: null, next: null, done: null, free: false, bypassed: [], crew: null, scene: 0 };
+  if (call.plan === 'door' && call.truth.where === 'home' && !call.asked.some(a => a.q === ACCESS)) {
+    return { kind: 'door', ...base, wait: r.fork('wait').range(DOOR_WAIT[0], DOOR_WAIT[1]), node: null };
+  }
+  if (call.plan === 'address') {
+    const dist = search(ctx.road, timesAt(ctx, s.t), call.node).dist;
+    const near: number[] = [];
+    for (let i = 0; i < dist.length; i++) if (dist[i] >= ADDRESS_NEAR[0] && dist[i] <= ADDRESS_NEAR[1]) near.push(i);
+    if (!near.length) return null;
+    return { kind: 'address', ...base, wait: r.fork('wait').range(ADDRESS_SEARCH[0], ADDRESS_SEARCH[1]), node: near[r.fork('node').int(near.length)] };
+  }
+  return null;
+}
+
+/** Вопрос «как пройти»: подъезд, этаж, код домофона (content/questions/access.yaml). */
+export const ACCESS = 'q.access';
+
+/** Ответили на просьбу не про медицину «ждите» / «сами» или не ответили: бригада ждёт у подъезда, ищет адрес, работает
+ *  со вторым одна — дольше. */
+function alone(ctx: ShiftCtx, s: Shift, call: CallRec, answer: 'wait' | 'auto'): void {
+  const g = call.snag!;
+  g.answer = answer;
+  g.answeredAt = s.t;
+  if (g.kind === 'victim') {
+    g.free = crewOptions(ctx, s, call.id).some(o => !o.redirect);
+    g.done = s.t;
+    resume(s, call, g.at, g.wait);
+  } else {
+    g.next = Math.max(s.t, g.at + g.wait);
+    call.state = 'scene';
+  }
+}
+
+/** Первая бригада снова работает на месте: сколько осталось от её времени там — с тех пор, как просьба её остановила. */
+function resume(s: Shift, call: CallRec, stopped: number, extra: number): void {
+  call.state = 'scene';
+  const crew = crewOf(s, call.crew!)!;
+  const left = Math.max(0, call.scene - (stopped - call.inAt!));
+  setCrew(s, { ...crew, until: s.t + left + extra });
+}
+
 /** Умер ли больной до приезда бригады: запись `fatal`, параметры болезни, опоздание против нормы доезда формы по
  *  правде — и бросок своей ветки. */
 function diedBefore(ctx: ShiftCtx, s: Shift, call: CallRec): boolean {
@@ -413,10 +542,7 @@ function own(ctx: ShiftCtx, s: Shift, call: CallRec, answer: 'own' | 'auto'): vo
   const sc = call.second!;
   sc.answer = answer;
   sc.free = resusFree(ctx, s, call);
-  call.state = 'scene';
-  const crew = crewOf(s, call.crew!)!;
-  const left = Math.max(0, call.scene - (sc.at - call.arrivedAt!));
-  setCrew(s, { ...crew, until: s.t + left });
+  resume(s, call, sc.at, 0);
 }
 
 /** Когда следующее событие смены; FAR — нет. */
@@ -430,7 +556,10 @@ function nextAt(ctx: ShiftCtx, s: Shift): number {
   for (const c of s.calls) if (c.state === 'wait' && c.repeatAt !== null) t = Math.min(t, c.repeatAt);
   for (const c of s.calls) if (c.callbackAt !== null) t = Math.min(t, c.callbackAt);
   for (const c of s.calls) if (c.askAt !== null) t = Math.min(t, c.askAt);
-  for (const c of s.calls) if (c.state === 'ask' && c.second) t = Math.min(t, c.second.until);
+  for (const c of s.calls) if (c.state === 'ask' && c.second?.answer === null) t = Math.min(t, c.second.until);
+  for (const c of s.calls) if (c.snagAt !== null) t = Math.min(t, c.snagAt);
+  for (const c of s.calls) if (c.snag?.answer === null) t = Math.min(t, c.snag.until);
+  for (const c of s.calls) if (c.snag && c.snag.next !== null && c.snag.done === null) t = Math.min(t, c.snag.next);
   for (const r of s.rings) if (!r.again) t = Math.min(t, r.againAt);
   return t;
 }
@@ -467,9 +596,44 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
     setCrew(s, { ...crew, until: FAR });
     s.notices.push({ t, kind: 'ask', call: c.id, crew: c.crew });
   }
+  // на месте второй пострадавший: бригада просит ещё одну и ждёт ответа, работая на месте
+  for (const c of s.calls) {
+    if (c.snagAt !== t) continue;
+    c.snagAt = null;
+    if (c.state !== 'scene' || !c.crew) continue;
+    const r = rngOf(s, `snag:${c.id}`);
+    c.state = 'ask';
+    c.snag = {
+      kind: 'victim', at: t, by: c.crew, until: t + ASK_WAIT, answer: null, answeredAt: null, next: null, done: null,
+      wait: r.fork('extra').range(VICTIM_EXTRA[0], VICTIM_EXTRA[1]), free: false, bypassed: [], crew: null, scene: r.fork('scene').range(VICTIM_SCENE[0], VICTIM_SCENE[1]), node: null,
+    };
+    setCrew(s, { ...crewOf(s, c.crew)!, until: FAR });
+    s.notices.push({ t, kind: 'victim', call: c.id, crew: c.crew });
+  }
+  // не ответили на просьбу не про медицину — ждут, ищут, справляются сами
+  for (const c of s.calls) {
+    if (c.state !== 'ask' || c.snag?.answer !== null || c.snag.until !== t) continue;
+    alone(ctx, s, c, 'auto');
+  }
+  // вошли в подъезд — к больному; адрес уточнили или нашли — едут по верному
+  for (const c of s.calls) {
+    const g = c.snag;
+    if (!g || g.done !== null || g.next !== t || !c.crew) continue;
+    g.done = t;
+    const crew = crewOf(s, c.crew)!;
+    if (g.kind === 'door') reach(ctx, s, c, crew);
+    else if (g.kind === 'address') {
+      c.node = g.node!;
+      const sent = send(ctx.road, timesAt(ctx, t), crew, c.id, c.node, t);
+      if (sent) {
+        setCrew(s, sent);
+        c.state = 'sent';
+      } else reach(ctx, s, c, crew);
+    }
+  }
   // не ответили — везут сами
   for (const c of s.calls) {
-    if (c.state !== 'ask' || !c.second || c.second.until !== t) continue;
+    if (c.state !== 'ask' || c.second?.answer !== null || c.second.until !== t) continue;
     own(ctx, s, c, 'auto');
     s.notices.push({ t, kind: 'auto', call: c.id, crew: c.crew! });
   }
@@ -530,11 +694,13 @@ function merge(call: CallRec, a: Answer): void {
   if (a.onset !== undefined && (a.onset || !call.onset)) call.onset = a.onset;
 }
 
-/** Бригады, которые можно послать на вызов: свободные и едущие на неотложный, если этот — экстренный. */
+/** Бригады, которые можно послать на вызов: свободные и едущие на неотложный, если этот — экстренный. Развернуть можно
+ *  только бригаду вызова — не вторую, которая едет к нему на помощь (реанимационную, ко второму пострадавшему). */
 export function canTake(s: Shift, call: CallRec, crew: Crew): boolean {
   if (free(crew)) return true;
   if (crew.state !== 'drive' || call.form !== 'emergency' || !crew.call || crew.call === call.id) return false;
-  return callOf(s, crew.call)?.form === 'urgent';
+  const other = callOf(s, crew.call);
+  return other?.form === 'urgent' && other.crew === crew.id && other.second?.crew !== crew.id;
 }
 
 export interface CrewOption {
@@ -680,7 +846,7 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
     case 'second': {
       const call = callOf(s, cmd.call);
       if (!call) return 'unknown';
-      if (call.state !== 'ask' || !call.second) return 'notAsked';
+      if (asking(call) !== 'resus' || !call.second) return 'notAsked';
       if (!cmd.crew) {
         own(ctx, s, call, 'own');
         s.rev += 1;
@@ -698,6 +864,43 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
       call.second.crew = crew.id;
       call.state = 'scene';
       s.rev += 1;
+      return null;
+    }
+    case 'snag': {
+      const call = callOf(s, cmd.call);
+      if (!call) return 'unknown';
+      const kind = asking(call);
+      const g = call.snag;
+      if (!kind || kind === 'resus' || !g) return 'notAsked';
+      if (cmd.act === 'wait') {
+        alone(ctx, s, call, 'wait');
+        return null;
+      }
+      if (cmd.act === 'phone') {
+        // перезвонить звонящему — минута диспетчера: пока он говорит, мир идёт; потом бригада входит или едет
+        if (kind === 'victim') return 'unknown';
+        g.answer = 'phone';
+        g.answeredAt = s.t;
+        g.next = s.t + SNAG_PHONE;
+        call.state = 'scene';
+        runTo(ctx, s, g.next);
+        return null;
+      }
+      if (kind !== 'victim') return 'unknown';
+      const crew = cmd.crew ? crewOf(s, cmd.crew) : undefined;
+      if (!crew) return 'unknown';
+      if (!free(crew)) return 'crewBusy';
+      const sent = send(ctx.road, timesAt(ctx, s.t), crew, call.id, call.node, s.t);
+      if (!sent) return 'noRoute';
+      setCrew(s, sent);
+      g.answer = 'send';
+      g.answeredAt = s.t;
+      g.done = s.t;
+      g.free = true;
+      g.crew = crew.id;
+      // экстренные, которые ждали бригаду, пока её послали ко второму (388н, п. 12) — разбор это назовёт
+      g.bypassed = s.calls.filter(c => c.state === 'wait' && c.form === 'emergency').map(c => c.id);
+      resume(s, call, g.at, 0);
       return null;
     }
     case 'hospital': {

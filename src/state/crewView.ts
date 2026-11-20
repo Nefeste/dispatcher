@@ -4,6 +4,7 @@
 import { pointAt, arrival } from '../engine/road/pos';
 import type { FormKind } from '../content/types';
 import type { CrewState } from '../engine/crews';
+import { FAR } from '../engine/road/route';
 import type { Shift, ShiftCtx } from '../engine/shift';
 import { callNo, crewNo } from './callView';
 
@@ -21,7 +22,12 @@ export interface CrewCard {
   minutes: number | null;
   /** на сколько вызовов осталось укладки (срез, С2) */
   kit: number;
+  /** бригада на месте вызова — где: у подъезда, в квартире, на улице; вставка по касанию (срез, С4). Место — из адреса,
+   *  который звонящий назвал: дом или улица */
+  place: OnScene | null;
 }
+
+export type OnScene = 'door' | 'flat' | 'stop';
 
 /** Где бригада сейчас — точка карты: едущая — на пути, стоящая — в узле. */
 export function crewPoint(ctx: ShiftCtx, s: Shift, i: number): [number, number] {
@@ -49,7 +55,9 @@ export function crewCard(ctx: ShiftCtx, s: Shift, id: string): CrewCard | null {
   const c = s.crews.find(x => x.id === id);
   if (!c) return null;
   const call = c.call ? s.calls.find(x => x.id === c.call) : undefined;
-  const end = c.route ? arrival(c.route) : c.state === 'scene' || c.state === 'hospital' || c.state === 'restock' ? c.until : 0;
+  // ждёт ответа диспетчера или у закрытого подъезда — когда кончит, не знает
+  const end = c.route ? arrival(c.route) : (c.state === 'scene' || c.state === 'hospital' || c.state === 'restock') && c.until < FAR ? c.until : 0;
+  const place: OnScene | null = c.state !== 'scene' || !call ? null : call.truth.where === 'street' ? 'stop' : call.inAt === null ? 'door' : 'flat';
   const hospital = call?.hospital && (c.state === 'transport' || c.state === 'hospital') ? (ctx.city.hospitals.find(h => h.id === call.hospital)?.name ?? null) : null;
   return {
     id: c.id,
@@ -60,5 +68,6 @@ export function crewCard(ctx: ShiftCtx, s: Shift, id: string): CrewCard | null {
     hospital,
     minutes: end > s.t ? Math.ceil((end - s.t) / 60_000) : null,
     kit: c.kit,
+    place,
   };
 }
