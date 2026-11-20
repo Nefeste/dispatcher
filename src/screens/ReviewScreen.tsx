@@ -78,7 +78,12 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
   ];
   const onSnapshot = () => {
     if (!title || !body || !small) return;
-    const png = shiftSnapshot(x.ctx, x.s, { title: T.end.snapshotTitle, lines, osm: T.map.osm }, { title, body, small });
+    let png: Uint8Array | null = null;
+    try {
+      png = shiftSnapshot(x.ctx, x.s, { title: T.end.snapshotTitle, crews: T.end.snapshotCrews, lines, osm: T.map.osm }, { title, body, small });
+    } catch {
+      // снимок — не главное: не вышел — так и скажем
+    }
     if (!png) return setSnap(T.end.snapshotFailed);
     void saveImage(`dispetcher-03-smena-${x.s.seed}.png`, png, T.end.snapshot).then(ok => setSnap(ok ? T.end.snapshotSaved : T.end.snapshotFailed));
   };

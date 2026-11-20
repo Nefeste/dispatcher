@@ -14,6 +14,8 @@ export const SNAP = { w: 1080, h: 1350 } as const;
 
 export interface SnapWords {
   title: string;
+  /** подпись цветов путей: «Пути бригад:», дальше — номера бригад их цветом */
+  crews: string;
   lines: string[];
   osm: string;
 }
@@ -44,7 +46,7 @@ export function shiftSnapshot(ctx: ShiftCtx, s: Shift, words: SnapWords, fonts: 
   // карта — во всю ширину под заголовком, с сохранением пропорций
   const m = ctx.map;
   const top = 140;
-  const box = { x: 40, y: top, w: W - 80, h: H - top - 300 };
+  const box = { x: 40, y: top, w: W - 80, h: H - top - 360 };
   const k = Math.min(box.w / m.width, box.h / m.height);
   const ox = box.x + (box.w - m.width * k) / 2;
   const oy = box.y + (box.h - m.height * k) / 2;
@@ -81,6 +83,20 @@ export function shiftSnapshot(ctx: ShiftCtx, s: Shift, words: SnapWords, fonts: 
   for (const p of ctx.city.bases) canvas.drawCircle(m.nodes.x[p.node], m.nodes.y[p.node], 14 / k, fill(MARK.base));
   for (const p of ctx.city.hospitals) canvas.drawRect(Skia.XYWHRect(m.nodes.x[p.node] - 12 / k, m.nodes.y[p.node] - 12 / k, 24 / k, 24 / k), fill(MARK.hospital));
   canvas.restore();
+
+  // подпись цветов: номер бригады — кружком её цвета
+  const ly = box.y + box.h + 56;
+  canvas.drawText(words.crews, 60, ly, fill(C.inkSoft), fonts.small);
+  // ширина строки — по ширинам глифов: measureText в веб-сборке Skia не реализован
+  const textW = (t: string) => fonts.small.getGlyphWidths(fonts.small.getGlyphIDs(t)).reduce((a, b) => a + b, 0);
+  let lx = 60 + textW(words.crews) + 28;
+  s.crews.forEach((crew, i) => {
+    const no = crew.id.split('.')[1] ?? String(i + 1);
+    canvas.drawCircle(lx, ly - 9, 20, fill(TRAIL[i % TRAIL.length]));
+    const tw = textW(no);
+    canvas.drawText(no, lx - tw / 2, ly, fill('#ffffff'), fonts.small);
+    lx += 56;
+  });
 
   // три числа итога и строка OpenStreetMap (ADR 0004)
   words.lines.forEach((line, i) => canvas.drawText(line, 60, H - 220 + i * 56, fill(C.ink), fonts.body));

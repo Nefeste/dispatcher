@@ -95,7 +95,7 @@ try {
   // первый учебный звонок (§3, шаг 4): подсказки ведут — спросить, как дышит, экстренная, ближайшая бригада
   await page.getByTestId('pult-phone').click();
   await see(page, 'call');
-  await see(page, 'hint', 'как он дышит');
+  await see(page, 'hint', 'спросите, как дышит');
   await page.waitForTimeout(500);
   await snap(page, 'call');
   await page.getByTestId('call-q-q.breathing').click();
