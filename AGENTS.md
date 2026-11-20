@@ -71,8 +71,10 @@ bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passp
 python blender/build.py             # the workplace model: src/art/desk.gen.ts + assets/models/ (bpy==4.5.15, Python 3.11)
 python blender/pult.py              # the desk frame of the «Пульт» scene: assets/scenes/pult-desk.png + src/art/pult.gen.ts
 bun tools/people/fetch.ts <dir>     # Rocketbox sources at the pinned commit, SHA-256 checked (tools/people/sources.json)
-python blender/caller.py <dir>      # the caller pictures from those sources: assets/scenes/caller-*.jpg
-python blender/insert.py            # the video insert «бригада выезжает» (Cycles frames + ffmpeg H.264)
+python blender/caller.py <dir>      # the caller pictures from those sources: assets/scenes/caller-*.jpg (--only=man — one)
+python blender/insert.py            # the video inserts (Cycles frames + ffmpeg H.264): --insert=depart «бригада выезжает»,
+                                    # --insert=start «начало смены»; --preview — three small frames, game files untouched
+bun tools/sound/gen.ts              # the synthesized sounds: assets/audio/ring.wav, radio.wav (sound.test.ts — byte-exact)
 npm run export:web                  # web build into dist-web/
 NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts   # the browser scenario, shots in tools/e2e/out/
 ```

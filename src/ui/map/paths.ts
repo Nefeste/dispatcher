@@ -21,6 +21,14 @@ function addLines(p: SkPathBuilder, l: Polylines, from: number, to: number, clos
   }
 }
 
+/** Пути карты — один раз на файл карты: их строит загрузка, а окно карты берёт готовые. */
+const cache = new WeakMap<MapData, MapPaths>();
+export function cachedMapPaths(m: MapData): MapPaths {
+  let p = cache.get(m);
+  if (!p) cache.set(m, (p = mapPaths(m)));
+  return p;
+}
+
 export function mapPaths(m: MapData): MapPaths {
   const water = Skia.PathBuilder.Make();
   addLines(water, m.water, 0, m.water.starts.length - 1, true);

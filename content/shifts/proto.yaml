@@ -12,8 +12,12 @@ crews:
   - { id: crew.4, kind: crew.general, base: base.south }
   - { id: crew.5, kind: crew.general, base: base.south }
   - { id: crew.6, kind: crew.general, base: base.north }
-# учебные звонки: когда (секунды от начала), что, кто и откуда звонит
+# учебные звонки (спецификация, §3, шаги 4–6): когда (секунды от начала), что, кто и откуда звонит; params — скрытые
+# параметры болезни «Анамнеза», first — первые слова: clear — сразу о главном, vague — смутно
 script:
-  - { at: 20, condition: cond.stroke_ischemic, caller: caller.relative, where: home }
-  - { at: 240, condition: cond.influenza, caller: caller.self, where: home }
-  - { at: 480, condition: cond.hypoglycemia, caller: caller.bystander, where: street }
+  # «Отец… не отвечает»: тяжёлая гипогликемия — нарушено сознание, угроза жизни; спросить, как дышит, — экстренная
+  - { at: 20, condition: cond.hypoglycemia, caller: caller.relative, where: home, params: { severity: severe }, first: clear }
+  # сам больной: температура, ходит — неотложная; бригада — когда освободится
+  - { at: 240, condition: cond.influenza, caller: caller.self, where: home, first: clear }
+  # прохожий: человек лежит, болезней прохожий не знает — что спросить, чтобы решить
+  - { at: 480, condition: cond.seizure, caller: caller.bystander, where: street, first: vague }

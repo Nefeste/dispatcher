@@ -1,5 +1,5 @@
 rank: 7
-say: 60
+say: 55
 when: [sym.dyspnea, sym.wheezing]
 words:
   self: ["Дышать тяжело, воздуха не хватает"]

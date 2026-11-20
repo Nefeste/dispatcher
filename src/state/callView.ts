@@ -54,6 +54,13 @@ export interface CallView {
 }
 
 export const callNo = (id: string) => Number(id.split('.')[1]);
+
+/** Картинка звонящего: дома — по его слову и полу; на улице картинок пока нет (тёмная сцена). */
+function pictureOf(call: CallRec): string | null {
+  if (call.truth.where !== 'home') return null;
+  const p = call.truth.relation.picture;
+  return (typeof p === 'string' ? p : p?.[call.truth.callerSex]) ?? null;
+}
 export const crewNo = (id: string) => Number(id.split('.')[1]);
 
 /** Слова повторного звонка — вариант по зерну звонка и номеру повтора. */
@@ -102,7 +109,7 @@ export function callView(ctx: ShiftCtx, s: Shift, id: string): CallView | null {
         }))
       : [];
   return {
-    id: call.id, no: callNo(call.id), who: call.truth.relation.caller, picture: call.truth.where === 'home' ? (call.truth.relation.picture ?? null) : null, self: kind.self, repeat, said, rows,
+    id: call.id, no: callNo(call.id), who: call.truth.relation.caller, picture: pictureOf(call), self: kind.self, repeat, said, rows,
     seconds: Math.floor((s.t - (call.openedAt ?? s.t)) / 1000), groups, form: call.form, options,
   };
 }

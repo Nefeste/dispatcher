@@ -17,7 +17,10 @@ import { FORM, SCENE, UI } from '../palette';
 import { callLayout, fit, wrap } from './layout';
 
 /** Картинки звонящих (assets/scenes/callers.json) — по имени из записи звонящего. */
-const PICTURES: Record<string, number> = { daughter: require('../../../assets/scenes/caller-daughter.jpg') };
+const PICTURES: Record<string, number> = {
+  daughter: require('../../../assets/scenes/caller-daughter.jpg'),
+  man: require('../../../assets/scenes/caller-man.jpg'),
+};
 
 export interface CallProps {
   width: number;

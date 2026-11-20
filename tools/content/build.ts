@@ -145,6 +145,8 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
       if (!k) err(`${s.id}: script ring at ${r.at} has unknown caller ${r.caller}`);
       else if (!k.at.includes(r.where)) err(`${s.id}: ${r.caller} does not call from ${r.where}`);
       if (!(Number.isInteger(r.at) && r.at > prev && r.at < s.length)) err(`${s.id}: script times must go up inside the shift`);
+      if (r.first && r.first !== 'clear' && r.first !== 'vague') err(`${s.id}: script ring at ${r.at}: first must be clear or vague`);
+      for (const [k, v] of Object.entries(r.params ?? {})) if (med.conditions[r.condition]?.params?.[k]?.[v] === undefined) err(`${s.id}: script ring at ${r.at}: ${k}=${v} is not a parameter of ${r.condition}`);
       prev = r.at;
     }
   }

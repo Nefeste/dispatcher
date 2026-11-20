@@ -49,6 +49,10 @@ export interface ScriptedRing {
   condition: string;
   caller: string;
   where: 'home' | 'street';
+  /** скрытые параметры болезни «Анамнеза»: тяжёлая гипогликемия — `severity: severe` */
+  params?: Record<string, string>;
+  /** первые слова: `clear` — сразу о главном, `vague` — смутное «плохо»; нет — как у всех (доля `say` повода) */
+  first?: 'clear' | 'vague';
 }
 
 export interface ShiftSetup {
@@ -148,8 +152,8 @@ export interface Relation {
   patient: { m?: string; f?: string };
   /** только для больных этого пола и возраста */
   sex?: 'm' | 'f';
-  /** картинка звонящего для сцены «Разговор» (assets/scenes/callers.json); нет — тёмная сцена */
-  picture?: string;
+  /** картинка звонящего для сцены «Разговор» (assets/scenes/callers.json): одна или по полу звонящего; нет — тёмная сцена */
+  picture?: string | { m?: string; f?: string };
   age?: [number, number];
 }
 

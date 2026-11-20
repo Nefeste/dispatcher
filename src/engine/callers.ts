@@ -25,6 +25,8 @@ export interface CallTruth {
   knows: Record<string, boolean>;
   /** как пройти: подъезд, этаж, код домофона — только дома */
   door: { entrance: number; floor: number; code: number };
+  /** первые слова учебного звонка: сразу о главном или смутно; нет — как у всех */
+  first?: 'clear' | 'vague';
 }
 
 /** Есть ли у больного признак — по правде. */
@@ -55,6 +57,10 @@ export interface CallOptions {
   /** задать звонящего (учебные звонки); не может так позвонить — по весам */
   caller?: string;
   where?: Where;
+  /** скрытые параметры болезни (учебные звонки) */
+  params?: Record<string, string>;
+  /** первые слова учебного звонка: сразу о главном или смутно */
+  first?: 'clear' | 'vague';
 }
 
 export function newCall(db: Db, med: ContentDb, seed: number, opts: CallOptions): CallTruth {
@@ -66,7 +72,7 @@ export function newCall(db: Db, med: ContentDb, seed: number, opts: CallOptions)
   // больной, у которого эта болезнь обычна по возрасту, полу и болезням (typicalPatient «Анамнеза»)
   const seeds = root.fork('patient');
   const pool = Array.from({ length: 16 }, () => seeds.u32());
-  const patient = typicalPatient(med, k => pool[k], { primary: condition, department: med.conditions[condition].department, season: opts.season });
+  const patient = typicalPatient(med, k => pool[k], { primary: condition, department: med.conditions[condition].department, season: opts.season, ...(opts.params ? { params: opts.params } : {}) });
   const where: Where = opts.where ?? (root.fork('where').chance(pc.street) ? 'street' : 'home');
   let kinds = callersFor(db, patient, where);
   // на улице без сознания — позвонит прохожий; дома — кто-то из своих: хоть кто-то найдётся всегда
@@ -81,7 +87,14 @@ export function newCall(db: Db, med: ContentDb, seed: number, opts: CallOptions)
   const k = root.fork('knows');
   for (const f of Object.keys(db.phone.findings).sort()) knows[f] = k.fork(f).chance(db.phone.findings[f].tell[kind.id] ?? 0);
   for (const q of Object.keys(db.phone.questions).sort()) knows[q] = k.fork(q).chance(db.phone.questions[q].tell[kind.id] ?? 0);
+  // учебный звонок «сразу о главном»: звонящий видит то, что делает основная болезнь (если вообще может видеть)
+  if (opts.first === 'clear') {
+    for (const x of patient.truth.findings) {
+      const pf = db.phone.findings[x.f];
+      if (x.cause === condition && pf && (pf.tell[kind.id] ?? 0) > 0) knows[x.f] = true;
+    }
+  }
   const d = root.fork('door');
   const door = { entrance: d.range(1, 6), floor: d.range(1, 9), code: d.range(10, 99) };
-  return { seed, condition, patient, where, caller: kind.id, relation, callerSex, onset, knows, door };
+  return { seed, condition, patient, where, caller: kind.id, relation, callerSex, onset, knows, door, ...(opts.first ? { first: opts.first } : {}) };
 }

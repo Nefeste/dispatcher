@@ -1,7 +1,7 @@
 // Карта района на Skia (docs/02-architecture.md, §5): слои — готовые пути, камера — общие значения Reanimated.
 // Сдвиг — одним пальцем, масштаб — двумя вокруг точки между ними; ширина дорог на экране не зависит от масштаба
 // (издалека — тоньше). По образцу anamnez: src/render/map/BuildMap.tsx @ d05c615 (камера и жесты).
-import { Canvas, Group, Path } from '@shopify/react-native-skia';
+import { Canvas, Group, Path, Rect } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -11,7 +11,7 @@ import { T } from '../../i18n';
 import { FONTS } from '../fonts';
 import { C } from '../theme';
 import { CASING_PX, MAP, ROAD_PX } from './palette';
-import { mapPaths } from './paths';
+import { cachedMapPaths } from './paths';
 
 /** Во сколько раз можно приблизить от «район заполняет экран». */
 const MAX_ZOOM = 12;
@@ -37,8 +37,8 @@ function useWidth(zoom: SharedValue<number>, fit: number, px: number) {
 /** Слой знаков поверх улиц: рисуется в единицах карты, `zoom` — чтобы знаки держали свой размер на экране. */
 export type MapOverlay = (zoom: SharedValue<number>) => React.ReactNode;
 
-export function MapView({ map, width, height, testID, overlay }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay }) {
-  const paths = useMemo(() => mapPaths(map), [map]);
+export function MapView({ map, width, height, testID, overlay, dusk = 0 }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number }) {
+  const paths = useMemo(() => cachedMapPaths(map), [map]);
   // при открытии и при наибольшем отдалении карта заполняет экран целиком, без пустых полос
   const fit = Math.max(width / map.width, height / map.height);
   const zoom = useSharedValue(fit);
@@ -100,8 +100,10 @@ export function MapView({ map, width, height, testID, overlay }: { map: MapData;
             <Path path={paths.roads[2]} color={MAP.road[2]} style="stroke" strokeWidth={w2} strokeCap="round" strokeJoin="round" />
             <Path path={paths.roads[1]} color={MAP.road[1]} style="stroke" strokeWidth={w1} strokeCap="round" strokeJoin="round" />
             <Path path={paths.roads[0]} color={MAP.road[0]} style="stroke" strokeWidth={w0} strokeCap="round" strokeJoin="round" />
-            {overlay ? overlay(zoom) : null}
           </Group>
+          {/* свет часа (спецификация, §6): к вечеру карта темнеет, знаки поверх — нет */}
+          {dusk > 0 ? <Rect x={0} y={0} width={width} height={height} color={MAP.night} opacity={dusk * MAP.nightMax} /> : null}
+          <Group transform={transform}>{overlay ? overlay(zoom) : null}</Group>
         </Canvas>
       </GestureDetector>
       {/* ADR 0004: указание OpenStreetMap видно на карте всегда */}

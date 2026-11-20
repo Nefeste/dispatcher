@@ -83,10 +83,11 @@ export function firstWords(db: Db, call: CallTruth): { reason: string; words: st
   const fallback = reasons.find(r => !r.when.length);
   if (!fallback) throw new Error('firstWords: no fallback reason');
   const vague = { reason: fallback.id, words: say(db, call, fallback.words, `first:${fallback.id}`), learned: [] };
+  if (call.first === 'vague') return vague;
   for (const r of reasons) {
     const known = r.when.filter(f => has(call, f) && call.knows[f]);
     if (!r.when.length || !known.length || (self && !r.words.self.length)) continue;
-    if (fnv1a(`${call.seed}:say:${r.id}`) % 10000 >= r.say) return vague;
+    if (call.first !== 'clear' && fnv1a(`${call.seed}:say:${r.id}`) % 10000 >= r.say) return vague;
     return { reason: r.id, words: say(db, call, r.words, `first:${r.id}`), learned: known.map(f => ({ f, heard: 'yes' as const })) };
   }
   return vague;

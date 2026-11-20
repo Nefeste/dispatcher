@@ -49,9 +49,15 @@ describe('видеовставки', () => {
       if (file.endsWith('.mp4')) total += f.bytes;
     }
     expect(total).toBeLessThanOrEqual(6 * 1024 * 1024);
-    expect(p.made.codec).toContain('H.264');
-    expect(p.made.frames / p.made.fps).toBeGreaterThanOrEqual(4);
-    expect(p.made.frames / p.made.fps).toBeLessThanOrEqual(8);
+    // две вставки (§5): «начало смены» и «бригада выезжает», каждая — 4–8 с (docs/08-game-design.md, §11)
+    expect(Object.keys(p.made).sort()).toEqual(['depart', 'start']);
+    for (const [kind, m] of Object.entries(p.made as Record<string, { codec: string; frames: number; fps: number }>)) {
+      expect(Object.keys(p.files)).toContain(`assets/scenes/insert-${kind}.mp4`);
+      expect(Object.keys(p.files)).toContain(`assets/scenes/insert-${kind}.jpg`);
+      expect(m.codec).toContain('H.264');
+      expect(m.frames / m.fps).toBeGreaterThanOrEqual(4);
+      expect(m.frames / m.fps).toBeLessThanOrEqual(8);
+    }
   });
 });
 

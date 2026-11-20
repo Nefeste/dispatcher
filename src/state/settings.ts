@@ -7,18 +7,20 @@ export interface Settings {
   /** новый звонок ставит мир на паузу (ADR 0003) */
   autopause: boolean;
   sound: boolean;
+  /** короткий отклик телефона на новый звонок (docs/08-game-design.md, §11) */
+  haptics: boolean;
   /** «меньше движения»; не задано — как в системе телефона */
   lessMotion?: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { autopause: true, sound: true };
+export const DEFAULT_SETTINGS: Settings = { autopause: true, sound: true, haptics: true };
 
 /** Сохранённая строка → настройки; мусор и пусто — по умолчанию. */
 export function parseSettings(raw: string | null): Settings {
   try {
     const v = raw ? (JSON.parse(raw) as unknown) : {};
     const s = v && typeof v === 'object' ? (v as Partial<Settings>) : {};
-    const out: Settings = { autopause: s.autopause !== false, sound: s.sound !== false };
+    const out: Settings = { autopause: s.autopause !== false, sound: s.sound !== false, haptics: s.haptics !== false };
     if (typeof s.lessMotion === 'boolean') out.lessMotion = s.lessMotion;
     return out;
   } catch {

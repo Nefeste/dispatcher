@@ -62,6 +62,8 @@ export interface PultProps {
   /** звонков после конца смены не будет */
   closing?: boolean;
   overlay?: MapOverlay;
+  /** свет часа на карте, 0…1 */
+  dusk?: number;
   /** окно программы поверх карты: выбор бригады, доклад */
   panel?: React.ReactNode;
   onPhone: () => void;
@@ -88,7 +90,10 @@ function width(font: SkFont | null, s: string) {
   return font ? font.getTextWidth(s) : 0;
 }
 
-export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, overlay, panel, onPhone, onWaiting, onRadio, onClock, onSpeed }: PultProps) {
+/** Высота строки OpenStreetMap внизу карты (src/ui/map/MapView.tsx) с запасом. */
+const OSM_LINE = 22;
+
+export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, dusk, overlay, panel, onPhone, onWaiting, onRadio, onClock, onSpeed }: PultProps) {
   const L = useMemo(() => pultLayout(W, H), [W, H]);
   const desk = useImage(DESK);
   const bar = useFont(Onest_500Medium, 15);
@@ -131,7 +136,7 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
       </View>
 
       <View style={[styles.abs, { left: L.map.x, top: L.map.y }]}>
-        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} />
+        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} dusk={dusk} />
       </View>
 
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -209,7 +214,8 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
           />
         );
       })}
-      {panel ? <View style={[styles.abs, styles.panel, { left: L.map.x, top: L.map.y, width: L.map.w, height: L.map.h }]} pointerEvents="box-none">{panel}</View> : null}
+      {/* окно программы — над картой, но выше строки «© участники OpenStreetMap»: она видна всегда (ADR 0004) */}
+      {panel ? <View style={[styles.abs, styles.panel, { left: L.map.x, top: L.map.y, width: L.map.w, height: L.map.h - OSM_LINE }]} pointerEvents="box-none">{panel}</View> : null}
       <Pressable style={[styles.abs, box(L.phone.tap)]} onPress={onPhone} accessibilityRole="button" accessibilityLabel={T.pult.phoneLabel(line)} testID="pult-phone" />
       <Pressable style={[styles.abs, box(L.radio.tap)]} onPress={onRadio} accessibilityRole="button" accessibilityLabel={T.pult.radioLabel} testID="pult-radio" />
       <Pressable style={[styles.abs, { left: 0, top: L.bar.y, width: speedX - 10, height: L.bar.h }]} onPress={onClock} accessibilityRole="button" accessibilityLabel={T.pult.clockLabel} testID="pult-clock" />
