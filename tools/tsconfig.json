@@ -15,7 +15,8 @@
     "noFallthroughCasesInSwitch": true
   },
   "exclude": [
-    "./e2e/**"
+    "./e2e/**",
+    "./art/**"
   ],
   "include": [
     "./**/*.ts",

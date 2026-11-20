@@ -1,0 +1,32 @@
+{
+  "id": "icon",
+  "name": "Значок приложения: «03» шрифтом Kurale на кумаче",
+  "licence": "своя работа студии «Горница»; шрифт — Kurale (SIL OFL 1.1, assets/fonts/Kurale-OFL.txt)",
+  "made": {
+    "script": "tools/art/icon.ts",
+    "renderer": "Chromium 153.0.8010.12 (Playwright)",
+    "size": 1024,
+    "background": "#b3162f",
+    "color": "#ecede6",
+    "safe": 0.6111111111111112,
+    "halfDiagonal": {
+      "icon": 0.334,
+      "foreground": 0.267,
+      "monochrome": 0.267
+    }
+  },
+  "files": {
+    "assets/icon.png": {
+      "sha256": "c7ac96c19fe1b7d0dc9f6fad8eb36b18e5e8b00ece139a268b3044247305129f",
+      "bytes": 36690
+    },
+    "assets/adaptive-foreground.png": {
+      "sha256": "75525bb4596ca7ac5d522464622217de37498ebca3e9ecb71f5da142d46b392f",
+      "bytes": 24894
+    },
+    "assets/adaptive-monochrome.png": {
+      "sha256": "e7e3a618f53b4613838a91f6ff0226ee2414be366e965a9f1a7020011591370f",
+      "bytes": 19748
+    }
+  }
+}

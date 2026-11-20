@@ -5,7 +5,7 @@ import { Canvas, Group, Path, Rect } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { type SharedValue, useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { type SharedValue, useDerivedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated';
 import type { MapData } from '../../map/format';
 import { T } from '../../i18n';
 import { FONTS } from '../fonts';
@@ -34,10 +34,18 @@ function useWidth(zoom: SharedValue<number>, fit: number, px: number) {
   });
 }
 
+/**
+ * Автопилот камеры для «Замера» (спецификация прототипа, §8): `pan` — приближение ×3 и сдвиг по всему району,
+ * `zoom` — от «район на экране» до ×8 и обратно вокруг середины; круг — 4 с. Камера движется на потоке интерфейса,
+ * как от пальцев.
+ */
+export type Autopilot = 'pan' | 'zoom';
+const LAP_MS = 4000;
+
 /** Слой знаков поверх улиц: рисуется в единицах карты, `zoom` — чтобы знаки держали свой размер на экране. */
 export type MapOverlay = (zoom: SharedValue<number>) => React.ReactNode;
 
-export function MapView({ map, width, height, testID, overlay, dusk = 0 }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number }) {
+export function MapView({ map, width, height, testID, overlay, dusk = 0, autopilot }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number; autopilot?: Autopilot }) {
   const paths = useMemo(() => cachedMapPaths(map), [map]);
   // при открытии и при наибольшем отдалении карта заполняет экран целиком, без пустых полос
   const fit = Math.max(width / map.width, height / map.height);
@@ -74,6 +82,25 @@ export function MapView({ map, width, height, testID, overlay, dusk = 0 }: { map
       ty.set(clampPan(e.focalY - (s0[4] - s0[1]) * k, map.height, height, z));
     });
   const gesture = Gesture.Simultaneous(pan, pinch);
+
+  useFrameCallback(info => {
+    'worklet';
+    if (!autopilot) return;
+    const a = (2 * Math.PI * info.timeSinceFirstFrame) / LAP_MS;
+    if (autopilot === 'pan') {
+      const z = fit * 3;
+      const cx = map.width * (0.5 + 0.35 * Math.sin(a));
+      const cy = map.height * (0.5 + 0.35 * Math.sin(a * 0.7));
+      zoom.set(z);
+      tx.set(clampPan(width / 2 - cx * z, map.width, width, z));
+      ty.set(clampPan(height / 2 - cy * z, map.height, height, z));
+    } else {
+      const z = fit * (1 + 3.5 * (1 - Math.cos(a)));
+      zoom.set(z);
+      tx.set(clampPan(width / 2 - (map.width / 2) * z, map.width, width, z));
+      ty.set(clampPan(height / 2 - (map.height / 2) * z, map.height, height, z));
+    }
+  }, autopilot !== undefined);
 
   const transform = useDerivedValue(() => [{ translateX: tx.get() }, { translateY: ty.get() }, { scale: zoom.get() }]);
   const w0 = useWidth(zoom, fit, ROAD_PX[0]);

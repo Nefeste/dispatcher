@@ -11,6 +11,7 @@ import { CrewLayer } from '../scenes/pult/CrewLayer';
 import { PultScene } from '../scenes/pult/PultScene';
 import { ProgramPanel } from '../scenes/panel';
 import { crewNo } from '../state/callView';
+import { mark } from '../state/marks';
 import { pultView } from '../state/pultView';
 import { command, dismissIntro, nextSpeed, session, tick, togglePause, useSession } from '../state/session';
 import { pultHint } from '../state/tutorial';
@@ -21,7 +22,7 @@ import { duskOf } from '../ui/map/palette';
 import { Txt } from '../ui/kit';
 
 /** Где бригады сейчас — точки карты по очереди x, y: едущая — на пути, стоящая — в узле. */
-function positions(ctx: ShiftCtx, s: Shift): number[] {
+export function positions(ctx: ShiftCtx, s: Shift): number[] {
   const out: number[] = [];
   for (const c of s.crews) {
     if (c.route) {
@@ -39,6 +40,11 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const pos = useSharedValue<number[]>(x ? positions(x.ctx, x.s) : []);
+  // «Замер»: первый кадр пульта — конец загрузки смены (после вставки «начало смены»)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => mark('pult'));
+    return () => cancelAnimationFrame(id);
+  }, []);
   // часы смены: каждый кадр — настоящее время со скоростью смены; место бригад — в общее значение для карты
   useEffect(() => {
     let raf = 0;

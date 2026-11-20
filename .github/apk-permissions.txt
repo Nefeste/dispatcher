@@ -1,0 +1,9 @@
+# Разрешения, которые может просить выпускной APK «Диспетчера 03» (проверка «Содержимое» в android.yml, действие
+# android-contents набора gornitsa-kit; устав, docs/05-rules.md: «Разрешения Android — по белому списку проекта»).
+# Строка — полное имя; «*» в конце — любая концовка. Всё прочее — ошибка сборки: нужное добавить сюда и в
+# docs/05-process.md («Сборка APK»), ненужное — в blockedPermissions в app.json. Сети нет: INTERNET вырезает
+# plugins/with-release-no-internet.js.
+# режим звука проигрывателя — expo-audio (звонок и щелчок рации)
+android.permission.MODIFY_AUDIO_SETTINGS
+# приёмники внутри приложения — androidx.core на Android 13+
+games.gornitsa.dispatcher.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
