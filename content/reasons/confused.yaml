@@ -1,5 +1,5 @@
 rank: 5
-say: 60
+say: 50
 when: [sym.confusion, sym.strange_behavior]
 words:
   self: []

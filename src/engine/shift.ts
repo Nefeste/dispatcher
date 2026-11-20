@@ -13,7 +13,8 @@ import { gapAfter } from './flow';
 import { edgeTimes, type Road, roadOf } from './road/graph';
 import { FAR, search } from './road/route';
 import { AGAIN, ANSWER, DECIDE, HANDOVER, REPEAT, REPORT_WAIT } from './rules';
-import { ask as askCaller, type Answer, firstWords, type Heard } from './talk';
+import { formByKnown, threatsHeard } from './form';
+import { ask as askCaller, type Answer, firstWords, type Heard, type Learned } from './talk';
 import type { MapData } from '../map/format';
 
 /** Что не меняется за смену: база, карта, дороги, город. Строится один раз (`shiftCtx`). */
@@ -62,6 +63,16 @@ export interface Asked {
   words: string;
   /** какой по счёту раз задан этот вопрос: 0 — впервые */
   n: number;
+  /** что узнал диспетчер из этого ответа — для разбора «по известному» */
+  learned: Learned[];
+}
+
+/** Решение о форме и что было известно в ту минуту (ADR 0005): форма по услышанному и признаки угрозы. */
+export interface Decision {
+  t: number;
+  form: FormKind | 'none';
+  known: FormKind;
+  threats: string[];
 }
 
 export interface CallRec {
@@ -76,7 +87,7 @@ export interface CallRec {
   /** когда открыт этот разговор — последний раз; повторный звонок открывает его снова */
   openedAt: number | null;
   /** первые слова и повод */
-  first: { reason: string; words: string } | null;
+  first: { reason: string; words: string; learned: Learned[] } | null;
   asked: Asked[];
   /** что диспетчер узнал о признаках: последнее определённое побеждает «не знаю» */
   heard: Record<string, Heard>;
@@ -84,6 +95,8 @@ export interface CallRec {
   onset: Answer['onset'] | null;
   form: FormKind | 'none' | null;
   decidedAt: number | null;
+  /** все решения о форме по порядку: повторный звонок может её поменять */
+  decisions: Decision[];
   crew: string | null;
   /** когда бригаде передан вызов, когда приехала */
   sentAt: number | null;
@@ -103,6 +116,8 @@ export interface CallRec {
   repeats: number;
   /** бригады, которых сняли с этого вызова на экстренный */
   recalled: string[];
+  /** экстренные вызовы, которые ждали бригаду, когда этот неотложный её получил (388н, п. 12) */
+  bypassed: string[];
 }
 
 export type NoticeKind = 'ring' | 'scene' | 'report' | 'auto' | 'free' | 'base' | 'repeat' | 'recall' | 'end';
@@ -185,9 +200,9 @@ function ring(ctx: ShiftCtx, s: Shift, scripted: ShiftSetup['script'][number] | 
   const scene = r.fork('scene').range(pc.scene[0], pc.scene[1]) * 60_000;
   const transport = r.fork('transport').chance(pc.transport);
   s.calls.push({
-    id, truth, node, state: 'ring', ringAt: s.t, answeredAt: null, openedAt: null, first: null, asked: [], heard: {}, age: null, onset: null, form: null, decidedAt: null,
+    id, truth, node, state: 'ring', ringAt: s.t, answeredAt: null, openedAt: null, first: null, asked: [], heard: {}, age: null, onset: null, form: null, decidedAt: null, decisions: [],
     crew: null, sentAt: null, arrivedAt: null, reportAt: null, suggested: null, transport, hospital: null, transportAt: null, hospitalAt: null, doneAt: null,
-    scene, repeatAt: null, repeats: 0, recalled: [],
+    scene, repeatAt: null, repeats: 0, recalled: [], bypassed: [],
   });
   s.rings.push({ id: `ring.${s.n}`, call: id, at: s.t, repeat: false, again: false, againAt: s.t + repeatIn(s, `line:${s.n}`) });
   s.notices.push({ t: s.t, kind: 'ring', call: id });
@@ -392,7 +407,7 @@ export function apply(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
         call.state = 'talk';
         call.answeredAt = s.t;
         const fw = firstWords(ctx.db, call.truth);
-        call.first = { reason: fw.reason, words: fw.words };
+        call.first = { reason: fw.reason, words: fw.words, learned: fw.learned };
         for (const l of fw.learned) call.heard[l.f] = l.heard;
       } else {
         // повторный звонок по вызову, который ждёт бригаду: тот же разговор, решение можно поменять
@@ -411,7 +426,7 @@ export function apply(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
       const at = s.t;
       runTo(ctx, s, s.t + (n > 0 ? AGAIN : q.cost * 1000));
       const a = askCaller(ctx.db, ctx.med, open.truth, cmd.q, new Map(Object.entries(open.heard)), n);
-      open.asked.push({ q: cmd.q, at, words: a.words, n });
+      open.asked.push({ q: cmd.q, at, words: a.words, n, learned: a.learned });
       merge(open, a);
       return null;
     }
@@ -419,6 +434,8 @@ export function apply(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
       if (!open) return 'notOpen';
       open.form = cmd.form;
       open.decidedAt = s.t;
+      const heard = new Map(Object.entries(open.heard));
+      open.decisions.push({ t: s.t, form: cmd.form, known: formByKnown(ctx.db, heard), threats: threatsHeard(ctx.db, heard) });
       runTo(ctx, s, s.t + DECIDE);
       if (cmd.form === 'none') {
         open.state = 'done';
@@ -451,6 +468,8 @@ export function apply(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
         s.notices.push({ t: s.t, kind: 'recall', call: old.id, crew: crew.id });
       }
       setCrew(s, sent);
+      // неотложный получил бригаду, пока экстренные ждут, — против порядка (388н, п. 12); разбор это назовёт
+      if (call.form === 'urgent') call.bypassed = s.calls.filter(c => c !== call && c.state === 'wait' && c.form === 'emergency').map(c => c.id);
       call.state = 'sent';
       call.crew = crew.id;
       call.sentAt = s.t;
