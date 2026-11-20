@@ -31,9 +31,11 @@ SRC = next((a for a in ARGS if not a.startswith('--')), None)
 if not SRC:
     sys.exit('укажите папку исходников Rocketbox (её заполняет bun tools/people/fetch.ts <папка>)')
 
-W, H = (1080, 960) if not PREVIEW else (360, 320)
+# предпросмотр — малый кадр; CALLER_PREVIEW_SCALE=2 — вдвое крупнее, чтобы разглядеть кисть
+_K = float(os.environ.get('CALLER_PREVIEW_SCALE', '1'))
+W, H = (1080, 960) if not PREVIEW else (int(360 * _K), int(320 * _K))
 # ось кисти к ладони и сгиб пальцев (градусы по осям кости) — подобраны по кадру
-PALM = os.environ.get('CALLER_PALM', 'TRACK_NEGATIVE_Z')
+PALM = os.environ.get('CALLER_PALM', 'TRACK_Z')
 CURL = tuple(float(x) for x in os.environ.get('CALLER_CURL', '0,0,-55').split(','))
 SAMPLES = 192 if not PREVIEW else 16
 SEED = 11
@@ -267,7 +269,10 @@ def pose_call(arm):
     up = Vector((0, 0, 1))
     # запястье — под телефоном у уха: телефон в ладони прижат к уху (точки лица — по костям глаза и угла рта)
     top, bottom = phone_line(arm)
-    ear = target('ik_ear', (top + bottom) / 2 + right * 0.045 + up * -0.075 - fwd * 0.02)
+    # запястье — за серединой телефона, ладонь к щеке, тыльная сторона наружу (до 0.11.0 ладонь смотрела наружу, а
+    # запястье — на 7,5 см ниже: кисть выглядела вывихнутой, пальцы — подушечками к камере; владелец, 20.11.2026)
+    hr, hu, hf = (float(x) for x in os.environ.get('CALLER_HAND', '0.04,-0.045,-0.02').split(','))
+    ear = target('ik_ear', (top + bottom) / 2 + right * hr + up * hu + fwd * hf)
     # локоть — вбок и вниз, на уровне груди: плечо почти вдоль тела, предплечье поднимается к уху (у 0.9.0 подсказка
     # стояла на 65 см ниже головы и вперёд — локоть уходил перед грудь, рука шла вертикально от пояса; игра владельца
     # 20.11.2026: «искривлена рука, которая держит телефон»)
