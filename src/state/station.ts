@@ -17,8 +17,9 @@ export function parseStation(raw: string | null): Station {
     const kits: Record<string, number> = {};
     for (const [id, n] of Object.entries(x.kits ?? {})) if (Number.isInteger(n) && n >= 0 && n < KIT) kits[id] = n;
     const done = x.done.filter(id => typeof id === 'string' && Boolean(DB.shifts[id]));
+    const trained = Array.isArray(x.trained) ? x.trained.filter((id): id is string => typeof id === 'string') : [];
     return {
-      fund: Math.round(x.fund), extra, kits, journal: x.journal, letter: x.letter ?? null, done,
+      fund: Math.round(x.fund), extra, trained, kits, journal: x.journal, letter: x.letter ?? null, done,
       decided: Number.isInteger(x.decided) ? Math.max(0, x.decided!) : 0,
     };
   } catch {

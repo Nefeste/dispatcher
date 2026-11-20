@@ -81,6 +81,26 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
         actions={[{ label: T.intro.go, onPress: dismissIntro, testID: 'intro-go' }]}
       />
     );
+  } else if (view.ask) {
+    // бригада на месте просит реанимационную (срез, С4): послать — одно касание; не ответили — везут сами
+    const a = view.ask;
+    panel = (
+      <ProgramPanel
+        testID="ask"
+        title={T.ask.head(a.crew, a.no)}
+        lead={T.ask.says}
+        note={T.ask.auto(a.left)}
+        empty={T.ask.none}
+        rows={a.crews.map((c, i) => ({
+          key: c.id,
+          text: T.ask.row(c.no, c.minutes),
+          label: T.ask.label(c.no, c.minutes),
+          onPress: () => { command({ c: 'second', call: a.call, crew: c.id }); },
+          testID: `ask-crew-${i}`,
+        }))}
+        actions={[{ label: T.ask.own, onPress: () => { command({ c: 'second', call: a.call }); }, testID: 'ask-own' }]}
+      />
+    );
   } else if (view.report) {
     const r = view.report;
     panel = (

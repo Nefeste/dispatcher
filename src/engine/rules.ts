@@ -23,6 +23,10 @@ export const NORM_URGENT = 120 * MIN;
  *  конца смены, а если смена уже кончается — не раньше чем через `CALLBACK_SOON`. */
 export const CALLBACK: readonly [number, number] = [60 * MIN, 180 * MIN];
 export const CALLBACK_SOON = 15 * MIN;
+/** Бригада на месте просит реанимационную через столько после прибытия и ждёт ответа столько (срез, С4; §5 и §9
+ *  геймдизайна); не ответили — везёт сама. */
+export const ASK_AFTER = 3 * MIN;
+export const ASK_WAIT = 2 * MIN;
 /** Укладка бригады — на столько вызовов (срез, часть С2; §15 геймдизайна). */
 export const KIT = 4;
 /** Пополнить пустую укладку на подстанции. */

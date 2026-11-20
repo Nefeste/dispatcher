@@ -22,6 +22,11 @@ export const STATION = {
   decisions: 3,
   /** бригад станции сверх записей смен — гараж подстанций */
   extraMax: 2,
+  /** реанимобиль: машина класса C и обучение общепрофильной бригады до реанимационной (срез, С4) */
+  carC: 400_000,
+  train: 120_000,
+  /** реанимобилей станции — места в гараже для машин класса C */
+  trainedMax: 2,
 } as const;
 
 /** Новая общепрофильная фельдшерская бригада: машина класса B и два фельдшера (388н, прил. 2, п. 7). */
@@ -91,7 +96,7 @@ export interface Letter {
   fine: number;
 }
 
-export type EntryKind = 'shift' | 'thanks' | 'complaint' | 'inquiry' | 'crew' | 'kits';
+export type EntryKind = 'shift' | 'thanks' | 'complaint' | 'inquiry' | 'crew' | 'resus' | 'kits';
 
 /** Строка журнала фонда: что пришло или ушло, рубли со знаком. */
 export interface Entry {
@@ -113,6 +118,8 @@ export interface StationCrew {
 export interface Station {
   fund: number;
   extra: StationCrew[];
+  /** общепрофильные бригады, обученные до реанимационных и пересаженные на машину класса C (срез, С4): номера */
+  trained: string[];
   /** укладки бригад после последней смены; нет записи — полная */
   kits: Record<string, number>;
   journal: Entry[];
@@ -124,7 +131,7 @@ export interface Station {
 }
 
 export function newStation(): Station {
-  return { fund: 0, extra: [], kits: {}, journal: [], letter: null, done: [], decided: 0 };
+  return { fund: 0, extra: [], trained: [], kits: {}, journal: [], letter: null, done: [], decided: 0 };
 }
 
 /** Итог смены пришёл на станцию: доход, письмо, укладки. Повтор пройденной смены станцию не меняет. */
@@ -145,7 +152,7 @@ export function afterShift(st: Station, rep: ShiftReport): Station {
     else kits[id] = n;
   }
   return {
-    fund, extra: st.extra, kits, journal,
+    fund, extra: st.extra, trained: st.trained, kits, journal,
     letter: {
       after: rep.shift, emergency: rep.emergency, inNorm: rep.inNorm, income, thanks, longWaits: rep.longWaits, refusals: rep.refusals,
       deaths: rep.deaths, inquiries: rep.inquiries, fine,
@@ -154,13 +161,16 @@ export function afterShift(st: Station, rep: ShiftReport): Station {
   };
 }
 
-export type Decision = { d: 'crew'; base: string } | { d: 'kits' };
+export type Decision = { d: 'crew'; base: string } | { d: 'kits' } | { d: 'resus'; crew: string };
 
 /** Почему решение нельзя: слова — src/i18n (T.station.no). */
-export type StationRefusal = 'noShift' | 'limit' | 'fund' | 'garage' | 'full';
+export type StationRefusal = 'noShift' | 'limit' | 'fund' | 'garage' | 'full' | 'trained';
+
+/** Реанимобиль: машина класса C (388н, прил. 2, п. 9) и обучение людей общепрофильной бригады. */
+export const RESUS_PRICE = STATION.carC + STATION.train;
 
 export function priceOf(d: Decision): number {
-  return d.d === 'crew' ? CREW_PRICE : STATION.kits;
+  return d.d === 'crew' ? CREW_PRICE : d.d === 'resus' ? RESUS_PRICE : STATION.kits;
 }
 
 /** Можно ли решение сейчас; null — можно. */
@@ -169,6 +179,8 @@ export function canDecide(st: Station, d: Decision): StationRefusal | null {
   if (st.decided >= STATION.decisions) return 'limit';
   if (d.d === 'crew' && st.extra.length >= STATION.extraMax) return 'garage';
   if (d.d === 'kits' && !Object.keys(st.kits).length) return 'full';
+  if (d.d === 'resus' && st.trained.length >= STATION.trainedMax) return 'garage';
+  if (d.d === 'resus' && st.trained.includes(d.crew)) return 'trained';
   if (st.fund < priceOf(d)) return 'fund';
   return null;
 }
@@ -186,6 +198,12 @@ export function decide(st: Station, d: Decision): Station | StationRefusal {
       journal: [...st.journal, { kind: 'crew', amount: -price, after, crew: id, base: d.base }], decided: st.decided + 1,
     };
   }
+  if (d.d === 'resus') {
+    return {
+      ...st, fund: st.fund - price, trained: [...st.trained, d.crew],
+      journal: [...st.journal, { kind: 'resus', amount: -price, after, crew: d.crew }], decided: st.decided + 1,
+    };
+  }
   return { ...st, fund: st.fund - price, kits: {}, journal: [...st.journal, { kind: 'kits', amount: -price, after }], decided: st.decided + 1 };
 }
 
@@ -199,5 +217,5 @@ export function consequenceOf(st: Station): Pick<Letter, 'after' | 'inquiries' |
 
 /** Что станция даёт следующей смене: свои бригады и укладки. */
 export function lineupOf(st: Station): Lineup {
-  return { extra: st.extra, kits: st.kits };
+  return { extra: st.extra, kits: st.kits, trained: st.trained };
 }

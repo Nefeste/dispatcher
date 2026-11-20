@@ -98,12 +98,14 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
     const fatal: Fatal | undefined = fr
       ? { late: Number(fr.late), chance: pct(id, fr.chance, 'fatal.chance'), source: String(fr.source ?? ''), ...(fr.when ? { when: fr.when as Record<string, string[]> } : {}) }
       : undefined;
+    const rr = r.resus as Raw | undefined;
+    const resus = rr ? { when: (rr.when as Record<string, string[]>) ?? {}, source: String(rr.source ?? '') } : undefined;
     const w = r.window as Raw | undefined;
     const window: Window | undefined = w ? { minutes: Number(w.minutes), from: w.from as Window['from'], source: String(w.source ?? ''), ...(w.when ? { when: w.when as Record<string, string[]> } : {}) } : undefined;
     const c: PhoneCondition = {
       id, weight: Number(r.weight), form: r.form as FormKind, hospital: r.hospital as Profile, transport: pct(id, r.transport, 'transport'),
       scene: (r.scene as [number, number]) ?? [0, 0], street: pct(id, r.street, 'street'), onset: (r.onset as [number, number][]) ?? [],
-      ...(window ? { window } : {}), ...(fatal ? { fatal } : {}), estimate: r.estimate === true, sources: sources(id, r.sources), review: review(id, r.review),
+      ...(window ? { window } : {}), ...(fatal ? { fatal } : {}), ...(resus ? { resus } : {}), estimate: r.estimate === true, sources: sources(id, r.sources), review: review(id, r.review),
       ...(r.notes ? { notes: String(r.notes) } : {}),
     };
     if (!(c.weight > 0) || !Number.isInteger(c.weight)) err(`${id}: weight must be a positive integer`);
@@ -126,6 +128,13 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
       if (!c.sources.includes(fatal.source)) err(`${id}: fatal.source must be among sources`);
       if (r.estimate !== true) err(`${id}: fatal minutes and chance are an estimate — the record needs estimate: true`);
       for (const [name, vals] of Object.entries(fatal.when ?? {})) for (const v of vals) if (mc && mc.params?.[name]?.[v] === undefined) err(`${id}: fatal.when ${name}=${v} is not a parameter of the condition`);
+    }
+    if (resus) {
+      // «нужна реанимационная» — только по источнику о специальном методе и при параметрах болезни (срез, С4)
+      if (!keys.has(keyOf(resus.source))) err(`${id}: resus needs a source from docs/09-content.md`);
+      if (!c.sources.includes(resus.source)) err(`${id}: resus.source must be among sources`);
+      if (!Object.keys(resus.when).length) err(`${id}: resus.when must name the parameters`);
+      for (const [name, vals] of Object.entries(resus.when)) for (const v of vals) if (mc && mc.params?.[name]?.[v] === undefined) err(`${id}: resus.when ${name}=${v} is not a parameter of the condition`);
     }
     if (window) {
       if (!(Number.isInteger(window.minutes) && window.minutes > 0)) err(`${id}: window.minutes must be a positive integer`);

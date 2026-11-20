@@ -4,7 +4,7 @@
 import { DB } from '../content/generated/db';
 import type { Db } from '../content/types';
 import { KIT, RESTOCK } from '../engine/rules';
-import { canDecide, consequenceOf, CREW_PRICE, type Decision, type Entry, type Letter, STATION, type Station, type StationRefusal } from '../engine/station';
+import { canDecide, consequenceOf, type Decision, type Entry, type Letter, priceOf, STATION, type Station, type StationRefusal } from '../engine/station';
 import { crewNo } from './callView';
 import { weekShifts } from './week';
 
@@ -49,6 +49,8 @@ export interface StationView {
   /** бригады с неполной укладкой в табеле следующей смены */
   short: RosterRow[];
   crew: Choice[];
+  /** реанимобиль на подстанцию: обучить первую по номеру общепрофильную бригаду подстанции (срез, С4) */
+  resus: (Choice & { crewNo: number })[];
   kits: Choice;
   /** журнал фонда, новые строки сверху */
   journal: JournalRow[];
@@ -61,14 +63,20 @@ export function stationView(st: Station, db: Db = DB): StationView {
   const nextShift = week.find(s => s.week!.n === last + 1) ?? null;
   const city = db.cities[(nextShift ?? week[0]).city];
   const baseName = (id: string) => city.bases.find(b => b.id === id)?.short ?? id;
+  // обученная станцией — реанимационная (срез, С4)
+  const kindName = (id: string, kind: string) => db.crews[st.trained.includes(id) ? 'crew.resus' : kind].name;
+  // бригады станции за неделю: номер, вид, подстанция — из записей смен и свои
+  const all = new Map<string, { kind: string; base: string }>();
+  for (const sh of week) for (const c of sh.crews) all.set(c.id, { kind: c.kind, base: c.base });
+  for (const c of st.extra) all.set(c.id, { kind: c.kind, base: c.base });
   const roster: RosterRow[] = nextShift
     ? [
-        ...nextShift.crews.map(c => ({ no: crewNo(c.id), kind: db.crews[c.kind].name, base: baseName(c.base), own: false, kit: st.kits[c.id] ?? KIT })),
-        ...st.extra.map(c => ({ no: crewNo(c.id), kind: db.crews[c.kind].name, base: baseName(c.base), own: true, kit: st.kits[c.id] ?? KIT })),
+        ...nextShift.crews.map(c => ({ no: crewNo(c.id), kind: kindName(c.id, c.kind), base: baseName(c.base), own: false, kit: st.kits[c.id] ?? KIT })),
+        ...st.extra.map(c => ({ no: crewNo(c.id), kind: kindName(c.id, c.kind), base: baseName(c.base), own: true, kit: st.kits[c.id] ?? KIT })),
       ]
     : [];
   const choice = (d: Decision): Choice => ({
-    d, base: d.d === 'crew' ? baseName(d.base) : null, price: d.d === 'crew' ? CREW_PRICE : STATION.kits, no: nextShift ? canDecide(st, d) : 'noShift',
+    d, base: d.d === 'crew' ? baseName(d.base) : null, price: priceOf(d), no: nextShift ? canDecide(st, d) : 'noShift',
   });
   const bases = city.bases.map(b => b.id);
   return {
@@ -79,6 +87,10 @@ export function stationView(st: Station, db: Db = DB): StationView {
     next: nextShift ? { id: nextShift.id, n: nextShift.week!.n, day: nextShift.week!.day, roster } : null,
     short: roster.filter(r => r.kit < KIT),
     crew: bases.map(base => choice({ d: 'crew', base })),
+    resus: bases.flatMap(base => {
+      const id = [...all].filter(([i, c]) => c.base === base && c.kind === 'crew.general' && !st.trained.includes(i)).sort((a, b) => crewNo(a[0]) - crewNo(b[0]))[0]?.[0];
+      return id ? [{ ...choice({ d: 'resus', crew: id }), base: baseName(base), crewNo: crewNo(id) }] : [];
+    }),
     kits: choice({ d: 'kits' }),
     journal: st.journal.map(e => ({ ...e, n: nOf(e.after), no: e.crew ? crewNo(e.crew) : null, baseName: e.base ? baseName(e.base) : null })).reverse(),
   };

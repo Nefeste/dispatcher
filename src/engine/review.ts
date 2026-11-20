@@ -36,6 +36,8 @@ export interface Outcome {
   hospital: { chosen: string; ok: boolean; right: string | null; transfer: number } | null;
   /** больной умер до приезда бригады (срез, С3; только по записи `fatal` с источником) */
   died: boolean;
+  /** бригада на месте просила реанимационную (срез, С4): приехала ли и через сколько от звонка, мс */
+  second: { came: number | null } | null;
   /** исход тремя ступенями (§7 геймдизайна): вовремя, с опозданием, не дождался помощи */
   tier: Tier;
 }
@@ -55,6 +57,8 @@ export type Mistake =
   | { kind: 'hospital'; chosen: string; right: string }
   /** реанимационная бригада на неотложный — занята там, где справилась бы общепрофильная (388н, п. 12) */
   | { kind: 'crew'; crew: string }
+  /** бригада на месте просила реанимационную, свободная была, а её не послали (388н, прил. 2, п. 17; срез, С4) */
+  | { kind: 'noSecond'; crew: string }
   /** экстренная без услышанной угрозы — бригада ушла раньше, чем нужно было */
   | { kind: 'overTriage' };
 
@@ -78,7 +82,7 @@ export interface Review {
 }
 
 /** Порядок важности ошибок при равной цене: сперва то, что ближе к жизни. */
-const WEIGHT: Record<Mistake['kind'], number> = { noDispatch: 7, underTriage: 6, missedQuestion: 5, order: 4, hospital: 3, crew: 2, overTriage: 1 };
+const WEIGHT: Record<Mistake['kind'], number> = { noDispatch: 8, underTriage: 7, missedQuestion: 6, noSecond: 5, order: 4, hospital: 3, crew: 2, overTriage: 1 };
 
 /** Что было услышано к моменту `t`: первые слова и ответы на вопросы, заданные раньше. */
 export function heardAt(call: CallRec, t: number): Map<string, Heard> {
@@ -125,8 +129,11 @@ export function outcomeOf(ctx: ShiftCtx, s: Shift, call: CallRec): Outcome {
     const limit = w.minutes * 60_000;
     window = { minutes: w.minutes, from: w.from, met: span !== null && span <= limit, over: span === null ? limit : Math.max(0, span - limit) };
   }
-  const tier: Tier = call.died ? 'died' : late > 0 || (window && !window.met) || (hospital && !hospital.ok) ? 'late' : 'ok';
-  return { form, wait, norm, late, window, hospital, died: call.died, tier };
+  // нужная бригада — реанимационная, если её просили: не приехала — помощь «меньшая, чем нужно» (§7)
+  const second = call.second ? { came: call.second.came === null ? null : call.second.came - call.ringAt } : null;
+  const short = second !== null && second.came === null;
+  const tier: Tier = call.died ? 'died' : late > 0 || short || (window && !window.met) || (hospital && !hospital.ok) ? 'late' : 'ok';
+  return { form, wait, norm, late, window, hospital, died: call.died, second, tier };
 }
 
 /** Вопрос, который открыл бы угрозу, если бы его задали до решения, и звонящий знал ответ. */
@@ -176,8 +183,15 @@ export function reviewCall(ctx: ShiftCtx, s: Shift, call: CallRec): CallReview {
   if (outcome.hospital && !outcome.hospital.ok && outcome.hospital.right) {
     mistakes.push({ m: { kind: 'hospital', chosen: outcome.hospital.chosen, right: outcome.hospital.right }, cost: Math.ceil(outcome.hospital.transfer / 60_000) });
   }
-  const crew = call.crew ? s.crews.find(c => c.id === call.crew) : undefined;
+  // первая бригада вызова: реанимационная, которую попросили на месте, — не ошибка
+  const firstId = call.second ? call.second.by : call.crew;
+  const crew = firstId ? s.crews.find(c => c.id === firstId) : undefined;
   if (crew && crew.kind === 'crew.resus' && call.form === 'urgent') mistakes.push({ m: { kind: 'crew', crew: crew.id }, cost: 0 });
+  // просили реанимационную, свободная была — не послали: цена — сколько бригада везла сама без неё, до больницы
+  if (call.second && call.second.answer !== 'sent' && call.second.answer !== null && call.second.free) {
+    const cost = call.hospitalAt !== null ? Math.ceil((call.hospitalAt - call.second.at) / 60_000) : 0;
+    mistakes.push({ m: { kind: 'noSecond', crew: call.second.by }, cost });
+  }
   return {
     id: call.id,
     decided: first?.form ?? null,

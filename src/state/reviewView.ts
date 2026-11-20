@@ -40,6 +40,8 @@ export interface MistakeView {
   heard?: string;
   /** экстренная без угрозы: первые слова звонящего и вопросы об угрозе, на которые он к решению ответил «нет» */
   said?: string;
+  /** номер бригады — у «реанимационную не послали» */
+  crewNo?: number;
   cleared?: string[];
 }
 
@@ -118,6 +120,7 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
     const x = call(c.id);
     const v: MistakeView = { m, cost };
     if (m.kind === 'order') v.bypassed = m.bypassed.map(callNo);
+    if (m.kind === 'noSecond') v.crewNo = crewNo(m.crew);
     if (m.kind === 'hospital') v.hospital = { chosen: hospitalName(m.chosen), right: hospitalName(m.right) };
     if (m.kind === 'underTriage' && m.threats.length) v.heard = saidAbout(x, m.threats[0]);
     if (m.kind === 'overTriage') {

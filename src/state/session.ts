@@ -25,8 +25,9 @@ export const FIRST_SHIFT = 'shift.week-1';
  *  2 — 0.13.0: укладки и бригады станции меняют жизнь смены, у первой смены другие номера бригад; команды смены 0.12.0
  *  переигрались бы в другую смену — такая смена не продолжается (шага миграции нет: переиграть её по старым правилам
  *  нечем).
- *  3 — 0.14.0: смерть до приезда бригады (больного не везут) и повторный звонок после отказа меняют жизнь смены. */
-const SAVE_V = 3;
+ *  3 — 0.14.0: смерть до приезда бригады (больного не везут) и повторный звонок после отказа меняют жизнь смены.
+ *  4 — 0.15.0: просьба бригады о реанимационной и обученные станцией бригады меняют жизнь смены. */
+const SAVE_V = 4;
 
 export interface Session {
   ctx: ShiftCtx;
@@ -157,11 +158,12 @@ interface Save {
 function lineupFrom(x: unknown): Lineup {
   const l = x as Partial<Lineup> | undefined;
   if (!l || !Array.isArray(l.extra) || typeof l.kits !== 'object' || !l.kits) return NO_LINEUP;
+  const trained = Array.isArray(l.trained) ? l.trained.filter((id): id is string => typeof id === 'string') : [];
   const bases = new Set(Object.values(DB.cities).flatMap(c => c.bases.map(b => b.id)));
   const extra = l.extra.filter(c => c && typeof c.id === 'string' && Boolean(DB.crews[c.kind]) && bases.has(c.base));
   const kits: Record<string, number> = {};
   for (const [id, n] of Object.entries(l.kits)) if (Number.isInteger(n)) kits[id] = n as number;
-  return { extra, kits };
+  return { extra, kits, trained };
 }
 
 function parseSave(raw: string): Save | null {
@@ -239,21 +241,21 @@ let cueFn: CueFn = () => {};
 export function setCue(f: CueFn): void {
   cueFn = f;
 }
-const RADIO: readonly Notice['kind'][] = ['scene', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
+const RADIO: readonly Notice['kind'][] = ['scene', 'ask', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
 
 /** Новые извещения: звук и автопауза на звонке, докладе и повторном звонке (ADR 0003; настройка «автопауза»). */
 function look(x: Session, fresh: readonly Notice[]): void {
   if (fresh.some(n => n.kind === 'ring' || n.kind === 'repeat')) cueFn('ring');
   else if (fresh.some(n => RADIO.includes(n.kind))) cueFn('radio');
   if (!x.autopause) return;
-  const stop = fresh.some(n => n.kind === 'ring' || n.kind === 'repeat' || (n.kind === 'report' && x.s.calls.find(c => c.id === n.call)?.state === 'report'));
+  const stop = fresh.some(n => n.kind === 'ring' || n.kind === 'repeat' || (n.kind === 'report' && x.s.calls.find(c => c.id === n.call)?.state === 'report') || (n.kind === 'ask' && x.s.calls.find(c => c.id === n.call)?.state === 'ask'));
   if (!stop) return;
   if (x.speed !== 0) x.resume = x.speed;
   x.speed = 0;
 }
 
 /** Ничего не ждёт диспетчера: ни разговора, ни звонка на линии, ни доклада. */
-const settled = (s: Shift) => !s.open && !s.rings.length && !s.calls.some(c => c.state === 'report');
+const settled = (s: Shift) => !s.open && !s.rings.length && !s.calls.some(c => c.state === 'report' || c.state === 'ask');
 
 function after(x: Session, rev: number): void {
   const fresh = x.s.notices.slice(x.looked);
@@ -275,7 +277,7 @@ export function tick(realMs: number): void {
   if (changed && Date.now() - lastSave > 5000) void save();
   // доклад ждёт ответа (автопауза выключена): его отсчёт в секундах — на экране, перерисовать раз в четверть секунды
   const now = Date.now();
-  const countdown = now - lastCountdown >= COUNTDOWN_MS && x.s.calls.some(c => c.state === 'report');
+  const countdown = now - lastCountdown >= COUNTDOWN_MS && x.s.calls.some(c => c.state === 'report' || c.state === 'ask');
   if (countdown) lastCountdown = now;
   after(x, changed || countdown ? -1 : rev);
 }
