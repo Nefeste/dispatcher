@@ -30,6 +30,10 @@ export function duskOf(secOfDay: number): number {
 /** Ширина дорог на экране, точки, при подробном масштабе; издалека — тоньше (MapView). */
 export const ROAD_PX = [5, 4, 3, 1.8] as const;
 export const CASING_PX = 1.5;
+/** Во сколько раз приблизить от «район на экране», чтобы дороги рисовались полной шириной `ROAD_PX`; ближе к району —
+ *  тоньше в той же доле, но не тоньше `FAR_WIDTH` полной. */
+export const DETAIL = 4;
+export const FAR_WIDTH = 0.35;
 
 /** Знаки на карте (src/ui/map/Marks.tsx). */
 export const MARK = {

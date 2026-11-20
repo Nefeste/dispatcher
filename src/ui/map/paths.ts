@@ -1,7 +1,9 @@
 // Слои карты как пути Skia — собираются один раз при загрузке, жесты двигают только матрицу (docs/02-architecture.md, §5).
 // Строятся через PathBuilder: методы изменения SkPath в Skia 2.6.2 устарели.
-import { FillType, type SkPath, type SkPathBuilder, Skia } from '@shopify/react-native-skia';
+import { drawAsImageFromPicture, FillType, PaintStyle, type SkImage, type SkPath, type SkPathBuilder, Skia, StrokeCap, StrokeJoin } from '@shopify/react-native-skia';
 import { type MapData, type Polylines, ROAD_CLASSES } from '../../map/format';
+import { CASING_PX, MAP, ROAD_PX } from './palette';
+import { imageSize, imageWidth } from './scale';
 
 export interface MapPaths {
   water: SkPath;
@@ -76,4 +78,62 @@ export function mapPaths(m: MapData): MapPaths {
     water: water.detach(), green: green.detach(), rail: rail.detach(), roads: roads.map(r => r.detach()),
     tiles: { roads: roadTiles.map(ordered), rail: ordered(railTiles) },
   };
+}
+
+/**
+ * Картинка района целиком (0.10.2, по второму замеру на телефоне владельца): земля, зелень, вода, железная дорога и
+ * дороги — один растр; его рисует карта, пока камера движется, вместо сотен путей, а встала — снова пути (MapView).
+ * `fit` — как у окна карты (`fitOf`); ширина дорог — `imageWidth`.
+ */
+export function mapImage(m: MapData, paths: MapPaths, fit: number): SkImage | null {
+  const { width, height, k } = imageSize(m);
+  const unit = (px: number) => imageWidth(fit, px);
+  const rec = Skia.PictureRecorder();
+  const c = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
+  c.scale(k, k);
+  const fill = (color: string) => {
+    const p = Skia.Paint();
+    p.setAntiAlias(true);
+    p.setColor(Skia.Color(color));
+    return p;
+  };
+  const stroke = (color: string, w: number) => {
+    const p = fill(color);
+    p.setStyle(PaintStyle.Stroke);
+    p.setStrokeWidth(w);
+    p.setStrokeCap(StrokeCap.Round);
+    p.setStrokeJoin(StrokeJoin.Round);
+    return p;
+  };
+  // порядок — как у путей в MapView.tsx
+  c.drawRect(Skia.XYWHRect(0, 0, m.width, m.height), fill(MAP.land));
+  c.drawPath(paths.green, fill(MAP.green));
+  c.drawPath(paths.water, fill(MAP.water));
+  c.drawPath(paths.rail, stroke(MAP.rail, unit(1.2)));
+  c.drawPath(paths.roads[3], stroke(MAP.road[3], unit(ROAD_PX[3])));
+  for (const cls of [2, 1, 0]) c.drawPath(paths.roads[cls], stroke(MAP.casing, unit(ROAD_PX[cls] + CASING_PX * 2)));
+  for (const cls of [2, 1, 0]) c.drawPath(paths.roads[cls], stroke(MAP.road[cls], unit(ROAD_PX[cls])));
+  const picture = rec.finishRecordingAsPicture();
+  rec.dispose();
+  return drawAsImageFromPicture(picture, { width, height });
+}
+
+/** Картинки района — на файл карты и `fit` окна: окно карты пульта и окно «Замера» — по своей. Старые не закрываются
+ *  явно (их может ещё держать открытое окно карты) — их память отдаёт сборщик. */
+const images = new WeakMap<MapData, Map<string, SkImage | null>>();
+const KEEP = 2;
+export function cachedMapImage(m: MapData, fit: number): SkImage | null {
+  const key = fit.toFixed(9);
+  let byFit = images.get(m);
+  if (!byFit) images.set(m, (byFit = new Map()));
+  if (byFit.has(key)) return byFit.get(key) ?? null;
+  let made: SkImage | null = null;
+  try {
+    made = mapImage(m, cachedMapPaths(m), fit);
+  } catch {
+    // нет поверхности для картинки — карта рисуется путями и в движении
+  }
+  byFit.set(key, made);
+  while (byFit.size > KEEP) byFit.delete(byFit.keys().next().value as string);
+  return made;
 }
