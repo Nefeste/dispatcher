@@ -4,13 +4,13 @@
 import React, { useEffect, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
-import { pointAt } from '../engine/road/pos';
 import { crewOptions, type Shift, type ShiftCtx } from '../engine/shift';
 import { T } from '../i18n';
 import { CrewLayer } from '../scenes/pult/CrewLayer';
 import { PultScene } from '../scenes/pult/PultScene';
 import { ProgramPanel } from '../scenes/panel';
 import { crewNo } from '../state/callView';
+import { crewAt, crewCard, crewPoint } from '../state/crewView';
 import { mark } from '../state/marks';
 import { pultView } from '../state/pultView';
 import { command, dismissIntro, nextSpeed, session, tick, togglePause, useSession } from '../state/session';
@@ -23,22 +23,17 @@ import { Txt } from '../ui/kit';
 
 /** Где бригады сейчас — точки карты по очереди x, y: едущая — на пути, стоящая — в узле. */
 export function positions(ctx: ShiftCtx, s: Shift): number[] {
-  const out: number[] = [];
-  for (const c of s.crews) {
-    if (c.route) {
-      const [x, y] = pointAt(ctx.map, c.route, s.t);
-      out.push(x, y);
-    } else {
-      out.push(ctx.map.nodes.x[c.at], ctx.map.nodes.y[c.at]);
-    }
-  }
-  return out;
+  return s.crews.flatMap((_, i) => crewPoint(ctx, s, i));
 }
+
+/** Палец попадает в знак бригады, если ближе этого к его середине, точек экрана. */
+const TAP_DP = 26;
 
 export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCall: () => void; onEnd: () => void }) {
   const x = useSession();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [pick, setPick] = useState<string | null>(null);
+  const [crewPick, setCrewPick] = useState<string | null>(null);
   const pos = useSharedValue<number[]>(x ? positions(x.ctx, x.s) : []);
   // «Замер»: первый кадр пульта — конец загрузки смены (после вставки «начало смены»)
   useEffect(() => {
@@ -127,6 +122,25 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
         actions={[{ label: T.crews.close, onPress: () => setPick(null), testID: 'crews-close' }]}
       />
     );
+  } else if (crewPick) {
+    const c = crewCard(ctx, s, crewPick);
+    if (c) {
+      const left = c.minutes !== null && c.state !== 'base' ? T.crewCard.left[c.state](c.minutes) : null;
+      panel = (
+        <ProgramPanel
+          testID="crew-card"
+          title={T.crewCard.head(c.no, c.kind)}
+          lead={[
+            T.crewCard.state[c.state],
+            ...(c.call ? [T.crewCard.call(c.call.no, c.call.form && c.call.form !== 'none' ? T.review.formWord[c.call.form] : null)] : []),
+            ...(c.hospital ? [T.crewCard.hospital(c.hospital)] : []),
+          ].join('\n')}
+          note={left ?? undefined}
+          rows={[]}
+          actions={[{ label: T.crewCard.close, onPress: () => setCrewPick(null), testID: 'crew-card-close' }]}
+        />
+      );
+    }
   }
   return (
     <View style={styles.root} onLayout={onLayout}>
@@ -146,6 +160,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           panel={panel}
           onPhone={() => { if (!command({ c: 'answer' })) onCall(); }}
           onWaiting={id => setPick(id)}
+          onMapTap={(mx, my, zoom) => setCrewPick(crewAt(ctx, s, mx, my, TAP_DP / zoom))}
           onRadio={() => {}}
           onClock={togglePause}
           onSpeed={nextSpeed}

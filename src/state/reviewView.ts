@@ -36,6 +36,9 @@ export interface MistakeView {
   question?: { text: string; answer: string };
   /** что сказал звонящий об угрозе — его слова */
   heard?: string;
+  /** экстренная без угрозы: первые слова звонящего и вопросы об угрозе, на которые он к решению ответил «нет» */
+  said?: string;
+  cleared?: string[];
 }
 
 export interface CallDetail {
@@ -46,6 +49,9 @@ export interface CallDetail {
   /** решение и форма по услышанному в ту минуту; поменяли — на что */
   decided: FormKind | 'none' | null;
   known: FormKind | null;
+  /** почему форма по услышанному такая: признаки угрозы, которые к решению прозвучали, и вопросы о них с ответом «нет» */
+  threats: string[];
+  cleared: string[];
   changed: FormKind | 'none' | null;
   crew: number | null;
   hospital: string | null;
@@ -87,6 +93,22 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
     };
   };
   const hospitalName = (id: string) => ctx.city.hospitals.find(h => h.id === id)?.name ?? id;
+  const findingName = (f: string) => {
+    const n = MED.findings[f]?.name.ru ?? f;
+    return n.charAt(0).toLowerCase() + n.slice(1);
+  };
+  // признаки угрозы к минуте первого решения: что прозвучало — названием признака; о чём сказали «нет» — вопросом и
+  // словами звонящего, как в разговоре (названия признаков — врачебные, игроку они ничего не скажут)
+  const threatsAt = (x: CallRec) => {
+    const t = x.decisions[0]?.t ?? x.ringAt;
+    return [...heardAt(x, t)].filter(([f, h]) => h === 'yes' && ctx.db.phone.findings[f]?.threat).map(([f]) => findingName(f));
+  };
+  const clearedAt = (x: CallRec): string[] => {
+    const t = x.decisions[0]?.t ?? x.ringAt;
+    return x.asked
+      .filter(a => a.at < t && a.learned.some(l => l.heard === 'no' && ctx.db.phone.findings[l.f]?.threat))
+      .map(a => `«${render(x.truth, ctx.db.phone.questions[a.q].text)}» — «${a.words}»`);
+  };
   const mistakeOf = (c: CallReview, i: number): MistakeView => {
     const { m, cost } = c.mistakes[i];
     const x = call(c.id);
@@ -94,6 +116,10 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
     if (m.kind === 'order') v.bypassed = m.bypassed.map(callNo);
     if (m.kind === 'hospital') v.hospital = { chosen: hospitalName(m.chosen), right: hospitalName(m.right) };
     if (m.kind === 'underTriage' && m.threats.length) v.heard = saidAbout(x, m.threats[0]);
+    if (m.kind === 'overTriage') {
+      v.said = x.first?.words ?? '';
+      v.cleared = clearedAt(x);
+    }
     if (m.kind === 'missedQuestion') {
       const t = x.decisions[0]?.t ?? x.ringAt;
       v.question = { text: render(x.truth, ctx.db.phone.questions[m.q].text), answer: ask(ctx.db, ctx.med, x.truth, m.q, heardAt(x, t), 0).words };
@@ -113,6 +139,7 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
     const name = MED.conditions[x.truth.condition].name.ru;
     return {
       row: rowOf(c), who: x.truth.relation.caller, self: ctx.db.phone.callers[x.truth.caller].self, lines, decided: c.decided, known: c.known, changed: c.changed,
+      threats: threatsAt(x), cleared: clearedAt(x),
       crew: x.crew ? crewNo(x.crew) : null, hospital: x.hospital ? hospitalName(x.hospital) : null,
       condition: name, sex: x.truth.patient.sex, age: x.truth.patient.age,
       wait: c.outcome.wait === null ? null : Math.ceil(c.outcome.wait / 60_000), normMin: Math.round(c.outcome.norm / 60_000), window: c.outcome.window,

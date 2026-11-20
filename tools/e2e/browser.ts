@@ -9,6 +9,11 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Page } from 'playwright';
+import { DB } from '../../src/content/generated/db';
+import { MED } from '../../src/content/generated/med';
+import { newShift, shiftCtx } from '../../src/engine/shift';
+import { loadMap } from '../../src/map/load';
+import { fitOf } from '../../src/ui/map/scale';
 
 const ROOT = join(import.meta.dir, '../..');
 const DIST = join(ROOT, process.env.E2E_DIST ?? 'dist-web');
@@ -78,6 +83,25 @@ try {
   await see(page, 'map-view');
   await see(page, 'map-osm', '© участники OpenStreetMap');
   const box = (await page.getByTestId('map-view').boundingBox())!;
+  // касание знака бригады на подстанции — карточка бригады (#26): карта ещё как при открытии, район в окне целиком
+  {
+    const ctx = shiftCtx(DB, MED, 'shift.proto', loadMap(DB.cities['city.proto'].map));
+    const m = ctx.map;
+    const fit = fitOf(m, box.width, box.height);
+    const clampPan = (v: number, size: number, view: number) => (size * fit <= view ? (view - size * fit) / 2 : Math.min(0, Math.max(view - size * fit, v)));
+    const tx = clampPan((box.width - m.width * fit) / 2, m.width, box.width);
+    const ty = clampPan((box.height - m.height * fit) / 2, m.height, box.height);
+    // знак ниже строки подсказки и дальше от краёв
+    const spots = newShift(ctx, 1).crews
+      .map(c => ({ x: box.x + tx + m.nodes.x[c.at] * fit, y: box.y + ty + m.nodes.y[c.at] * fit }))
+      .filter(p => p.x > box.x + 30 && p.x < box.x + box.width - 30 && p.y > box.y + 120 && p.y < box.y + box.height - 40);
+    if (!spots.length) throw new Error('на открытой карте нет знака бригады, куда коснуться');
+    await page.mouse.click(spots[0].x, spots[0].y);
+    await see(page, 'crew-card', 'Бригада');
+    await see(page, 'crew-card', 'На подстанции');
+    await snap(page, 'crew-card');
+    await page.getByTestId('crew-card-close').click();
+  }
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 - 60, box.y + box.height / 2 - 80, { steps: 8 });

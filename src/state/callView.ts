@@ -55,11 +55,12 @@ export interface CallView {
 
 export const callNo = (id: string) => Number(id.split('.')[1]);
 
-/** Картинка звонящего: дома — по его слову и полу; на улице картинок пока нет (тёмная сцена). */
+/** Картинка звонящего — по его слову и полу; с улицы — тот же человек на вечерней улице (`<картинка>-street`). */
 function pictureOf(call: CallRec): string | null {
-  if (call.truth.where !== 'home') return null;
   const p = call.truth.relation.picture;
-  return (typeof p === 'string' ? p : p?.[call.truth.callerSex]) ?? null;
+  const pic = (typeof p === 'string' ? p : p?.[call.truth.callerSex]) ?? null;
+  if (!pic) return null;
+  return call.truth.where === 'street' ? `${pic}-street` : pic;
 }
 export const crewNo = (id: string) => Number(id.split('.')[1]);
 

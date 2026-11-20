@@ -7,7 +7,7 @@ import { reviewView } from '../state/reviewView';
 import { useSession } from '../state/session';
 import { Button, Card, Txt } from '../ui/kit';
 import { C, S } from '../ui/theme';
-import { mistakeText } from './ReviewScreen';
+import { mistakeText, mistakeWhy } from './reviewWords';
 
 export function CallReviewScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const x = useSession();
@@ -30,6 +30,7 @@ export function CallReviewScreen({ id, onBack }: { id: string; onBack: () => voi
       </Card>
 
       {d.decided ? <Txt>{T.review.decision(T.review.formWord[d.decided], d.known ? T.review.formWord[d.known] : '—')}</Txt> : null}
+      {d.decided ? <Txt dim testID="call-review-known-why">{T.review.knownWhy(d.threats, d.cleared)}</Txt> : null}
       {d.changed ? <Txt>{T.review.changed(T.review.formWord[d.changed])}</Txt> : null}
       {d.crew !== null ? <Txt dim>{T.review.crew(d.crew)}</Txt> : null}
       {d.hospital ? <Txt dim>{T.review.hospital(d.hospital)}</Txt> : null}
@@ -40,6 +41,7 @@ export function CallReviewScreen({ id, onBack }: { id: string; onBack: () => voi
           d.mistakes.map((m, i) => (
             <View key={i}>
               <Txt style={styles.bad}>{mistakeText(m)}</Txt>
+              <Txt dim>{mistakeWhy(m)}</Txt>
               {m.cost ? <Txt dim>{T.review.cost(m.cost)}</Txt> : null}
             </View>
           ))

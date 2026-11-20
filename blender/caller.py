@@ -31,9 +31,11 @@ SRC = next((a for a in ARGS if not a.startswith('--')), None)
 if not SRC:
     sys.exit('укажите папку исходников Rocketbox (её заполняет bun tools/people/fetch.ts <папка>)')
 
-W, H = (1080, 960) if not PREVIEW else (360, 320)
+# предпросмотр — малый кадр; CALLER_PREVIEW_SCALE=2 — вдвое крупнее, чтобы разглядеть кисть
+_K = float(os.environ.get('CALLER_PREVIEW_SCALE', '1'))
+W, H = (1080, 960) if not PREVIEW else (int(360 * _K), int(320 * _K))
 # ось кисти к ладони и сгиб пальцев (градусы по осям кости) — подобраны по кадру
-PALM = os.environ.get('CALLER_PALM', 'TRACK_NEGATIVE_Z')
+PALM = os.environ.get('CALLER_PALM', 'TRACK_Z')
 CURL = tuple(float(x) for x in os.environ.get('CALLER_CURL', '0,0,-55').split(','))
 SAMPLES = 192 if not PREVIEW else 16
 SEED = 11
@@ -56,6 +58,10 @@ CALLERS = {
         'lens': 52,
     },
 }
+# те же люди на вечерней улице — звонки не из дома (родственник, сам больной, прохожий; игра владельца 20.11.2026:
+# вместо картинки была тёмная сцена со словом, её приняли за незагрузку)
+CALLERS['daughter-street'] = {**CALLERS['daughter'], 'room': 'street'}
+CALLERS['man-street'] = {**CALLERS['man'], 'room': 'street'}
 # --only имя,имя — нарисовать только этих; паспорт остальных остаётся как был
 ONLY = next((a.split('=', 1)[1].split(',') for a in ARGS if a.startswith('--only=')), None)
 
@@ -127,6 +133,56 @@ def kitchen():
     ceil.data.size = 1.2
     ceil.data.energy = 260
     ceil.data.color = (1.0, 0.86, 0.7)
+
+
+def street():
+    """Вечерняя улица за спиной звонящего (звонки не из дома, игра владельца 20.11.2026): остановка со светлым
+    рекламным щитом, фонарь, дом напротив с окнами, мокрый асфальт. Размыта."""
+    asphalt = mat('asphalt', lin('#2b2d31'), 0.32)
+    curb = mat('curb', lin('#7d7b76'), 0.7)
+    facade = mat('facade', lin('#3c3f47'), 0.85)
+    dark = mat('dark_window', lin('#23262d'), 0.2)
+    warm = mat('warm_window', (0, 0, 0, 1), emit=lin('#ffcf8a'), strength=3.0)
+    metal = mat('metal', lin('#3a3d42'), 0.4)
+    ad = mat('ad', (0, 0, 0, 1), emit=lin('#e9eef5'), strength=4.0)
+    lamp = mat('lamp', (0, 0, 0, 1), emit=lin('#ffe2b8'), strength=30.0)
+    block('ground', asphalt, (30, 30, 0.05), (0, 0, -0.025))
+    block('curb', curb, (30, 0.3, 0.14), (0, 1.1, 0.07))
+    block('sidewalk', mat('sidewalk', lin('#5d5c59'), 0.8), (30, 3, 0.12), (0, 2.75, 0.06))
+    # дом напротив: окна — сеткой, часть горит; какие — по номеру, без случайности
+    block('house', facade, (18, 0.3, 12), (0, 7.5, 6))
+    for i in range(14):
+        for j in range(6):
+            lit = (i * 7 + j * 3) % 5 < 2
+            block(f'win{i}_{j}', warm if lit else dark, (0.55, 0.05, 0.8), (-6.5 + i * 1.0, 7.33, 1.6 + j * 1.6))
+    # остановка справа: крыша, стойки, светлый рекламный щит
+    block('stop_roof', metal, (2.6, 1.3, 0.06), (1.6, 2.6, 2.45))
+    for k, x in enumerate((0.35, 2.85)):
+        block(f'stop_post{k}', metal, (0.06, 0.06, 2.4), (x, 3.2, 1.2))
+    block('stop_ad', ad, (1.1, 0.06, 1.7), (2.3, 3.2, 1.25))
+    block('stop_bench', metal, (1.4, 0.35, 0.05), (1.2, 3.0, 0.48))
+    # фонарь слева: столб, голова светится, свет вниз — тёплый
+    block('lamp_pole', metal, (0.1, 0.1, 5.2), (-2.4, 2.4, 2.6))
+    block('lamp_arm', metal, (0.9, 0.08, 0.08), (-2.0, 2.4, 5.15))
+    block('lamp_head', lamp, (0.45, 0.22, 0.08), (-1.6, 2.4, 5.08))
+    bpy.ops.object.light_add(type='SPOT', location=(-1.6, 2.4, 5.0))
+    spot = bpy.context.object
+    spot.data.energy = 1300
+    spot.data.spot_size = math.radians(110)
+    spot.data.color = (1.0, 0.86, 0.66)
+    spot.rotation_euler = (0, 0, 0)
+    # свет щита на спину и плечо — холодный
+    bpy.ops.object.light_add(type='AREA', location=(2.3, 3.1, 1.3))
+    glow = bpy.context.object
+    glow.data.size = 1.2
+    glow.data.energy = 90
+    glow.data.color = (0.85, 0.9, 1.0)
+    glow.rotation_euler = (math.radians(90), 0, math.radians(180))
+
+
+ROOMS = {'kitchen': kitchen, 'street': street}
+# небо за окнами и над улицей
+SKY = {'kitchen': (0.02, 0.02, 0.025, 1), 'street': (0.012, 0.02, 0.045, 1)}
 
 
 def person(spec):
@@ -213,8 +269,15 @@ def pose_call(arm):
     up = Vector((0, 0, 1))
     # запястье — под телефоном у уха: телефон в ладони прижат к уху (точки лица — по костям глаза и угла рта)
     top, bottom = phone_line(arm)
-    ear = target('ik_ear', (top + bottom) / 2 + right * 0.045 + up * -0.075 - fwd * 0.02)
-    elbow = target('ik_elbow', head + right * 0.2 + up * -0.65 + fwd * 0.18)
+    # запястье — за серединой телефона, ладонь к щеке, тыльная сторона наружу (до 0.11.0 ладонь смотрела наружу, а
+    # запястье — на 7,5 см ниже: кисть выглядела вывихнутой, пальцы — подушечками к камере; владелец, 20.11.2026)
+    hr, hu, hf = (float(x) for x in os.environ.get('CALLER_HAND', '0.04,-0.045,-0.02').split(','))
+    ear = target('ik_ear', (top + bottom) / 2 + right * hr + up * hu + fwd * hf)
+    # локоть — вбок и вниз, на уровне груди: плечо почти вдоль тела, предплечье поднимается к уху (у 0.9.0 подсказка
+    # стояла на 65 см ниже головы и вперёд — локоть уходил перед грудь, рука шла вертикально от пояса; игра владельца
+    # 20.11.2026: «искривлена рука, которая держит телефон»)
+    er, eu, ef = (float(x) for x in os.environ.get('CALLER_ELBOW', '0.38,-0.58,0.08').split(','))
+    elbow = target('ik_elbow', head + right * er + up * eu + fwd * ef)
     ik = pb['Bip01 R Hand'].constraints.new('IK')
     ik.target = ear
     ik.pole_target = elbow
@@ -300,7 +363,7 @@ def camera(arm, spec):
     return cam
 
 
-def render(path):
+def render(path, sky=SKY['kitchen']):
     scene = bpy.context.scene
     scene.render.engine = 'CYCLES'
     scene.cycles.device = 'CPU'
@@ -318,7 +381,7 @@ def render(path):
     scene.render.image_settings.quality = 86
     world = bpy.data.worlds.new('room')
     world.use_nodes = True
-    world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.02, 0.02, 0.025, 1)
+    world.node_tree.nodes['Background'].inputs['Color'].default_value = sky
     scene.world = world
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
@@ -338,19 +401,19 @@ def main():
         if os.environ.get('CALLER_YAW'):
             spec = {**spec, 'yaw': float(os.environ['CALLER_YAW'])}
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        kitchen()
+        ROOMS[spec['room']]()
         arm, _ = person(spec)
         ear = pose_call(arm)
         phone_in_hand(arm, ear)
         camera(arm, spec)
         if PREVIEW:
             out = os.path.join(os.environ.get('CALLER_PREVIEW', '/tmp'), f'caller-{cid}-preview.jpg')
-            render(out)
+            render(out, SKY[spec['room']])
             print('предпросмотр:', out)
             continue
         out = os.path.join(ROOT, 'assets', 'scenes', f'caller-{cid}.jpg')
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        render(out)
+        render(out, SKY[spec['room']])
         done[cid] = {'avatar': spec['avatar'], 'room': spec['room'], 'file': f'assets/scenes/caller-{cid}.jpg',
                      'sha256': sha(out), 'bytes': os.path.getsize(out)}
     if PREVIEW:
