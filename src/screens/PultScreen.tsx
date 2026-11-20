@@ -18,7 +18,7 @@ import { pultHint } from '../state/tutorial';
 import { HintBar } from '../scenes/hint';
 import { pultLayout } from '../scenes/pult/layout';
 import { FONTS } from '../ui/fonts';
-import { duskOf } from '../ui/map/palette';
+import { duskOf, nightOf } from '../ui/map/palette';
 import { Txt } from '../ui/kit';
 
 /** Где бригады сейчас — точки карты по очереди x, y: едущая — на пути, стоящая — в узле. */
@@ -179,6 +179,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           radio={view.radio && view.radio.what === 'died' && softOutcome() ? { ...view.radio, what: 'grave' } : view.radio}
           closing={view.closing}
           dusk={duskOf(view.clock)}
+          night={nightOf(view.clock)}
           overlay={zoom => <CrewLayer ctx={ctx} shift={s} pos={pos} zoom={zoom} />}
           panel={panel}
           onPhone={() => { if (!command({ c: 'answer' })) onCall(); }}
