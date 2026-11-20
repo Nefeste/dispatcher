@@ -13,7 +13,7 @@ import { crewNo } from '../state/callView';
 import { crewAt, crewCard, crewPoint } from '../state/crewView';
 import { mark } from '../state/marks';
 import { pultView } from '../state/pultView';
-import { command, dismissIntro, nextSpeed, session, tick, togglePause, useSession } from '../state/session';
+import { command, dismissIntro, nextSpeed, session, softOutcome, tick, togglePause, useSession } from '../state/session';
 import { pultHint } from '../state/tutorial';
 import { HintBar } from '../scenes/hint';
 import { pultLayout } from '../scenes/pult/layout';
@@ -76,7 +76,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
       <ProgramPanel
         testID="intro"
         title={T.intro.lines[0]}
-        lead={`${T.intro.lines[1]}\n\n${T.intro.lines[2]}`}
+        lead={[T.intro.lines[1], T.intro.lines[2], ...(x.note ? [T.intro.consequence(x.note.n, x.note.inquiries, x.note.refusals)] : [])].join('\n\n')}
         rows={[]}
         actions={[{ label: T.intro.go, onPress: dismissIntro, testID: 'intro-go' }]}
       />
@@ -156,7 +156,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           speed={x.speed}
           line={view.line}
           waiting={view.waiting.map(w => ({ id: w.id, kind: w.form, minutes: w.minutes, repeats: w.repeats }))}
-          radio={view.radio}
+          radio={view.radio && view.radio.what === 'died' && softOutcome() ? { ...view.radio, what: 'grave' } : view.radio}
           closing={view.closing}
           dusk={duskOf(view.clock)}
           overlay={zoom => <CrewLayer ctx={ctx} shift={s} pos={pos} zoom={zoom} />}

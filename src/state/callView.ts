@@ -66,7 +66,9 @@ export const crewNo = (id: string) => Number(id.split('.')[1]);
 
 /** Слова повторного звонка — вариант по зерну звонка и номеру повтора. */
 function againWords(ctx: ShiftCtx, call: CallRec): string {
-  const xs = ctx.db.phone.callers[call.truth.caller].again;
+  // звонят после отказа в выезде (срез, С3) — свои слова: «вы не поехали, ему хуже»
+  const refused = call.decisions[call.decisions.length - 1]?.form === 'none';
+  const xs = refused ? ctx.db.phone.callers[call.truth.caller].refused : ctx.db.phone.callers[call.truth.caller].again;
   return render(call.truth, xs[fnv1a(`${call.truth.seed}:again:${call.repeats}`) % xs.length]);
 }
 

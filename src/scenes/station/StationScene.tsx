@@ -63,6 +63,7 @@ export function StationScene({ width: W, height: H, view, onItem }: StationScene
         { text: on.letterHead, font: head },
         { text: on.letterScore(letter.n, letter.inNorm, letter.emergency), font: body },
         ...(letter.thanks ? [{ text: on.letterThanks, font: body }] : []),
+        ...(letter.inquiries.length ? [{ text: on.letterInquiry, font: body, color: RED }] : []),
         ...(complaints ? [{ text: on.letterComplaints(complaints), font: body, color: RED }] : []),
       ]
     : [{ text: on.letterHead, font: head }, { text: on.letterNone, font: body }];

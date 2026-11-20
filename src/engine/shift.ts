@@ -14,8 +14,8 @@ import { gapAfter } from './flow';
 import { edgeTimes, type Road, roadOf } from './road/graph';
 import { arrival, passed } from './road/pos';
 import { FAR, search } from './road/route';
-import { AGAIN, ANSWER, DECIDE, HANDOVER, REPEAT, REPORT_WAIT } from './rules';
-import { formByKnown, threatsHeard } from './form';
+import { AGAIN, ANSWER, CALLBACK, CALLBACK_SOON, DECIDE, HANDOVER, NORM_EMERGENCY, NORM_URGENT, REPEAT, REPORT_WAIT } from './rules';
+import { formByKnown, formByTruth, threatsHeard } from './form';
 import { ask as askCaller, type Answer, firstWords, type Heard, type Learned } from './talk';
 import type { MapData } from '../map/format';
 
@@ -57,6 +57,8 @@ export interface Ring {
   repeat: boolean;
   /** ждал на линии так долго, что перезвонил: «звонят второй раз» */
   again: boolean;
+  /** звонят снова после отказа в выезде (срез, С3) */
+  refused: boolean;
   againAt: number;
 }
 
@@ -123,6 +125,10 @@ export interface CallRec {
   recalled: string[];
   /** экстренные вызовы, которые ждали бригаду, когда этот неотложный её получил (388н, п. 12) */
   bypassed: string[];
+  /** бригада приехала, а больной умер до её приезда (срез, С3; по записи `fatal` с источником) */
+  died: boolean;
+  /** отказали в выезде, когда повод был: когда позвонят снова; null — не позвонят */
+  callbackAt: number | null;
 }
 
 export type NoticeKind = 'ring' | 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'repeat' | 'recall' | 'end';
@@ -234,9 +240,9 @@ function ring(ctx: ShiftCtx, s: Shift, scripted: ShiftSetup['script'][number] | 
   s.calls.push({
     id, truth, node, state: 'ring', ringAt: s.t, answeredAt: null, openedAt: null, first: null, asked: [], heard: {}, age: null, onset: null, form: null, decidedAt: null, decisions: [],
     crew: null, sentAt: null, arrivedAt: null, reportAt: null, suggested: null, transport, hospital: null, transportAt: null, hospitalAt: null, doneAt: null,
-    scene, repeatAt: null, repeats: 0, recalled: [], bypassed: [],
+    scene, repeatAt: null, repeats: 0, recalled: [], bypassed: [], died: false, callbackAt: null,
   });
-  s.rings.push({ id: `ring.${s.n}`, call: id, at: s.t, repeat: false, again: false, againAt: s.t + repeatIn(s, `line:${s.n}`) });
+  s.rings.push({ id: `ring.${s.n}`, call: id, at: s.t, repeat: false, again: false, refused: false, againAt: s.t + repeatIn(s, `line:${s.n}`) });
   s.notices.push({ t: s.t, kind: 'ring', call: id });
 }
 
@@ -294,6 +300,11 @@ function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
     setCrew(s, onScene(crew, s.t + call.scene));
     call.state = 'scene';
     call.arrivedAt = s.t;
+    // приехали слишком поздно: по записи с источником состояние убивает без помощи в срок (третья ступень исхода)
+    if (diedBefore(ctx, s, call)) {
+      call.died = true;
+      call.transport = false;
+    }
     s.notices.push({ t: s.t, kind: 'scene', call: call.id, crew: crew.id });
   } else if (crew.state === 'scene' && call && call.state === 'scene') {
     // отработала на месте — укладка на вызов меньше; доклад: везти — ждёт ответа диспетчера, не везти — свободна, а с
@@ -339,6 +350,18 @@ function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
   }
 }
 
+/** Умер ли больной до приезда бригады: запись `fatal`, параметры болезни, опоздание против нормы доезда формы по
+ *  правде — и бросок своей ветки. */
+function diedBefore(ctx: ShiftCtx, s: Shift, call: CallRec): boolean {
+  const f = ctx.db.phone.conditions[call.truth.condition].fatal;
+  if (!f) return false;
+  const params = call.truth.patient.truth.conditions[0]?.params ?? {};
+  if (!Object.entries(f.when ?? {}).every(([k, vs]) => vs.includes(params[k]))) return false;
+  const norm = formByTruth(ctx.db, call.truth) === 'emergency' ? NORM_EMERGENCY : NORM_URGENT;
+  if (s.t - call.ringAt - norm <= f.late * 60_000) return false;
+  return rngOf(s, `fatal:${call.id}`).chance(f.chance);
+}
+
 /** Когда следующее событие смены; FAR — нет. */
 function nextAt(ctx: ShiftCtx, s: Shift): number {
   const end = lengthOf(ctx);
@@ -348,6 +371,7 @@ function nextAt(ctx: ShiftCtx, s: Shift): number {
   else if (s.nextRing < end) t = Math.min(t, s.nextRing);
   for (const c of s.crews) t = Math.min(t, crewNext(c));
   for (const c of s.calls) if (c.state === 'wait' && c.repeatAt !== null) t = Math.min(t, c.repeatAt);
+  for (const c of s.calls) if (c.callbackAt !== null) t = Math.min(t, c.callbackAt);
   for (const r of s.rings) if (!r.again) t = Math.min(t, r.againAt);
   return t;
 }
@@ -370,7 +394,18 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
     if (c.state !== 'wait' || c.repeatAt !== t) continue;
     c.repeatAt = null;
     c.repeats += 1;
-    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
+    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: false, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
+    s.notices.push({ t, kind: 'repeat', call: c.id });
+  }
+  // звонят снова после отказа в выезде: тот же вызов, решение можно поменять
+  for (const c of s.calls) {
+    if (c.callbackAt !== t) continue;
+    c.callbackAt = null;
+    c.repeats += 1;
+    c.state = 'wait';
+    // решать заново: прежний отказ остаётся в решениях — его видит разбор
+    c.form = null;
+    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: true, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
     s.notices.push({ t, kind: 'repeat', call: c.id });
   }
   for (const r of s.rings) if (!r.again && r.againAt === t) r.again = true;
@@ -378,7 +413,7 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
 
 function checkOver(ctx: ShiftCtx, s: Shift): void {
   if (s.over || s.t < lengthOf(ctx) || s.open || s.rings.length || ctx.setup.script[s.script]) return;
-  if (s.calls.every(c => c.state === 'done')) {
+  if (s.calls.every(c => c.state === 'done' && c.callbackAt === null)) {
     s.over = true;
     s.notices.push({ t: s.t, kind: 'end' });
   }
@@ -446,6 +481,12 @@ export function crewOptions(ctx: ShiftCtx, s: Shift, callId: string): CrewOption
     .sort((a, b) => a.eta - b.eta || a.crew.localeCompare(b.crew));
 }
 
+/** Когда позвонят после отказа: через 1–3 часа, но не позже конца смены; смена кончается — через `CALLBACK_SOON`. */
+function callbackAt(ctx: ShiftCtx, s: Shift, call: CallRec): number {
+  const at = s.t + rngOf(s, `callback:${call.id}:${call.repeats}`).range(CALLBACK[0], CALLBACK[1]);
+  return Math.min(at, Math.max(s.t + CALLBACK_SOON, lengthOf(ctx)));
+}
+
 function close(s: Shift): void {
   s.open = null;
 }
@@ -508,6 +549,10 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
         open.state = 'done';
         open.doneAt = s.t;
         open.repeatAt = null;
+        // отказ, а повод был (по правде повод есть у каждого вызова: форма — экстренная или неотложная): через 1–3 часа
+        // позвонят снова, но в эту смену (§7 геймдизайна)
+        // отказали в третий раз — больше не звонят
+        open.callbackAt = open.decisions.filter(d => d.form === 'none').length < 3 ? callbackAt(ctx, s, open) : null;
         close(s);
         s.rings = s.rings.filter(r => r.call !== open.id);
         checkOver(ctx, s);

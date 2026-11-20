@@ -2,14 +2,14 @@
   "expo": {
     "name": "Dispatcher 03",
     "slug": "dispatcher",
-    "version": "0.13.0",
+    "version": "0.14.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#ECEDE6",
     "icon": "./assets/icon.png",
     "android": {
       "package": "games.gornitsa.dispatcher",
-      "versionCode": 16,
+      "versionCode": 17,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground.png",
         "backgroundImage": "./assets/adaptive-background.png",

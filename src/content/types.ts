@@ -186,6 +186,8 @@ export interface CallerKind {
   nothing: string[];
   /** первые слова повторного звонка: бригады всё нет */
   again: string[];
+  /** звонят снова после отказа в выезде, когда повод был (срез, С3) */
+  refused: string[];
   estimate: boolean;
   sources: string[];
   review: 'draft' | 'checked';
@@ -233,10 +235,26 @@ export interface PhoneCondition {
   /** минут от начала до звонка: [до, вес] по полосам (оценка) */
   onset: [number, number][];
   window?: Window;
+  /** смерть до приезда бригады (срез, часть С3): только если источник говорит, что без помощи в срок состояние
+   *  убивает; минуты и шанс — оценка (`estimate`) */
+  fatal?: Fatal;
   estimate: boolean;
   sources: string[];
   notes?: string;
   review: 'draft' | 'checked';
+}
+
+/** Когда опоздание убивает (docs/08-game-design.md, §7, третья ступень исхода): только опоздание бригады против нормы
+ *  доезда — поздний звонок сам по себе не убивает в игре. */
+export interface Fatal {
+  /** через сколько минут опоздания против нормы доезда смерть возможна (оценка) */
+  late: number;
+  /** шанс смерти, если бригада приехала позже (оценка): в записи — проценты, в базе — доли 1/10 000, как у Rng.chance */
+  chance: number;
+  /** только при этих параметрах болезни */
+  when?: Record<string, string[]>;
+  /** где источник говорит, что без помощи состояние убивает */
+  source: string;
 }
 
 export interface Phone {

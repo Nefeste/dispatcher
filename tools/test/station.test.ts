@@ -18,7 +18,7 @@ import { runWeek } from '../sim/week';
 
 const map = loadMap(DB.cities['city.proto'].map);
 const week = weekShifts();
-const rep = (over: Partial<ShiftReport> = {}): ShiftReport => ({ shift: week[0].id, emergency: 5, inNorm: 4, longWaits: 0, refusals: 0, costly: 0, kits: {}, ...over });
+const rep = (over: Partial<ShiftReport> = {}): ShiftReport => ({ shift: week[0].id, emergency: 5, inNorm: 4, longWaits: 0, refusals: 0, costly: 0, deaths: 0, inquiries: [], kits: {}, ...over });
 const ok = (x: Station | string): Station => {
   if (typeof x === 'string') throw new Error(x);
   return x;

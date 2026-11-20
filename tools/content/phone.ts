@@ -6,7 +6,7 @@ import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import type { ContentDb } from '../../src/content/med';
 import {
-  type CallerKind, type City, type FormKind, type Lines, type Phone, type PhoneCondition, type PhoneFinding, PROFILES, type Profile,
+  type CallerKind, type City, type Fatal, type FormKind, type Lines, type Phone, type PhoneCondition, type PhoneFinding, PROFILES, type Profile,
   QUESTION_GROUPS, type Question, type QuestionGroup, type Reason, type Relation, type Where, type Window,
 } from '../../src/content/types';
 import { findBrand } from './brands';
@@ -94,12 +94,16 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
     const mc = med.conditions[id];
     if (!mc) err(`phone ${id}: no such condition in content/med`);
     if (!select.has(id)) err(`phone ${id}: not in content/med/select.yaml`);
+    const fr = r.fatal as Raw | undefined;
+    const fatal: Fatal | undefined = fr
+      ? { late: Number(fr.late), chance: pct(id, fr.chance, 'fatal.chance'), source: String(fr.source ?? ''), ...(fr.when ? { when: fr.when as Record<string, string[]> } : {}) }
+      : undefined;
     const w = r.window as Raw | undefined;
     const window: Window | undefined = w ? { minutes: Number(w.minutes), from: w.from as Window['from'], source: String(w.source ?? ''), ...(w.when ? { when: w.when as Record<string, string[]> } : {}) } : undefined;
     const c: PhoneCondition = {
       id, weight: Number(r.weight), form: r.form as FormKind, hospital: r.hospital as Profile, transport: pct(id, r.transport, 'transport'),
       scene: (r.scene as [number, number]) ?? [0, 0], street: pct(id, r.street, 'street'), onset: (r.onset as [number, number][]) ?? [],
-      ...(window ? { window } : {}), estimate: r.estimate === true, sources: sources(id, r.sources), review: review(id, r.review),
+      ...(window ? { window } : {}), ...(fatal ? { fatal } : {}), estimate: r.estimate === true, sources: sources(id, r.sources), review: review(id, r.review),
       ...(r.notes ? { notes: String(r.notes) } : {}),
     };
     if (!(c.weight > 0) || !Number.isInteger(c.weight)) err(`${id}: weight must be a positive integer`);
@@ -114,6 +118,15 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
     }
     if (!c.onset.length) err(`${id}: no onset bands`);
     if (!c.estimate) err(`${id}: shares and minutes are an estimate — set estimate: true`);
+    if (fatal) {
+      // смерть в исходе — только по источнику (спецификация среза, критерий 4); минуты и шанс — оценка
+      if (!(Number.isInteger(fatal.late) && fatal.late >= 0)) err(`${id}: fatal.late must be whole minutes of lateness`);
+      if (!(fatal.chance > 0)) err(`${id}: fatal.chance must be above 0`);
+      if (!keys.has(keyOf(fatal.source))) err(`${id}: fatal needs a source from docs/09-content.md`);
+      if (!c.sources.includes(fatal.source)) err(`${id}: fatal.source must be among sources`);
+      if (r.estimate !== true) err(`${id}: fatal minutes and chance are an estimate — the record needs estimate: true`);
+      for (const [name, vals] of Object.entries(fatal.when ?? {})) for (const v of vals) if (mc && mc.params?.[name]?.[v] === undefined) err(`${id}: fatal.when ${name}=${v} is not a parameter of the condition`);
+    }
     if (window) {
       if (!(Number.isInteger(window.minutes) && window.minutes > 0)) err(`${id}: window.minutes must be a positive integer`);
       if (!['onset', 'call', 'crew'].includes(window.from)) err(`${id}: window.from must be onset, call or crew`);
@@ -171,10 +184,12 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
     const k: CallerKind = {
       id, name: String(r.name ?? ''), self: r.self === true, at: (r.at as Where[]) ?? [], weight: Number(r.weight), relations: (r.relations as Relation[]) ?? [],
       cannot: (r.cannot as string[]) ?? [], unsure: (r.unsure as string[]) ?? [], nothing: (r.nothing as string[]) ?? [], again: (r.again as string[]) ?? [],
+      refused: (r.refused as string[]) ?? [],
       estimate: r.estimate === true, sources: sources(id, r.sources), review: review(id, r.review),
     };
-    for (const s of [...k.unsure, ...k.nothing, ...k.again]) texts.push([`${id}: words`, s]);
+    for (const s of [...k.unsure, ...k.nothing, ...k.again, ...k.refused]) texts.push([`${id}: words`, s]);
     if (!k.again.length) err(`${id}: needs again words for a repeat call`);
+    if (!k.refused.length) err(`${id}: needs refused words for a call after a refusal`);
     if (!(CALLERS as readonly string[]).includes(basename(id.replace('caller.', '')))) err(`${id}: unknown caller kind`);
     if (!(k.weight > 0)) err(`${id}: weight must be positive`);
     if (!k.at.length || k.at.some(a => a !== 'home' && a !== 'street')) err(`${id}: at must list home and/or street`);

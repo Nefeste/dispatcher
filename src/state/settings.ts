@@ -11,16 +11,19 @@ export interface Settings {
   haptics: boolean;
   /** «меньше движения»; не задано — как в системе телефона */
   lessMotion?: boolean;
+  /** «Мягкий исход» (срез, С3; решение владельца #25): третья ступень исхода — «помощь опоздала, состояние тяжёлое»
+   *  вместо слов о смерти; выключен по умолчанию, последствия на станции от него не меняются */
+  softOutcome: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { autopause: true, sound: true, haptics: true };
+export const DEFAULT_SETTINGS: Settings = { autopause: true, sound: true, haptics: true, softOutcome: false };
 
 /** Сохранённая строка → настройки; мусор и пусто — по умолчанию. */
 export function parseSettings(raw: string | null): Settings {
   try {
     const v = raw ? (JSON.parse(raw) as unknown) : {};
     const s = v && typeof v === 'object' ? (v as Partial<Settings>) : {};
-    const out: Settings = { autopause: s.autopause !== false, sound: s.sound !== false, haptics: s.haptics !== false };
+    const out: Settings = { autopause: s.autopause !== false, sound: s.sound !== false, haptics: s.haptics !== false, softOutcome: s.softOutcome === true };
     if (typeof s.lessMotion === 'boolean') out.lessMotion = s.lessMotion;
     return out;
   } catch {

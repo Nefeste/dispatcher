@@ -8,12 +8,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
 import type { ReviewRow } from '../state/reviewView';
-import { mistakeText, mistakeWhy } from './reviewWords';
+import { mistakeText, mistakeWhy, tierWord } from './reviewWords';
 import { reviewView } from '../state/reviewView';
 import { shiftSnapshot } from '../scenes/snapshot';
 import { type Best, recordBestOnce } from '../state/progress';
 import { recordShiftOnce } from '../state/station';
-import { useSession } from '../state/session';
+import { softOutcome, useSession } from '../state/session';
 import { saveImage } from '../ui/saveImage';
 import { Button, Card, Txt } from '../ui/kit';
 import { C, R, S } from '../ui/theme';
@@ -34,6 +34,7 @@ function Row({ r, onPress }: { r: ReviewRow; onPress: () => void }) {
         <Txt style={r.late !== null && r.late > 0 ? styles.lateBad : styles.late}>{r.transfer ? `${late} · ${T.review.transfer}` : late}</Txt>
       </View>
       <Txt dim style={styles.first}>{r.first}</Txt>
+      <Txt style={r.tier === 'died' ? styles.mark : styles.markDim} testID={`review-tier-${r.no}`}>{tierWord(r.tier, softOutcome())}</Txt>
       {r.mistakes ? <Txt style={styles.mark}>{T.review.hasMistake}</Txt> : r.unlucky ? <Txt dim style={styles.markDim}>{T.review.unluckyMark}</Txt> : null}
     </Pressable>
   );
@@ -89,6 +90,7 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
         <Txt style={styles.line} testID="end-emergency">{lines[0]}</Txt>
         <Txt style={styles.line}>{lines[1]}</Txt>
         <Txt style={styles.line}>{lines[2]}</Txt>
+        {view.deaths ? <Txt style={styles.dead} testID="end-deaths">{T.review.deaths(view.deaths, softOutcome())}</Txt> : null}
         <Txt dim>{T.end.played(Math.max(1, Math.round(x.played / 60_000)))}</Txt>
         {best ? (
           <Txt dim testID="end-best">{!best.before ? '' : best.isBest ? T.end.newBest : T.end.best(best.before.inNorm, best.before.emergency)}</Txt>
@@ -136,6 +138,7 @@ const styles = StyleSheet.create({
   forms: { fontSize: S.small, fontWeight: '600' },
   late: { fontSize: S.small },
   lateBad: { fontSize: S.small, color: C.kumach, fontWeight: '600' },
+  dead: { fontSize: S.body, lineHeight: 24, color: C.kumach, fontWeight: '600' },
   first: { fontSize: S.small },
   mark: { fontSize: 12, color: C.kumach },
   markDim: { fontSize: 12 },
