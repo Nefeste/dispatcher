@@ -13,6 +13,7 @@ export function mistakeText(v: MistakeView): string {
     case 'order': return T.review.mistake.order(v.bypassed ?? []);
     case 'hospital': return T.review.mistake.hospital(v.hospital!.chosen, v.hospital!.right);
     case 'crew': return T.review.mistake.crew();
+    case 'noSecond': return T.review.mistake.noSecond(v.crewNo ?? 0);
     case 'overTriage': return T.review.mistake.overTriage(v.said ?? '');
   }
 }

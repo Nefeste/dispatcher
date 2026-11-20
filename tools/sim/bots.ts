@@ -58,6 +58,12 @@ export function botMove(ctx: ShiftCtx, s: Shift, bot: Bot): Command | null {
     return ok && opt ? { c: 'send', call: call.id, crew: opt.crew } : { c: 'hold', call: call.id };
   }
   if (s.rings.length) return { c: 'answer' };
+  // бригада на месте просит реанимационную (срез, С4): ближайшую свободную, нет — пусть везут сами
+  const ask = s.calls.find(c => c.state === 'ask');
+  if (ask) {
+    const resus = crewOptions(ctx, s, ask.id).find(o => !o.redirect && s.crews.find(c => c.id === o.crew)?.kind === 'crew.resus');
+    return resus ? { c: 'second', call: ask.id, crew: resus.crew } : { c: 'second', call: ask.id };
+  }
   const report = s.calls.find(c => c.state === 'report');
   if (report) {
     const hospital = bot.hospital === 'last' ? ctx.city.hospitals[ctx.city.hospitals.length - 1].id : report.suggested!;

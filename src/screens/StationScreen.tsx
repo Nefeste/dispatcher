@@ -31,7 +31,7 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
 
   const S = T.station;
   const ask = (c: Choice) => {
-    const title = c.base ? S.confirm.crew(c.base) : S.confirm.kits;
+    const title = c.d.d === 'resus' ? S.confirm.resus(Number(c.d.crew.split('.')[1])) : c.base ? S.confirm.crew(c.base) : S.confirm.kits;
     setDialog({
       title,
       text: S.confirm.text(c.price, view.left - 1),
@@ -41,8 +41,9 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
   const choiceRow = (c: Choice, text: string, sub: string, testID: string): PanelRow => ({
     key: testID,
     text,
-    sub,
-    mark: c.no ? `${S.price(c.price)} · ${S.no[c.no]}` : S.price(c.price),
+    // почему нельзя — первой строкой под решением; справа — только цена, чтобы строка не сжималась
+    sub: c.no ? `${S.no[c.no]}. ${sub}` : sub,
+    mark: S.price(c.price),
     label: `${text}. ${S.price(c.price)}${c.no ? `, ${S.no[c.no]}` : ''}`,
     disabled: Boolean(c.no),
     onPress: () => { if (!c.no) ask(c); },
@@ -73,7 +74,10 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
         testID="station-panel-roster"
         title={n ? S.roster.title(n.n, n.day) : S.items.roster}
         lead={n ? n.roster.map(r => `${S.roster.row(r.no, r.kind, r.base)}${r.own ? ` · ${S.roster.own}` : ''} — ${S.roster.kit(r.kit, view.num.kit)}`).join('\n') : S.roster.none}
-        rows={n ? view.crew.map(c => choiceRow(c, S.roster.crew(c.base ?? ''), S.roster.crewSub(view.num.carB, 2 * view.num.feldsher), `station-crew-${c.d.d === 'crew' ? c.d.base : ''}`)) : []}
+        rows={n ? [
+          ...view.crew.map(c => choiceRow(c, S.roster.crew(c.base ?? ''), S.roster.crewSub(view.num.carB, 2 * view.num.feldsher), `station-crew-${c.d.d === 'crew' ? c.d.base : ''}`)),
+          ...view.resus.map(c => choiceRow(c, S.roster.resus(c.crewNo, c.base ?? ''), S.roster.resusSub(view.num.carC, view.num.train), `station-resus-${c.crewNo}`)),
+        ] : []}
         actions={[{ label: S.close, onPress: () => setOpen(null), testID: 'station-close' }]}
       />
     );
@@ -81,7 +85,7 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
     const rows = view.journal.map(e => {
       const what =
         e.kind === 'shift' ? S.ledger.shift(e.n) : e.kind === 'thanks' ? S.ledger.thanks(e.n) : e.kind === 'complaint' ? S.ledger.complaint(e.n) : e.kind === 'inquiry' ? S.ledger.inquiry(e.n)
-          : e.kind === 'crew' ? S.ledger.crew(e.no ?? 0, e.baseName ?? '') : S.ledger.kits;
+          : e.kind === 'crew' ? S.ledger.crew(e.no ?? 0, e.baseName ?? '') : e.kind === 'resus' ? S.ledger.resus(e.no ?? 0) : S.ledger.kits;
       return `${what}: ${S.ledger.amount(e.amount)}`;
     });
     panel = (

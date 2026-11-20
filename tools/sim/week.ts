@@ -64,6 +64,9 @@ export interface WeekRow {
   /** смертей до приезда бригады и служебных проверок за неделю — среднее (срез, С3) */
   deaths: number;
   inquiries: number;
+  /** просьб бригад о реанимационной за неделю и сколько из них — с приехавшей реанимационной (срез, С4) */
+  asks: number;
+  asksSent: number;
 }
 
 const ctxs = new Map<string, ShiftCtx>();
@@ -74,9 +77,9 @@ const ctxOf = (id: string) => {
 };
 
 /** Одна неделя бота с правилом станции: зёрна смен — от номера недели. */
-export function runWeek(w: number, bot: string, policy: Policy): { st: Station; emergency: number; inNorm: number; decisions: number; deaths: number } {
+export function runWeek(w: number, bot: string, policy: Policy): { st: Station; emergency: number; inNorm: number; decisions: number; deaths: number; asks: number; asksSent: number } {
   let st = newStation();
-  let emergency = 0, inNorm = 0, decisions = 0, deaths = 0;
+  let emergency = 0, inNorm = 0, decisions = 0, deaths = 0, asks = 0, asksSent = 0;
   WEEK.forEach((sh, i) => {
     const ctx = ctxOf(sh.id);
     const { s } = play(ctx, w * 100 + i + 1, BOTS[bot], lineupOf(st));
@@ -84,6 +87,8 @@ export function runWeek(w: number, bot: string, policy: Policy): { st: Station; 
     emergency += rep.emergency;
     inNorm += rep.inNorm;
     deaths += rep.deaths;
+    asks += s.calls.filter(c => c.second).length;
+    asksSent += s.calls.filter(c => c.second?.came != null).length;
     st = afterShift(st, rep);
     for (const d of policyMoves(st, WEEK[i + 1]?.id ?? null, policy)) {
       const y = decide(st, d);
@@ -93,14 +98,14 @@ export function runWeek(w: number, bot: string, policy: Policy): { st: Station; 
       }
     }
   });
-  return { st, emergency, inNorm, decisions, deaths };
+  return { st, emergency, inNorm, decisions, deaths, asks, asksSent };
 }
 
 export function weekRuns(weeks: number, bots: readonly string[]): WeekRow[] {
   const rows: WeekRow[] = [];
   for (const bot of bots) {
     for (const policy of ['none', 'best'] as const) {
-      const r: WeekRow = { bot, policy, weeks, emergency: 0, inNorm: 0, fund: 0, extra: 0, decisions: 0, thanks: 0, complaints: 0, deaths: 0, inquiries: 0 };
+      const r: WeekRow = { bot, policy, weeks, emergency: 0, inNorm: 0, fund: 0, extra: 0, decisions: 0, thanks: 0, complaints: 0, deaths: 0, inquiries: 0, asks: 0, asksSent: 0 };
       for (let w = 1; w <= weeks; w++) {
         const x = runWeek(w, bot, policy);
         r.emergency += x.emergency;
@@ -111,9 +116,11 @@ export function weekRuns(weeks: number, bots: readonly string[]): WeekRow[] {
         r.thanks += x.st.journal.filter(e => e.kind === 'thanks').length;
         r.complaints += x.st.journal.filter(e => e.kind === 'complaint').length;
         r.deaths += x.deaths;
+        r.asks += x.asks;
+        r.asksSent += x.asksSent;
         r.inquiries += x.st.journal.filter(e => e.kind === 'inquiry').length;
       }
-      for (const k of ['fund', 'extra', 'decisions', 'thanks', 'complaints', 'deaths', 'inquiries'] as const) r[k] /= weeks;
+      for (const k of ['fund', 'extra', 'decisions', 'thanks', 'complaints', 'deaths', 'inquiries', 'asks', 'asksSent'] as const) r[k] /= weeks;
       rows.push(r);
     }
   }
@@ -124,8 +131,8 @@ const share = (r: { emergency: number; inNorm: number }) => (r.emergency ? (100 
 
 export function weekRunsReport(rows: readonly WeekRow[]): string {
   const name = (r: WeekRow) => `${BOTS[r.bot].name}, ${r.policy === 'none' ? 'без решений станции' : 'лучшие решения'}`;
-  const out = ['| Диспетчер и станция | Экстренных в норму за неделю | Смертей до приезда | Проверок | Решений | Бригад станции | Благодарностей | Жалоб | Фонд в конце |', '|---|---|---|---|---|---|---|---|---|'];
-  for (const r of rows) out.push(`| ${name(r)} | ${share(r).toFixed(1)} % (${r.inNorm} из ${r.emergency}) | ${r.deaths.toFixed(2)} | ${r.inquiries.toFixed(2)} | ${r.decisions.toFixed(1)} | ${r.extra.toFixed(1)} | ${r.thanks.toFixed(1)} | ${r.complaints.toFixed(1)} | ${r.fund.toFixed(0)} тыс. |`);
+  const out = ['| Диспетчер и станция | Экстренных в норму за неделю | Смертей до приезда | Проверок | Просьб о реанимационной (приехала) | Решений | Бригад станции | Благодарностей | Жалоб | Фонд в конце |', '|---|---|---|---|---|---|---|---|---|---|'];
+  for (const r of rows) out.push(`| ${name(r)} | ${share(r).toFixed(1)} % (${r.inNorm} из ${r.emergency}) | ${r.deaths.toFixed(2)} | ${r.inquiries.toFixed(2)} | ${r.asks.toFixed(2)} (${r.asksSent.toFixed(2)}) | ${r.decisions.toFixed(1)} | ${r.extra.toFixed(1)} | ${r.thanks.toFixed(1)} | ${r.complaints.toFixed(1)} | ${r.fund.toFixed(0)} тыс. |`);
   return out.join('\n');
 }
 

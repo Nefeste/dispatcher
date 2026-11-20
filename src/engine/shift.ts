@@ -14,7 +14,7 @@ import { gapAfter } from './flow';
 import { edgeTimes, type Road, roadOf } from './road/graph';
 import { arrival, passed } from './road/pos';
 import { FAR, search } from './road/route';
-import { AGAIN, ANSWER, CALLBACK, CALLBACK_SOON, DECIDE, HANDOVER, NORM_EMERGENCY, NORM_URGENT, REPEAT, REPORT_WAIT } from './rules';
+import { AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, DECIDE, HANDOVER, NORM_EMERGENCY, NORM_URGENT, REPEAT, REPORT_WAIT } from './rules';
 import { formByKnown, formByTruth, threatsHeard } from './form';
 import { ask as askCaller, type Answer, firstWords, type Heard, type Learned } from './talk';
 import type { MapData } from '../map/format';
@@ -62,7 +62,23 @@ export interface Ring {
   againAt: number;
 }
 
-export type CallState = 'ring' | 'talk' | 'wait' | 'sent' | 'scene' | 'report' | 'transport' | 'hospital' | 'done';
+export type CallState = 'ring' | 'talk' | 'wait' | 'sent' | 'scene' | 'ask' | 'report' | 'transport' | 'hospital' | 'done';
+
+/** Бригада на месте попросила реанимационную (срез, С4; 388н, прил. 2, п. 17) — и что было дальше. */
+export interface SecondCrew {
+  /** когда попросила и какая бригада */
+  at: number;
+  by: string;
+  /** до какого момента ждёт ответа диспетчера */
+  until: number;
+  /** послали реанимационную, «везите сами», не ответили — везут сами; null — ждёт ответа */
+  answer: 'sent' | 'own' | 'auto' | null;
+  /** была ли свободная реанимационная, когда решили (по известному: список бригад был перед глазами) */
+  free: boolean;
+  /** реанимационная: какая и когда приехала */
+  crew: string | null;
+  came: number | null;
+}
 
 export interface Asked {
   q: string;
@@ -129,9 +145,12 @@ export interface CallRec {
   died: boolean;
   /** отказали в выезде, когда повод был: когда позвонят снова; null — не позвонят */
   callbackAt: number | null;
+  /** когда бригада на месте попросит реанимационную; null — не попросит (срез, С4) */
+  askAt: number | null;
+  second: SecondCrew | null;
 }
 
-export type NoticeKind = 'ring' | 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'repeat' | 'recall' | 'end';
+export type NoticeKind = 'ring' | 'scene' | 'ask' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'repeat' | 'recall' | 'end';
 
 export interface Notice {
   t: number;
@@ -147,9 +166,11 @@ export interface Notice {
 export interface Lineup {
   extra: readonly { id: string; kind: string; base: string }[];
   kits: Readonly<Record<string, number>>;
+  /** бригады, которые станция обучила до реанимационных (срез, С4): выходят реанимационными */
+  trained: readonly string[];
 }
 
-export const NO_LINEUP: Lineup = { extra: [], kits: {} };
+export const NO_LINEUP: Lineup = { extra: [], kits: {}, trained: [] };
 
 export interface Shift {
   setup: string;
@@ -191,10 +212,12 @@ export type Command =
   | { c: 'form'; form: FormKind | 'none' }
   | { c: 'send'; call: string; crew: string }
   | { c: 'hold'; call: string }
-  | { c: 'hospital'; call: string; hospital: string };
+  | { c: 'hospital'; call: string; hospital: string }
+  /** ответ на просьбу бригады на месте: послать реанимационную `crew` или «везите сами» (`crew` нет) */
+  | { c: 'second'; call: string; crew?: string };
 
 /** Почему команду не приняли; слова — src/i18n (T.refusal). */
-export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport';
+export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus';
 
 const lengthOf = (ctx: ShiftCtx) => ctx.setup.length * 1000;
 const rngOf = (s: Shift, name: string) => Rng.seeded(s.seed).fork(name);
@@ -204,7 +227,7 @@ export function newShift(ctx: ShiftCtx, seed: number, lineup: Lineup = NO_LINEUP
   const crews = [...ctx.setup.crews, ...lineup.extra.filter(x => !ctx.setup.crews.some(c => c.id === x.id))];
   const s: Shift = {
     setup: ctx.setup.id, seed: seed >>> 0, lineup, t: 0, rev: 0, n: 0, script: 0, nextRing: FAR, flowN: 0,
-    rings: [], calls: [], crews: crews.map(c => crewAtBase(c.id, c.kind, node(c.base), lineup.kits[c.id])), open: null, notices: [], trail: [], over: false,
+    rings: [], calls: [], crews: crews.map(c => crewAtBase(c.id, lineup.trained.includes(c.id) ? 'crew.resus' : c.kind, node(c.base), lineup.kits[c.id])), open: null, notices: [], trail: [], over: false,
   };
   // поток — после последнего учебного звонка
   const last = ctx.setup.script.length ? ctx.setup.script[ctx.setup.script.length - 1].at * 1000 : 0;
@@ -240,7 +263,7 @@ function ring(ctx: ShiftCtx, s: Shift, scripted: ShiftSetup['script'][number] | 
   s.calls.push({
     id, truth, node, state: 'ring', ringAt: s.t, answeredAt: null, openedAt: null, first: null, asked: [], heard: {}, age: null, onset: null, form: null, decidedAt: null, decisions: [],
     crew: null, sentAt: null, arrivedAt: null, reportAt: null, suggested: null, transport, hospital: null, transportAt: null, hospitalAt: null, doneAt: null,
-    scene, repeatAt: null, repeats: 0, recalled: [], bypassed: [], died: false, callbackAt: null,
+    scene, repeatAt: null, repeats: 0, recalled: [], bypassed: [], died: false, callbackAt: null, askAt: null, second: null,
   });
   s.rings.push({ id: `ring.${s.n}`, call: id, at: s.t, repeat: false, again: false, refused: false, againAt: s.t + repeatIn(s, `line:${s.n}`) });
   s.notices.push({ t: s.t, kind: 'ring', call: id });
@@ -296,7 +319,15 @@ function setCrew(s: Shift, c: Crew): void {
 function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
   const call = crew.call ? callOf(s, crew.call) : undefined;
   const times = timesAt(ctx, s.t);
-  if (crew.state === 'drive' && call) {
+  if (crew.state === 'drive' && call && call.second?.crew === crew.id) {
+    // приехала реанимационная: первая бригада свободна (её укладка потрачена), дальше — реанимационная, с начала
+    const first = crewOf(s, call.crew!)!;
+    setCrew(s, home(ctx.road, times, used({ ...first, call: null }), s.t));
+    call.second.came = s.t;
+    call.crew = crew.id;
+    setCrew(s, onScene(crew, s.t + call.scene));
+    s.notices.push({ t: s.t, kind: 'scene', call: call.id, crew: crew.id });
+  } else if (crew.state === 'drive' && call) {
     setCrew(s, onScene(crew, s.t + call.scene));
     call.state = 'scene';
     call.arrivedAt = s.t;
@@ -305,6 +336,8 @@ function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
       call.died = true;
       call.transport = false;
     }
+    // нужны специальные методы — общепрофильная попросит реанимационную (срез, С4)
+    else if (crew.kind !== 'crew.resus' && needsResus(ctx, call)) call.askAt = s.t + ASK_AFTER;
     s.notices.push({ t: s.t, kind: 'scene', call: call.id, crew: crew.id });
   } else if (crew.state === 'scene' && call && call.state === 'scene') {
     // отработала на месте — укладка на вызов меньше; доклад: везти — ждёт ответа диспетчера, не везти — свободна, а с
@@ -362,6 +395,30 @@ function diedBefore(ctx: ShiftCtx, s: Shift, call: CallRec): boolean {
   return rngOf(s, `fatal:${call.id}`).chance(f.chance);
 }
 
+/** Нужна ли реанимационная по записи болезни (`resus`) и её параметрам. */
+function needsResus(ctx: ShiftCtx, call: CallRec): boolean {
+  const r = ctx.db.phone.conditions[call.truth.condition].resus;
+  if (!r) return false;
+  const params = call.truth.patient.truth.conditions[0]?.params ?? {};
+  return Object.entries(r.when).every(([k, vs]) => vs.includes(params[k]));
+}
+
+/** Есть ли сейчас реанимационная, которую можно послать на этот вызов. */
+function resusFree(ctx: ShiftCtx, s: Shift, call: CallRec): boolean {
+  return crewOptions(ctx, s, call.id).some(o => !o.redirect && crewOf(s, o.crew)?.kind === 'crew.resus');
+}
+
+/** «Везите сами»: первая бригада доделывает на месте, что осталось, и дальше — как обычно (доклад, больница). */
+function own(ctx: ShiftCtx, s: Shift, call: CallRec, answer: 'own' | 'auto'): void {
+  const sc = call.second!;
+  sc.answer = answer;
+  sc.free = resusFree(ctx, s, call);
+  call.state = 'scene';
+  const crew = crewOf(s, call.crew!)!;
+  const left = Math.max(0, call.scene - (sc.at - call.arrivedAt!));
+  setCrew(s, { ...crew, until: s.t + left });
+}
+
 /** Когда следующее событие смены; FAR — нет. */
 function nextAt(ctx: ShiftCtx, s: Shift): number {
   const end = lengthOf(ctx);
@@ -372,6 +429,8 @@ function nextAt(ctx: ShiftCtx, s: Shift): number {
   for (const c of s.crews) t = Math.min(t, crewNext(c));
   for (const c of s.calls) if (c.state === 'wait' && c.repeatAt !== null) t = Math.min(t, c.repeatAt);
   for (const c of s.calls) if (c.callbackAt !== null) t = Math.min(t, c.callbackAt);
+  for (const c of s.calls) if (c.askAt !== null) t = Math.min(t, c.askAt);
+  for (const c of s.calls) if (c.state === 'ask' && c.second) t = Math.min(t, c.second.until);
   for (const r of s.rings) if (!r.again) t = Math.min(t, r.againAt);
   return t;
 }
@@ -396,6 +455,23 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
     c.repeats += 1;
     s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: false, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
     s.notices.push({ t, kind: 'repeat', call: c.id });
+  }
+  // бригада на месте просит реанимационную: ждёт ответа, работая на месте (388н, прил. 2, п. 17)
+  for (const c of s.calls) {
+    if (c.askAt !== t) continue;
+    c.askAt = null;
+    if (c.state !== 'scene' || !c.crew) continue;
+    c.state = 'ask';
+    c.second = { at: t, by: c.crew, until: t + ASK_WAIT, answer: null, free: false, crew: null, came: null };
+    const crew = crewOf(s, c.crew)!;
+    setCrew(s, { ...crew, until: FAR });
+    s.notices.push({ t, kind: 'ask', call: c.id, crew: c.crew });
+  }
+  // не ответили — везут сами
+  for (const c of s.calls) {
+    if (c.state !== 'ask' || !c.second || c.second.until !== t) continue;
+    own(ctx, s, c, 'auto');
+    s.notices.push({ t, kind: 'auto', call: c.id, crew: c.crew! });
   }
   // звонят снова после отказа в выезде: тот же вызов, решение можно поменять
   for (const c of s.calls) {
@@ -598,6 +674,29 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
       call.state = 'wait';
       call.repeatAt = s.t + repeatIn(s, `wait:${call.id}:${call.repeats}`);
       close(s);
+      s.rev += 1;
+      return null;
+    }
+    case 'second': {
+      const call = callOf(s, cmd.call);
+      if (!call) return 'unknown';
+      if (call.state !== 'ask' || !call.second) return 'notAsked';
+      if (!cmd.crew) {
+        own(ctx, s, call, 'own');
+        s.rev += 1;
+        return null;
+      }
+      const crew = crewOf(s, cmd.crew);
+      if (!crew) return 'unknown';
+      if (crew.kind !== 'crew.resus') return 'notResus';
+      if (!free(crew)) return 'crewBusy';
+      const sent = send(ctx.road, timesAt(ctx, s.t), crew, call.id, call.node, s.t);
+      if (!sent) return 'noRoute';
+      setCrew(s, sent);
+      call.second.answer = 'sent';
+      call.second.free = true;
+      call.second.crew = crew.id;
+      call.state = 'scene';
       s.rev += 1;
       return null;
     }
