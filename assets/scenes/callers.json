@@ -23,15 +23,29 @@
       "avatar": "Adults/Female_Adult_02/Export/Female_Adult_02.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-daughter.jpg",
-      "sha256": "ed513cabdf591ba54edcacfaf8835757dfad2a77495915d4c212bfc68e5942c4",
-      "bytes": 74026
+      "sha256": "977ca3b263a496f9a7cad6f2bcff683970fc7d077efca4d04bb48a118588a286",
+      "bytes": 76850
     },
     "man": {
       "avatar": "Adults/Male_Adult_01/Export/Male_Adult_01.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-man.jpg",
-      "sha256": "6552ec6ab0f3e838b0242dfa27349c0f4c1c50fe714a84fb63ee9f400fdddb51",
-      "bytes": 65622
+      "sha256": "0ca8e86f83fc26ef662122055c6b56346ec25a275c90523e3ec07864267c1e98",
+      "bytes": 65062
+    },
+    "daughter-street": {
+      "avatar": "Adults/Female_Adult_02/Export/Female_Adult_02.fbx",
+      "room": "street",
+      "file": "assets/scenes/caller-daughter-street.jpg",
+      "sha256": "8cb31c6947e6b661610e799fde2ff1b63c7e2d572a2c6119dd3817a4b74d32ab",
+      "bytes": 78382
+    },
+    "man-street": {
+      "avatar": "Adults/Male_Adult_01/Export/Male_Adult_01.fbx",
+      "room": "street",
+      "file": "assets/scenes/caller-man-street.jpg",
+      "sha256": "71f7132a322f0377d631d25433c02b8715f592053ede5ddfdb29c9ca23d2ed40",
+      "bytes": 69649
     }
   }
 }
