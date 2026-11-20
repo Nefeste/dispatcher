@@ -39,6 +39,11 @@ export interface Session {
 }
 
 let ctxCache: ShiftCtx | null = null;
+/** Всё, что за смену не меняется: база, карта, дороги, город — одно на приложение (его берёт и «Замер»). */
+export function shiftContext(): ShiftCtx {
+  return ctxOf();
+}
+
 function ctxOf(): ShiftCtx {
   if (!ctxCache) ctxCache = shiftCtx(DB, MED, SHIFT_ID, loadMap(DB.cities[DB.shifts[SHIFT_ID].city].map));
   return ctxCache;

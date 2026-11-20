@@ -1,0 +1,239 @@
+# из anamnez: .github/workflows/android.yml @ d05c615 — без AAB, сценария в браузере и «виртуального врача»; своя
+# сборка содержания. Сборка APK — только по тегу vX.Y.Z (ADR студии 0019): ручного запуска нет, слияние в main
+# сборку не запускает. Тег ставит владелец; он должен совпасть с версией в app.json. Перед сборкой — проверки, как
+# на PR; ключ, подпись и содержимое APK — действия набора студии `gornitsa-kit` (ADR студии 0022).
+#
+# Без секретов ключа выпуска нет никогда: APK собирается только на проверку (манифест, разрешения, 16 КБ, размер)
+# и выбрасывается — подписанный отладочным ключом файл не должен попасть ни на чей телефон (ADR студии 0006).
+# Как завести ключ — docs/05-process.md, «Ключ подписи».
+#
+# Сценарий в браузере гоняется перед тегом на машине агента (docs/06-testing.md): Playwright здесь не ставится.
+name: Android
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Тег должен называть ту версию, что в app.json: иначе выпуск v0.10.1 с файлами 0.10.0. Отдельным заданием и
+  # первым — чтобы при ошибке не сгорели минуты проверок и сборки.
+  version:
+    name: Тег и версия
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: app.json
+          sparse-checkout-cone-mode: false
+      - name: Тег и версия совпадают
+        run: |
+          V=$(node -p "require('./app.json').expo.version")
+          if [ "$GITHUB_REF_NAME" != "v$V" ]; then echo "::error::Тег $GITHUB_REF_NAME, а в app.json версия $V. Тег — v$V."; exit 1; fi
+
+  checks:
+    name: Типы, линтер, тесты
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - run: npm ci
+      - name: Типы
+        run: npm run typecheck
+      - name: Линтер
+        run: npm run lint
+      - name: Тесты
+        run: bun test tools/test
+
+  # Есть ли постоянный ключ — решается один раз, до сборки: от этого зависит, выйдет ли выпуск.
+  key:
+    name: Ключ подписи
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.k.outputs.ready }}
+    steps:
+      - id: k
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          CERT: ${{ vars.ANDROID_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_B64$KEYSTORE_PASSWORD$KEY_ALIAS$KEY_PASSWORD" ]; then
+            echo "ready=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::Секретов ключа подписи нет: APK собирается только на проверку и выбрасывается, выпуска не будет. Как завести ключ — docs/05-process.md, «Ключ подписи»."
+            exit 0
+          fi
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Секреты ключа заданы не все: нужны ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS и ANDROID_KEY_PASSWORD."
+            exit 1
+          fi
+          if [ -z "$CERT" ]; then
+            echo "::error::Ключ есть, а переменной репозитория ANDROID_CERT_SHA256 нет — не с чем сверить подпись. Отпечаток: keytool -list -v -keystore dispatcher-release.jks -alias dispatcher | grep SHA256"
+            exit 1
+          fi
+          echo "ready=yes" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Сборка APK
+    needs: [key]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v5
+      - run: npm ci
+      # Бандл JS берёт базу из src/content/generated — её собирает скрипт содержания (не в git).
+      - name: Содержание
+        run: npm run content
+      - name: Нативный проект (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+      - name: Больше памяти Gradle
+        # в созданном файле нет перевода строки в конце — начинаем с него; действует последнее значение
+        run: printf '\norg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8\n' >> android/gradle.properties
+
+      # Ключ, подпись и содержимое — действия общего набора студии (ADR студии 0022). Секретов нет — подпись
+      # отладочная, выпуска нет.
+      - id: keystore
+        if: needs.key.outputs.ready == 'yes'
+        uses: Nefeste/gornitsa-kit/actions/android-keystore@v1
+        with:
+          keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          store-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          gradle-prefix: DISPATCHER
+
+      - name: Сборка
+        working-directory: android
+        env:
+          NODE_ENV: production
+          # пароли нужны Gradle, только если выше подложен файл ключа; в файлы они не пишутся
+          ORG_GRADLE_PROJECT_DISPATCHER_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_DISPATCHER_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_DISPATCHER_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        # Только 64-битный ARM: прототип — для телефона владельца, 32-битные библиотеки почти вдвое увеличили бы APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a
+
+      # Подпись проверяется на готовом файле, а не по настройкам. Отпечаток постоянного ключа закреплён переменной
+      # ANDROID_CERT_SHA256 — чужой ключ в секретах остановит сборку. Файл ключа удаляется.
+      - name: Подпись
+        id: cert
+        uses: Nefeste/gornitsa-kit/actions/android-signature@v1
+        with:
+          file: android/app/build/outputs/apk/release/app-release.apk
+          expected: ${{ vars.ANDROID_CERT_SHA256 }}
+          permanent: ${{ steps.keystore.outputs.permanent || 'no' }}
+          keystore-file: ${{ steps.keystore.outputs.file }}
+
+      # Что внутри: разрешения ровно по белому списку .github/apk-permissions.txt и без сети (её вырезает из выпуска
+      # plugins/with-release-no-internet.js), запретные разрешения студии, резервная копия Android выключена
+      # (app.json, allowBackup), 16 КБ, только 64-битный ARM, target API, размер. Нужное разрешение — в белый список и
+      # в docs/05-process.md, ненужное — в blockedPermissions в app.json.
+      - name: Содержимое
+        uses: Nefeste/gornitsa-kit/actions/android-contents@v1
+        with:
+          file: android/app/build/outputs/apk/release/app-release.apk
+          allow-file: .github/apk-permissions.txt
+          forbid: 'INTERNET|NETWORK_STATE|FOREGROUND_SERVICE|INSTALL_REFERRER|VIBRATE'
+          backup: 'off'
+          min-target-sdk: '36'
+          only-arm64: 'true'
+          max-size-mb: '80'
+
+      - name: Собрать
+        if: needs.key.outputs.ready == 'yes'
+        env:
+          LABEL: ${{ steps.cert.outputs.label }}
+          SHA: ${{ steps.cert.outputs.sha256 }}
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/dispatcher-${{ github.run_number }}.apk"
+          printf '%s\n%s\n' "$LABEL" "$SHA" > dist/signature.txt
+          ls -la dist
+
+      # Файлы — заданию «Выпуск» через кэш Actions, а не артефактом: место под артефакты общее на все закрытые
+      # репозитории аккаунта (так же у «Анамнеза»).
+      - uses: actions/cache/save@v4
+        if: needs.key.outputs.ready == 'yes'
+        with:
+          path: dist
+          key: dist-${{ github.run_id }}-${{ github.run_attempt }}
+
+  # Тег vX.Y.Z — выпуск «Latest» с разделом версии из README: APK скачивается на телефон со страницы выпуска.
+  release:
+    name: Выпуск
+    needs: [checks, key, build]
+    if: needs.key.outputs.ready == 'yes'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: repo
+          sparse-checkout: |
+            app.json
+            README.md
+          sparse-checkout-cone-mode: false
+      - uses: actions/cache/restore@v4
+        with:
+          path: dist
+          key: dist-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: dist-${{ github.run_id }}-
+          fail-on-cache-miss: true
+      - name: Версия и «Что нового»
+        id: ver
+        run: |
+          # тег сверен с app.json в задании «Тег и версия»
+          V=$(node -p "require('./repo/app.json').expo.version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          # «Что нового» — раздел «### X.Y.Z …» из «## Версии» README, до следующего заголовка
+          awk -v v="$V" 'index($0, "### " v " ") == 1 { on = 1; next } on && /^##/ { exit } on' repo/README.md > notes.md
+          {
+            cat notes.md
+            echo
+            echo "---"
+            echo "**dispatcher-${{ github.run_number }}.apk** — для телефона: скачайте и откройте."
+            echo "Подписан $(sed -n 1p dist/signature.txt), SHA-256 сертификата: \`$(sed -n 2p dist/signature.txt)\`."
+            echo "Собрано из коммита ${{ github.sha }}, сборка ${{ github.run_number }}."
+          } > release.md
+          cat release.md
+      - name: Выпуск vX.Y.Z
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Диспетчер 03 ${{ steps.ver.outputs.version }}
+          body_path: release.md
+          files: dist/*.apk
+          prerelease: false
+          make_latest: true

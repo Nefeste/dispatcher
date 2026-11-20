@@ -46,7 +46,8 @@ try {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push(String(e)));
   // часы смены — в 20 раз быстрее ×1: смена проходится за минуты (src/state/session.ts, setPace)
-  await page.goto(`http://localhost:${server.port}/?pace=20`);
+  // «Замер» — короткий (bench=quick): сцены по секунде, десять поисков
+  await page.goto(`http://localhost:${server.port}/?pace=20&bench=quick`);
 
   await see(page, 'title-name', 'Диспетчер 03');
   await see(page, 'title-not-training', 'Это игра. Если нужна помощь');
@@ -201,6 +202,27 @@ try {
   await snap(page, 'about');
 
   await page.getByTestId('about-back').click();
+  await see(page, 'title-name');
+
+  // «Замер» (§8): карта сама двигается и приближается, смена идёт на пульте, поиски пути; итог — текстом, с загрузкой
+  // смены, которую сценарий прошёл выше
+  await page.getByTestId('title-bench').click();
+  await see(page, 'bench-run', 'Начать замер');
+  await page.getByTestId('bench-run').click();
+  await see(page, 'bench-running', 'сдвиг карты');
+  await page.waitForTimeout(600);
+  await snap(page, 'bench-pan');
+  await page.getByTestId('bench-running').filter({ hasText: 'смена на пульте' }).waitFor({ state: 'visible', timeout: 20000 });
+  await page.waitForTimeout(700);
+  await snap(page, 'bench-pult');
+  await page.getByTestId('bench-result').waitFor({ state: 'visible', timeout: 60000 });
+  await see(page, 'bench-result', 'Замер «Диспетчера 03»');
+  await see(page, 'bench-result', 'Поиск пути по району');
+  await see(page, 'bench-result', 'Загрузка смены: от «Начать смену» до готовности');
+  console.log((await page.getByTestId('bench-result').innerText()).split('\n').map(l => `  ${l}`).join('\n'));
+  await snap(page, 'bench');
+  checks++;
+  await page.getByTestId('bench-back').click();
   await see(page, 'title-name');
 
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);

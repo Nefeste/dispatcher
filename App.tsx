@@ -13,10 +13,12 @@ import { LoadingScreen } from './src/screens/LoadingScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
 import { PultScreen } from './src/screens/PultScreen';
+import { BenchScreen } from './src/screens/BenchScreen';
 import { DeskScreen } from './src/screens/DeskScreen';
 import { type InsertKind, InsertScreen } from './src/screens/InsertScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
 import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
+import { mark } from './src/state/marks';
 import { closeShift, resumeShift, setCue, setPace, startShift } from './src/state/session';
 import { DEFAULT_SETTINGS, lessMotionOf, type Settings } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
@@ -25,11 +27,14 @@ import { setLessMotion } from './src/ui/motion';
 import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'desk' | 'settings' | 'about';
+type Screen = 'title' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'desk' | 'bench' | 'settings' | 'about';
 
 setCue(cue);
-// сценарий в браузере ускоряет часы смены: ?pace=50 (только веб-сборка; на телефоне адресной строки нет)
-if (Platform.OS === 'web' && typeof location !== 'undefined') setPace(Number(new URLSearchParams(location.search).get('pace') ?? 1));
+// сценарий в браузере ускоряет часы смены: ?pace=50, и «Замер» — короткий: ?bench=quick (только веб-сборка; на
+// телефоне адресной строки нет)
+const query = Platform.OS === 'web' && typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+if (query) setPace(Number(query.get('pace') ?? 1));
+const quickBench = query?.get('bench') === 'quick';
 
 export default function App() {
   // шрифты студии лежат в сборке — грузятся мгновенно; не загрузились — игра идёт системным шрифтом
@@ -70,6 +75,7 @@ export default function App() {
       return;
     }
     departed.current = false;
+    mark('loaded');
     startShift(undefined, settings.current.autopause);
     setInsert('start');
     setScreen('insert');
@@ -101,12 +107,16 @@ export default function App() {
             <>
               {screen === 'title' ? (
                 <TitleScreen
-                  onStart={() => setScreen('loading')}
+                  onStart={() => {
+                    mark('startTap');
+                    setScreen('loading');
+                  }}
                   onResume={() => {
                     resuming.current = true;
                     setScreen('loading');
                   }}
                   onDesk={() => setScreen('desk')}
+                  onBench={() => setScreen('bench')}
                   onSettings={() => {
                     setSettingsOpen({ s: settings.current, system: systemMotion.current });
                     setScreen('settings');
@@ -130,7 +140,16 @@ export default function App() {
                   }}
                 />
               ) : null}
-              {screen === 'insert' ? <InsertScreen kind={insert} onDone={toMap} /> : null}
+              {screen === 'insert' ? (
+                <InsertScreen
+                  kind={insert}
+                  onDone={() => {
+                    // «Замер»: пульт после вставки «начало смены» — конец загрузки смены
+                    if (insert === 'start') mark('insertDone');
+                    toMap();
+                  }}
+                />
+              ) : null}
               {screen === 'end' ? (
                 <ReviewScreen
                   onCall={id => { setReviewed(id); setScreen('callReview'); }}
@@ -144,6 +163,7 @@ export default function App() {
               ) : null}
               {screen === 'callReview' && reviewed ? <CallReviewScreen id={reviewed} onBack={() => setScreen('end')} /> : null}
               {screen === 'desk' ? <DeskScreen onBack={() => setScreen('title')} /> : null}
+              {screen === 'bench' ? <BenchScreen quick={quickBench} onBack={() => setScreen('title')} /> : null}
               {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} /> : null}
               {screen === 'settings' && settingsOpen ? (
                 <SettingsScreen settings={settingsOpen.s} system={settingsOpen.system} onChange={x => { settings.current = x; }} onBack={() => setScreen('title')} />
