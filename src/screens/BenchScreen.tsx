@@ -11,6 +11,7 @@ import type { Shift, ShiftCtx } from '../engine/shift';
 import { T } from '../i18n';
 import { SCENE, UI } from '../scenes/palette';
 import { CrewLayer } from '../scenes/pult/CrewLayer';
+import { pultLayout } from '../scenes/pult/layout';
 import { PultScene } from '../scenes/pult/PultScene';
 import { BENCH_SHIFT, BUDGET, benchShift, benchStep, type FrameSummary, frameSummary, framesOk, msSummary, searchNodes, timeSearches } from '../state/bench';
 import { jsHeap, marks, processStart, startTimes } from '../state/marks';
@@ -20,6 +21,8 @@ import { FONTS } from '../ui/fonts';
 import { Button, Txt } from '../ui/kit';
 import { MapView } from '../ui/map/MapView';
 import { duskOf } from '../ui/map/palette';
+import { cachedMapImage } from '../ui/map/paths';
+import { fitOf } from '../ui/map/scale';
 import { APP_VERSION } from '../version';
 import { positions } from './PultScreen';
 
@@ -196,6 +199,10 @@ export function BenchScreen({ onBack, quick = false }: { onBack: () => void; qui
     setResult(null);
     const rows: Row[] = [];
     setShift(benchShift(ctx, BENCH_SHIFT.seed, BENCH_SHIFT.minute));
+    // картинки района для карты в движении — заранее, как их строит загрузка смены: замер меряет кадры, а не постройку
+    const box = pultLayout(size.w, size.h).map;
+    cachedMapImage(ctx.map, fitOf(ctx.map, size.w, size.h));
+    cachedMapImage(ctx.map, fitOf(ctx.map, box.w, box.h));
     for (let i = 0; i < SCENES.length && live.current; i++) {
       const sc = SCENES[i];
       setScene(sc);
