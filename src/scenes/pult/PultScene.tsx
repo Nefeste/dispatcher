@@ -26,7 +26,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { T, type RadioWhat } from '../../i18n';
 import type { MapData } from '../../map/format';
-import { type MapOverlay, MapView } from '../../ui/map/MapView';
+import { type MapOverlay, type MapTap, MapView } from '../../ui/map/MapView';
 import { FORM, SCENE, UI } from '../palette';
 import { fit } from '../call/layout';
 import { type Quad, type Rect as Box, pultLayout, quadMatrix } from './layout';
@@ -68,6 +68,8 @@ export interface PultProps {
   panel?: React.ReactNode;
   onPhone: () => void;
   onWaiting?: (id: string) => void;
+  /** касание карты — точка в единицах карты (карточка бригады) */
+  onMapTap?: MapTap;
   onRadio: () => void;
   onClock: () => void;
   onSpeed: () => void;
@@ -93,7 +95,7 @@ function width(font: SkFont | null, s: string) {
 /** Высота строки OpenStreetMap внизу карты (src/ui/map/MapView.tsx) с запасом. */
 const OSM_LINE = 22;
 
-export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, dusk, overlay, panel, onPhone, onWaiting, onRadio, onClock, onSpeed }: PultProps) {
+export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, dusk, overlay, panel, onPhone, onWaiting, onMapTap, onRadio, onClock, onSpeed }: PultProps) {
   const L = useMemo(() => pultLayout(W, H), [W, H]);
   const desk = useImage(DESK);
   const bar = useFont(Onest_500Medium, 15);
@@ -136,7 +138,7 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
       </View>
 
       <View style={[styles.abs, { left: L.map.x, top: L.map.y }]}>
-        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} dusk={dusk} />
+        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} dusk={dusk} onTap={onMapTap} />
       </View>
 
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

@@ -20,6 +20,8 @@ import { callLayout, fit, wrap } from './layout';
 const PICTURES: Record<string, number> = {
   daughter: require('../../../assets/scenes/caller-daughter.jpg'),
   man: require('../../../assets/scenes/caller-man.jpg'),
+  'daughter-street': require('../../../assets/scenes/caller-daughter-street.jpg'),
+  'man-street': require('../../../assets/scenes/caller-man-street.jpg'),
 };
 
 export interface CallProps {

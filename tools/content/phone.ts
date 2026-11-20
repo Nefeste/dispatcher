@@ -183,6 +183,9 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
       if (rel.as !== 'm' && rel.as !== 'f') err(`${id}: relation ${rel.caller} needs as: m or f`);
       const pics = typeof rel.picture === 'string' ? [rel.picture] : Object.values(rel.picture ?? {});
       for (const pic of pics) if (!pictures.has(pic)) err(`${id}: relation ${rel.caller} has picture ${pic}, which is not in assets/scenes/callers.json`);
+      // звонит и с улицы — нужна картинка улицы (иначе тёмная сцена; игра владельца 20.11.2026 приняла её за незагрузку)
+      if (k.at.includes('street')) for (const pic of pics) if (!pictures.has(`${pic}-street`)) err(`${id}: relation ${rel.caller} calls from the street, but ${pic}-street is not in assets/scenes/callers.json`);
+      if (!pics.length) err(`${id}: relation ${rel.caller} has no picture`);
     }
     for (const f of k.cannot) if (!med.findings[f]) err(`${id}: cannot ${f} — no such finding`);
     if (!k.unsure.length || !k.nothing.length) err(`${id}: needs unsure and nothing words`);

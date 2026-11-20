@@ -15,6 +15,7 @@ import React, { memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { type SharedValue, useDerivedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import type { MapData } from '../../map/format';
 import { T } from '../../i18n';
 import { FONTS } from '../fonts';
@@ -98,7 +99,10 @@ const MapLayers = memo(function MapLayers({ map, paths, image, width, height, tr
   );
 });
 
-export function MapView({ map, width, height, testID, overlay, dusk = 0, autopilot }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number; autopilot?: Autopilot }) {
+/** Касание карты: точка в единицах карты и приближение (точек экрана на единицу карты) — чтобы найти знак под пальцем. */
+export type MapTap = (x: number, y: number, zoom: number) => void;
+
+export function MapView({ map, width, height, testID, overlay, dusk = 0, autopilot, onTap }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number; autopilot?: Autopilot; onTap?: MapTap }) {
   const paths = useMemo(() => cachedMapPaths(map), [map]);
   // при открытии и при наибольшем отдалении карта заполняет экран целиком, без пустых полос
   const fit = fitOf(map, width, height);
@@ -143,7 +147,16 @@ export function MapView({ map, width, height, testID, overlay, dusk = 0, autopil
       tx.set(clampPan(e.focalX - (s0[3] - s0[0]) * k, map.width, width, z));
       ty.set(clampPan(e.focalY - (s0[4] - s0[1]) * k, map.height, height, z));
     });
-  const gesture = Gesture.Simultaneous(pan, pinch);
+  // касание без сдвига — знак под пальцем (карточка бригады на пульте); сдвиг и приближение его отменяют
+  const tap = Gesture.Tap()
+    .maxDuration(300)
+    .onEnd((e, ok) => {
+      'worklet';
+      if (!ok || !onTap) return;
+      const z = zoom.get();
+      scheduleOnRN(onTap, (e.x - tx.get()) / z, (e.y - ty.get()) / z, z);
+    });
+  const gesture = Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
 
   // камера встала на IDLE_MS — снова пути
   useFrameCallback(info => {

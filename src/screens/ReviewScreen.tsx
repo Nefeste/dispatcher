@@ -7,7 +7,8 @@ import { useFont } from '@shopify/react-native-skia';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
-import type { MistakeView, ReviewRow } from '../state/reviewView';
+import type { ReviewRow } from '../state/reviewView';
+import { mistakeText, mistakeWhy } from './reviewWords';
 import { reviewView } from '../state/reviewView';
 import { shiftSnapshot } from '../scenes/snapshot';
 import { type Best, recordBestOnce } from '../state/progress';
@@ -15,20 +16,6 @@ import { useSession } from '../state/session';
 import { saveImage } from '../ui/saveImage';
 import { Button, Card, Txt } from '../ui/kit';
 import { C, R, S } from '../ui/theme';
-
-/** Строка ошибки словами. */
-export function mistakeText(v: MistakeView): string {
-  const m = v.m;
-  switch (m.kind) {
-    case 'noDispatch': return T.review.mistake.noDispatch();
-    case 'underTriage': return T.review.mistake.underTriage(v.heard);
-    case 'missedQuestion': return T.review.mistake.missedQuestion(v.question!.text, v.question!.answer);
-    case 'order': return T.review.mistake.order(v.bypassed ?? []);
-    case 'hospital': return T.review.mistake.hospital(v.hospital!.chosen, v.hospital!.right);
-    case 'crew': return T.review.mistake.crew();
-    case 'overTriage': return T.review.mistake.overTriage();
-  }
-}
 
 function Row({ r, onPress }: { r: ReviewRow; onPress: () => void }) {
   const decided = r.decided ? T.review.form[r.decided] : '·';
@@ -106,6 +93,7 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
         {view.main ? (
           <>
             <Txt style={styles.mainText}>{T.review.mainLine(view.main.row.no, mistakeText(view.main.mistake))}</Txt>
+            <Txt dim testID="review-main-why">{mistakeWhy(view.main.mistake)}</Txt>
             {view.main.mistake.cost ? <Txt dim>{T.review.cost(view.main.mistake.cost)}</Txt> : null}
             <Button label={T.review.toCall} kind="ghost" onPress={() => onCall(view.main!.row.id)} testID="review-main-call" />
           </>
