@@ -255,7 +255,7 @@ def phone_line(arm):
     return top, bottom
 
 
-def pose_call(arm):
+def pose_call(arm, spec):
     """Правая кисть — у правого уха, локоть вниз и вбок; левая рука опущена; голова чуть к телефону."""
     head_box(arm)
     pb = arm.pose.bones
@@ -276,16 +276,16 @@ def pose_call(arm):
     z = (top - bottom).normalized()
     out = (right - z * right.dot(z)).normalized()
     # пальцы — назад к затылку (по горизонтали), чуть вверх и внутрь, к голове: кончики ложатся за ухом
-    fb, fu, fi = (float(x) for x in os.environ.get('CALLER_FINGERS', '0.85,0.35,0.25').split(','))
+    fb, fu, fi = (float(x) for x in os.environ.get('CALLER_FINGERS', spec.get('fingers', '0.85,0.35,0.25')).split(','))
     fingers = (-fwd * fb + up * fu - out * fi).normalized()
     # середина ладони — над серединой телефона (он — у щеки, `phone_in_hand`), запястье — на `wl` назад по пальцам
-    wl, wo = (float(x) for x in os.environ.get('CALLER_WRIST', '0.08,0.025').split(','))
+    wl, wo = (float(x) for x in os.environ.get('CALLER_WRIST', spec.get('wrist', '0.06,0.025')).split(','))
     phone = (top + bottom) / 2 + right * 0.012
     ear = target('ik_ear', phone - fingers * wl + out * wo)
-    # локоть — вбок и вниз, на уровне груди: плечо почти вдоль тела, предплечье поднимается к уху (у 0.9.0 подсказка
-    # стояла на 65 см ниже головы и вперёд — локоть уходил перед грудь, рука шла вертикально от пояса; игра владельца
-    # 20.11.2026: «искривлена рука, которая держит телефон»)
-    er, eu, ef = (float(x) for x in os.environ.get('CALLER_ELBOW', '0.38,-0.58,0.08').split(','))
+    # локоть — внизу у рёбер, сбоку и чуть позади: плечо вдоль тела, предплечье поднимается к лицу почти вертикально, как
+    # на фотографиях (у 0.9.0 подсказка стояла впереди — локоть уходил перед грудь; у 0.11.0 — сбоку на уровне груди, и
+    # предплечье шло по диагонали через низ лица; владелец, 20.11.2026)
+    er, eu, ef = (float(x) for x in os.environ.get('CALLER_ELBOW', spec.get('elbow', '0.25,-0.9,-0.05')).split(','))
     elbow = target('ik_elbow', head + right * er + up * eu + fwd * ef)
     ik = pb['Bip01 R Hand'].constraints.new('IK')
     ik.target = ear
@@ -339,7 +339,8 @@ def pose_call(arm):
 
 def phone_in_hand(arm, ear):
     """Мобильный телефон в правой руке, у уха."""
-    body = mat('phone', lin('#1e2125'), 0.3)
+    # тёмный и матовый: глянцевый ловил свет лампы и выходил светлой пластиной
+    body = mat('phone', lin('#121417'), 0.55)
     bpy.ops.mesh.primitive_cube_add(size=1)
     ph = bpy.context.object
     ph.name = 'mobile'
@@ -422,7 +423,7 @@ def main():
         bpy.ops.wm.read_factory_settings(use_empty=True)
         ROOMS[spec['room']]()
         arm, _ = person(spec)
-        ear = pose_call(arm)
+        ear = pose_call(arm, spec)
         phone_in_hand(arm, ear)
         camera(arm, spec)
         if PREVIEW:
