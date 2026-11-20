@@ -19,6 +19,8 @@ export interface CrewCard {
   hospital: string | null;
   /** сколько ещё до конца этого шага — доедет, закончит на месте, сдаст больного; игровых минут, вверх; null — не знает */
   minutes: number | null;
+  /** на сколько вызовов осталось укладки (срез, С2) */
+  kit: number;
 }
 
 /** Где бригада сейчас — точка карты: едущая — на пути, стоящая — в узле. */
@@ -47,7 +49,7 @@ export function crewCard(ctx: ShiftCtx, s: Shift, id: string): CrewCard | null {
   const c = s.crews.find(x => x.id === id);
   if (!c) return null;
   const call = c.call ? s.calls.find(x => x.id === c.call) : undefined;
-  const end = c.route ? arrival(c.route) : c.state === 'scene' || c.state === 'hospital' ? c.until : 0;
+  const end = c.route ? arrival(c.route) : c.state === 'scene' || c.state === 'hospital' || c.state === 'restock' ? c.until : 0;
   const hospital = call?.hospital && (c.state === 'transport' || c.state === 'hospital') ? (ctx.city.hospitals.find(h => h.id === call.hospital)?.name ?? null) : null;
   return {
     id: c.id,
@@ -57,5 +59,6 @@ export function crewCard(ctx: ShiftCtx, s: Shift, id: string): CrewCard | null {
     call: call ? { no: callNo(call.id), form: call.form } : null,
     hospital,
     minutes: end > s.t ? Math.ceil((end - s.t) / 60_000) : null,
+    kit: c.kit,
   };
 }

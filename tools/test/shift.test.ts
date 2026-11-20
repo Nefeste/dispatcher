@@ -9,7 +9,7 @@ import { fingerprint } from '../../src/engine/core/hash';
 import { free } from '../../src/engine/crews';
 import { formByKnown } from '../../src/engine/form';
 import { FAR } from '../../src/engine/road/route';
-import { ANSWER, DECIDE } from '../../src/engine/rules';
+import { ANSWER, DECIDE, KIT } from '../../src/engine/rules';
 import { advance, apply, callOf, type Command, crewOptions, type Logged, newShift, nextEvent, replay, type Shift, type ShiftCtx, shiftCtx } from '../../src/engine/shift';
 import { loadMap } from '../../src/map/load';
 
@@ -71,7 +71,26 @@ describe('смена', () => {
         if (c.form !== 'none') expect(c.arrivedAt).not.toBeNull();
         if (c.hospital) expect(c.transport).toBe(true);
       }
-      for (const c of s.crews) expect(free(c)).toBe(true);
+      // все вызовы доведены: ни одна бригада не на вызове; с пустой укладкой — едет пополнять или пополняет (С2)
+      for (const c of s.crews) {
+        expect(c.call).toBeNull();
+        expect(free(c) || c.state === 'restock' || (c.state === 'back' && c.kit === 0)).toBe(true);
+      }
+    }
+  });
+
+  test('укладка тратится на каждом вызове, где бригада работала на месте, и пополняется на подстанции (С2)', () => {
+    for (const { s } of runs) {
+      const worked = new Map<string, number>();
+      for (const c of s.calls) if (c.crew && c.reportAt !== null) worked.set(c.crew, (worked.get(c.crew) ?? 0) + 1);
+      for (const c of s.crews) {
+        const n = worked.get(c.id) ?? 0;
+        const refills = s.notices.filter(x => x.kind === 'restock' && x.crew === c.id).length;
+        // каждые KIT вызовов — одно «едем пополнять»; что осталось в укладке — по счёту вызовов
+        expect(refills).toBe(Math.floor(n / KIT));
+        if (n % KIT) expect(c.kit).toBe(KIT - (n % KIT));
+        else expect(c.kit).toBe(n && c.state !== 'base' ? 0 : KIT);
+      }
     }
   });
 

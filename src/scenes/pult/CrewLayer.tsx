@@ -4,7 +4,7 @@ import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
 import { type SkPath, Skia, useFont } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
-import type { Crew } from '../../engine/crews';
+import { type Crew, free } from '../../engine/crews';
 import type { Route } from '../../engine/road/pos';
 import type { Shift, ShiftCtx } from '../../engine/shift';
 import type { MapData } from '../../map/format';
@@ -36,7 +36,7 @@ function RouteOf({ map, route, zoom, color }: { map: MapData; route: Route; zoom
 }
 
 const colorOf = (c: Crew) => CREW[c.state];
-const busy = (c: Crew) => c.state !== 'base' && c.state !== 'back';
+const busy = (c: Crew) => !free(c);
 
 export function CrewLayer({ ctx, shift, pos, zoom }: { ctx: ShiftCtx; shift: Shift; pos: SharedValue<number[]>; zoom: SharedValue<number> }) {
   const font = useFont(Onest_600SemiBold, 12);

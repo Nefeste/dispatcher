@@ -1,0 +1,29 @@
+{
+  "id": "station",
+  "name": "Рабочее место между сменами: письмо старшего врача, табель бригад, журнал фонда, укладка; за окном — двор подстанции с машинами класса B и C",
+  "licence": "своя работа студии «Горница»; шрифт надписи на машинах — Onest (SIL OFL 1.1, assets/fonts/Onest-OFL.txt)",
+  "made": {
+    "script": "blender/station.py",
+    "blender": "4.5.15",
+    "engine": "CYCLES",
+    "samples": 160,
+    "denoiser": "OPENIMAGEDENOISE",
+    "seed": 11,
+    "size": [
+      1080,
+      1920
+    ],
+    "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "jpeg": "q 3"
+  },
+  "files": {
+    "assets/scenes/station-desk.jpg": {
+      "sha256": "2e135232eff1b82c1a60a7ac9ada5b70b27509baef37a5a1afa0be45624d7f3a",
+      "bytes": 93271
+    },
+    "src/art/station.gen.ts": {
+      "sha256": "36973329cc54fa27fde17aba662fd7b1adb26f05db6ecbc997b8827761b4c989",
+      "bytes": 1016
+    }
+  }
+}

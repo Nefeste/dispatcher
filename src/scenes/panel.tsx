@@ -16,6 +16,8 @@ export interface PanelRow {
   mark?: string;
   label: string;
   onPress: () => void;
+  /** нельзя сейчас: строка приглушена, касание ничего не делает */
+  disabled?: boolean;
   testID?: string;
 }
 
@@ -38,7 +40,7 @@ export function ProgramPanel({ title, lead, rows, empty, note, actions, testID }
       <ScrollView style={styles.list} contentContainerStyle={styles.listIn}>
         {!rows.length && empty ? <Txt style={styles.empty}>{empty}</Txt> : null}
         {rows.map(r => (
-          <Pressable key={r.key} onPress={r.onPress} accessibilityRole="button" accessibilityLabel={r.label} testID={r.testID} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+          <Pressable key={r.key} onPress={r.onPress} disabled={r.disabled} accessibilityRole="button" accessibilityState={{ disabled: Boolean(r.disabled) }} accessibilityLabel={r.label} testID={r.testID} style={({ pressed }) => [styles.row, r.disabled && styles.disabled, pressed && styles.pressed]}>
             <View style={styles.rowText}>
               <Txt style={styles.text}>{r.text}</Txt>
               {r.sub ? <Txt style={styles.sub}>{r.sub}</Txt> : null}
@@ -70,6 +72,7 @@ const styles = StyleSheet.create({
   empty: { color: UI.dim, fontSize: 13 },
   row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: UI.panel, borderWidth: 1, borderColor: UI.line },
   pressed: { opacity: 0.7 },
+  disabled: { opacity: 0.55 },
   rowText: { flex: 1, gap: 2 },
   text: { color: UI.text, fontSize: 14, fontFamily: FONTS.medium },
   sub: { color: UI.dim, fontSize: 12 },

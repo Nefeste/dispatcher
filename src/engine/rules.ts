@@ -19,3 +19,7 @@ export const REPORT_WAIT = 2 * MIN;
 export const NORM_EMERGENCY = 20 * MIN;
 /** Цель для неотложной формы — правило игры (pgg2026, 543н: неотложная первичная помощь — не позже 2 часов). */
 export const NORM_URGENT = 120 * MIN;
+/** Укладка бригады — на столько вызовов (срез, часть С2; §15 геймдизайна). */
+export const KIT = 4;
+/** Пополнить пустую укладку на подстанции. */
+export const RESTOCK = 20 * MIN;

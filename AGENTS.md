@@ -64,13 +64,15 @@ npm run typecheck                   # content + tsc (app) + tsc -p tools
 npm run lint                        # zero warnings; engine purity rules for src/engine
 bun test tools/test                 # i18n, content, medicine copies, talk, shift, review, golden shift, virtual dispatcher (~25 s)
 bun tools/sim/shift.ts 100 --write  # virtual dispatcher: four rule bots × 100 shifts → docs/reports/virtual-dispatcher.md
-bun tools/sim/week.ts 30 --write    # the same for each shift of «Первая неделя» → docs/reports/virtual-dispatcher-week.md
+bun tools/sim/week.ts 30 100 --write  # each shift of «Первая неделя», then 100 whole weeks with the station (no decisions /
+                                    # best decisions) → docs/reports/virtual-dispatcher-week.md
 bun tools/test/golden.ts --write    # re-record the golden shifts when the shift's life changes on purpose
 bun tools/content/anamnez.ts <dir>  # medicine from a Nefeste/anamnez checkout at a pinned commit → content/med/ + FROM.yaml
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
 bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passport assets/map/nn-center.json
 python blender/build.py             # the workplace model: src/art/desk.gen.ts + assets/models/ (bpy==4.5.15, Python 3.11)
 python blender/pult.py              # the desk frame of the «Пульт» scene: assets/scenes/pult-desk.png + src/art/pult.gen.ts
+python blender/station.py           # the «Станция» frame between shifts: assets/scenes/station-desk.jpg + src/art/station.gen.ts
 bun tools/people/fetch.ts <dir>     # Rocketbox sources at the pinned commit, SHA-256 checked (tools/people/sources.json)
 python blender/caller.py <dir>      # the caller pictures from those sources: assets/scenes/caller-*.jpg (--only=man — one)
 python blender/insert.py            # the video inserts (Cycles frames + ffmpeg H.264): --insert=depart «бригада выезжает»,

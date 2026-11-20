@@ -10,3 +10,6 @@ src/content/generated/
 tools/e2e/out/
 public/canvaskit.wasm
 map-src/
+
+# Python: кэш модулей Blender-скриптов (blender/station.py берёт машину из blender/insert.py)
+__pycache__/

@@ -18,10 +18,15 @@ import { BenchScreen } from './src/screens/BenchScreen';
 import { DeskScreen } from './src/screens/DeskScreen';
 import { type InsertKind, InsertScreen } from './src/screens/InsertScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
+import { StationScreen } from './src/screens/StationScreen';
+import { DB } from './src/content/generated/db';
+import { NO_LINEUP } from './src/engine/shift';
+import { lineupOf } from './src/engine/station';
+import { readStation } from './src/state/station';
 import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
 import { mark } from './src/state/marks';
 import { hideSplash, keepSplash } from './src/state/splash';
-import { closeShift, resumeShift, setCue, setPace, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
+import { closeShift, resumeShift, session, setCue, setPace, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
 import { DEFAULT_SETTINGS, lessMotionOf, type Settings } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
 import { FONT_FILES } from './src/ui/fonts';
@@ -29,7 +34,7 @@ import { setLessMotion } from './src/ui/motion';
 import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'week' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'desk' | 'bench' | 'settings' | 'about';
+type Screen = 'title' | 'week' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'station' | 'desk' | 'bench' | 'settings' | 'about';
 
 keepSplash();
 setCue(cue);
@@ -88,9 +93,12 @@ export default function App() {
     }
     departed.current = false;
     mark('loaded');
-    startShift(picked, undefined, settings.current.autopause);
-    setInsert('start');
-    setScreen('insert');
+    // смена недели выходит с бригадами и укладками станции (срез, С2)
+    void readStation().then(st => {
+      startShift(picked, undefined, settings.current.autopause, DB.shifts[picked]?.week ? lineupOf(st) : NO_LINEUP);
+      setInsert('start');
+      setScreen('insert');
+    });
   }, [picked]);
   const toCall = useCallback(() => setScreen('call'), []);
   const toEnd = useCallback(() => setScreen('end'), []);
@@ -101,7 +109,7 @@ export default function App() {
       if (screen === 'title') return false;
       // разговор кончается решением (§3): «Назад» его не закрывает
       if (screen === 'call') return true;
-      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : 'title');
+      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : screen === 'station' ? 'week' : 'title');
       return true;
     });
     return () => sub.remove();
@@ -181,7 +189,21 @@ export default function App() {
                     closeShift();
                     setScreen('loading');
                   }}
-                  onHome={() => { closeShift(); setScreen('week'); }}
+                  onHome={() => {
+                    const week = Boolean(session()?.ctx.setup.week);
+                    closeShift();
+                    setScreen(week ? 'station' : 'week');
+                  }}
+                />
+              ) : null}
+              {screen === 'station' ? (
+                <StationScreen
+                  onWeek={() => setScreen('week')}
+                  onNext={id => {
+                    mark('startTap');
+                    setPicked(id);
+                    setScreen('loading');
+                  }}
                 />
               ) : null}
               {screen === 'callReview' && reviewed ? <CallReviewScreen id={reviewed} onBack={() => setScreen('end')} /> : null}

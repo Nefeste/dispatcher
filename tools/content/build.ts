@@ -8,7 +8,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import type { ContentDb } from '../../src/content/med';
-import { type City, type CrewKind, type Db, type Flow, type Hospital, type Place, PROFILES, type Profile, type Roads, type ShiftSetup } from '../../src/content/types';
+import { type Base, type City, type CrewKind, type Db, type Flow, type Hospital, type Place, PROFILES, type Profile, type Roads, type ShiftSetup } from '../../src/content/types';
 import { roadOf } from '../../src/engine/road/graph';
 import { FAR, search } from '../../src/engine/road/route';
 import type { MapData } from '../../src/map/format';
@@ -88,7 +88,10 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
       if (real.has(norm(String(p.name)))) err(`${id}: ${String(p.id)} carries the name of a real institution: ${String(p.name)}`);
       return { id: String(p.id), name: String(p.name), at, node: s.node };
     };
-    const bases = ((c.bases as Raw[]) ?? []).map(place);
+    const bases: Base[] = ((c.bases as Raw[]) ?? []).map(b => {
+      if (typeof b.short !== 'string' || !b.short) err(`${id}: ${String(b.id)} has no short name`);
+      return { ...place(b), short: String(b.short ?? b.name) };
+    });
     const hospitals: Hospital[] = ((c.hospitals as Raw[]) ?? []).map(h => {
       const profiles = (h.profiles as Profile[]) ?? [];
       for (const p of profiles) if (!PROFILES.includes(p)) err(`${id}: ${String(h.id)} has unknown profile ${p}`);

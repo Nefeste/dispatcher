@@ -18,7 +18,7 @@ export interface WaitingView {
 
 export interface RadioView {
   crew: number;
-  what: Extract<NoticeKind, 'scene' | 'report' | 'auto' | 'free' | 'base' | 'recall'>;
+  what: Extract<NoticeKind, 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'recall'>;
   /** у доклада: везут или помощь на месте */
   transport: boolean;
 }
@@ -57,7 +57,7 @@ export interface PultView {
   over: boolean;
 }
 
-const RADIO: readonly NoticeKind[] = ['scene', 'report', 'auto', 'free', 'base', 'recall'];
+const RADIO: readonly NoticeKind[] = ['scene', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
 
 export function pultView(ctx: ShiftCtx, s: Shift): PultView {
   const waiting = s.calls

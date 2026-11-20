@@ -126,12 +126,15 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
     const c = crewCard(ctx, s, crewPick);
     if (c) {
       const left = c.minutes !== null && c.state !== 'base' ? T.crewCard.left[c.state](c.minutes) : null;
+      // возвращается с пустой укладкой — не свободна: едет пополнять (срез, С2)
+      const state = c.state === 'back' && !c.kit ? 'toRestock' : c.state;
       panel = (
         <ProgramPanel
           testID="crew-card"
           title={T.crewCard.head(c.no, c.kind)}
           lead={[
-            T.crewCard.state[c.state],
+            T.crewCard.state[state],
+            T.crewCard.kit(c.kit),
             ...(c.call ? [T.crewCard.call(c.call.no, c.call.form && c.call.form !== 'none' ? T.review.formWord[c.call.form] : null)] : []),
             ...(c.hospital ? [T.crewCard.hospital(c.hospital)] : []),
           ].join('\n')}

@@ -8,7 +8,8 @@ import { join } from 'node:path';
 import { Glob } from 'bun';
 
 const SRC = join(import.meta.dir, '../../src');
-const FORBIDDEN = [/engine\/med\//, /engine\/callers/, /engine\/review/, /engine\/form/, /engine\/talk/, /content\/generated\/med/];
+// станция (срез, С2) — тоже через вид: экран станции знает только итоги смен (src/state/stationView.ts)
+const FORBIDDEN = [/engine\/med\//, /engine\/callers/, /engine\/review/, /engine\/form/, /engine\/talk/, /engine\/station/, /content\/generated\/med/];
 
 describe('экраны не видят правды', () => {
   test('ни импорта больного и разбора, ни поля truth', () => {
