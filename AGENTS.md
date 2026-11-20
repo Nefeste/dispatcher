@@ -75,7 +75,7 @@ python blender/caller.py <dir>      # the caller pictures from those sources: as
 python blender/insert.py            # the video inserts (Cycles frames + ffmpeg H.264): --insert=depart «бригада выезжает»,
                                     # --insert=start «начало смены»; --preview — three small frames, game files untouched
 bun tools/sound/gen.ts              # the synthesized sounds: assets/audio/ring.wav, radio.wav (sound.test.ts — byte-exact)
-NODE_PATH=/opt/node22/lib/node_modules bun tools/art/icon.ts   # the app icon and its adaptive layers → assets/ + icon.json
+NODE_PATH=/opt/node22/lib/node_modules bun tools/art/icon.ts   # the app icon, its adaptive layers and the splash picture → assets/ + icon.json
 npm run export:web                  # web build into dist-web/
 NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts   # the browser scenario, shots in tools/e2e/out/
 ```

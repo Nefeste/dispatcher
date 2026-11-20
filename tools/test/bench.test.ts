@@ -90,3 +90,21 @@ describe('отметки запуска', () => {
     expect(t.pult).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('диспетчер сцены «Пульт» думает только на переменах', () => {
+  test('шаги без событий не ищут бригады: время шага — как у одних часов смены', () => {
+    const s = benchShift(ctx, BENCH_SHIFT.seed, BENCH_SHIFT.minute);
+    benchStep(ctx, s, 1); // первая мысль на новой смене
+    const n = s.notices.length;
+    let quiet = 0;
+    const t0 = performance.now();
+    for (let i = 0; i < 200 && s.notices.length === n; i++) {
+      benchStep(ctx, s, 1);
+      quiet++;
+    }
+    const per = (performance.now() - t0) / Math.max(1, quiet);
+    // поиск бригад — обратный поиск по району (около миллисекунды в Bun); шаг без мыслей — много дешевле
+    expect(quiet).toBeGreaterThan(10);
+    expect(per).toBeLessThan(0.3);
+  });
+});

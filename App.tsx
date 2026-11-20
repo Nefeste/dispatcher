@@ -19,6 +19,7 @@ import { type InsertKind, InsertScreen } from './src/screens/InsertScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
 import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
 import { mark } from './src/state/marks';
+import { hideSplash, keepSplash } from './src/state/splash';
 import { closeShift, resumeShift, setCue, setPace, startShift } from './src/state/session';
 import { DEFAULT_SETTINGS, lessMotionOf, type Settings } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
@@ -29,6 +30,7 @@ import { C } from './src/ui/theme';
 
 type Screen = 'title' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'desk' | 'bench' | 'settings' | 'about';
 
+keepSplash();
 setCue(cue);
 // сценарий в браузере ускоряет часы смены: ?pace=50, и «Замер» — короткий: ?bench=quick (только веб-сборка; на
 // телефоне адресной строки нет)
@@ -64,6 +66,13 @@ export default function App() {
     });
     return () => { alive = false; };
   }, []);
+  // заставка уходит на первом кадре заглавного экрана, когда шрифты готовы (src/state/splash.ts)
+  const fontsDone = fontsReady || fontsError !== null;
+  useEffect(() => {
+    if (!fontsDone) return;
+    const id = requestAnimationFrame(hideSplash);
+    return () => cancelAnimationFrame(id);
+  }, [fontsDone]);
   const toMap = useCallback(() => setScreen('map'), []);
   // загрузка кончилась: продолжить сохранённую смену или начать новую
   const resuming = useRef(false);

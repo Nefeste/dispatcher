@@ -126,11 +126,24 @@ export function benchMoves(ctx: ShiftCtx, s: Shift, limit = 50): number {
   return n;
 }
 
-/** Шаг сцены «Пульт»: ходы, потом часы смены на `ms` вперёд, потом снова ходы. */
+/** На каком событии смены диспетчер сцены думал последний раз: число извещений, звонков на линии, открытый разговор. */
+const thought = new WeakMap<Shift, string>();
+const eventsOf = (s: Shift) => `${s.notices.length}:${s.rings.length}:${s.open ?? ''}`;
+
+/**
+ * Шаг сцены «Пульт»: часы смены на `ms` вперёд, и диспетчер думает, только если в смене что-то случилось — звонок,
+ * доклад, бригада освободилась (новое извещение), — как игрок. Раньше он думал каждый кадр и каждый кадр искал бригады
+ * всем ждущим вызовам: на телефоне владельца это и были 19 к/с потока JS на пульте (0.10.0).
+ */
 export function benchStep(ctx: ShiftCtx, s: Shift, ms: number): void {
-  benchMoves(ctx, s);
+  const think = () => {
+    if (thought.get(s) === eventsOf(s)) return;
+    benchMoves(ctx, s);
+    thought.set(s, eventsOf(s));
+  };
+  think();
   advance(ctx, s, ms);
-  benchMoves(ctx, s);
+  think();
 }
 
 /** Смена сцены «Пульт»: зерно и минута, с которой меряем, — в замер на улицах в среднем три машины (тест). */

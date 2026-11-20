@@ -1,32 +1,39 @@
 {
   "id": "icon",
-  "name": "Значок приложения: «03» шрифтом Kurale на кумаче",
+  "name": "Значок приложения и картинка заставки: вызов «03» на ночной карте района, путь бригады",
   "licence": "своя работа студии «Горница»; шрифт — Kurale (SIL OFL 1.1, assets/fonts/Kurale-OFL.txt)",
   "made": {
     "script": "tools/art/icon.ts",
     "renderer": "Chromium 153.0.8010.12 (Playwright)",
     "size": 1024,
-    "background": "#b3162f",
-    "color": "#ecede6",
     "safe": 0.6111111111111112,
-    "halfDiagonal": {
-      "icon": 0.334,
-      "foreground": 0.267,
-      "monochrome": 0.267
+    "splashSafe": 0.6666666666666666,
+    "radius": {
+      "foreground": 0.262,
+      "monochrome": 0.26,
+      "splash": 0.327
     }
   },
   "files": {
     "assets/icon.png": {
-      "sha256": "c7ac96c19fe1b7d0dc9f6fad8eb36b18e5e8b00ece139a268b3044247305129f",
-      "bytes": 36690
+      "sha256": "ce414c377aa576952f41833419c63022f5bfadf745e6e8f6e5022dea0d9915f0",
+      "bytes": 871301
+    },
+    "assets/adaptive-background.png": {
+      "sha256": "cb67bdd91c909dcdcddd98c07a5d2db4aaca611f0718b2739260404495443595",
+      "bytes": 815175
     },
     "assets/adaptive-foreground.png": {
-      "sha256": "75525bb4596ca7ac5d522464622217de37498ebca3e9ecb71f5da142d46b392f",
-      "bytes": 24894
+      "sha256": "fac68e316227b3ac17e24476da7648a51ed099bb5fb503d10c012911aaa13571",
+      "bytes": 142217
     },
     "assets/adaptive-monochrome.png": {
-      "sha256": "e7e3a618f53b4613838a91f6ff0226ee2414be366e965a9f1a7020011591370f",
-      "bytes": 19748
+      "sha256": "960c547b3f5696f6dc28a6f2ec19f3e02504eab831fd2873a85622f72463a192",
+      "bytes": 22450
+    },
+    "assets/splash-icon.png": {
+      "sha256": "cc4f3aa55caa315d78db842663377ef31fda885fa04804daf7fcad8807aa2d1c",
+      "bytes": 384670
     }
   }
 }

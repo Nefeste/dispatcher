@@ -2,8 +2,9 @@
 // решение, бригады, доклад и больница. `newShift`, `apply` (команда диспетчера) и `advance` (часы между командами).
 // Время — целые миллисекунды от начала смены. Пока открыт разговор, часы стоят, и каждая команда разговора сдвигает
 // их на свою цену (ADR 0003); бригады за это время едут. Всё случайное — из зерна смены и его именованных веток: та же
-// смена с теми же командами — тот же итог байт в байт. Состояние меняется на месте, `rev` растёт с каждым изменением —
-// по нему экран знает, что перерисовать. Сохранение — зерно и команды с их временем (src/state/session.ts).
+// смена с теми же командами — тот же итог байт в байт. Состояние меняется на месте, `rev` растёт с каждым событием и
+// каждой принятой командой — по нему экран знает, что перерисовать; ход часов без событий его не меняет: часы экран
+// берёт из `t` (0.10.1 — раньше `rev` рос на каждом кадре, и пульт пересобирался целиком 60–120 раз в секунду). Сохранение — зерно и команды с их временем (src/state/session.ts).
 import type { ContentDb } from '../content/med';
 import type { City, Db, FormKind, ShiftSetup } from '../content/types';
 import { type CallTruth, newCall } from './callers';
@@ -358,17 +359,20 @@ function checkOver(ctx: ShiftCtx, s: Shift): void {
   }
 }
 
-/** Довести смену до `to` (мс), проходя все события по порядку. */
+/** Довести смену до `to` (мс), проходя все события по порядку. `rev` растёт, если событие было. */
 function runTo(ctx: ShiftCtx, s: Shift, to: number): void {
+  let fired = false;
   for (;;) {
     const t = nextAt(ctx, s);
     if (t > to) break;
     s.t = Math.max(s.t, t);
     fireAll(ctx, s);
+    fired = true;
   }
   s.t = Math.max(s.t, to);
+  const wasOver = s.over;
   checkOver(ctx, s);
-  s.rev += 1;
+  if (fired || s.over !== wasOver) s.rev += 1;
 }
 
 /** Часы между командами: сдвинуть на `ms`. Пока открыт разговор, часы стоят (ADR 0003). */
@@ -423,6 +427,13 @@ function close(s: Shift): void {
 
 /** Команда диспетчера. null — принята; иначе — почему нет (смена не меняется). */
 export function apply(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
+  const why = command(ctx, s, cmd);
+  // принятая команда меняет смену всегда — экран перерисуется
+  if (!why) s.rev += 1;
+  return why;
+}
+
+function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
   if (s.over) return 'over';
   const open = s.open ? callOf(s, s.open)! : null;
   switch (cmd.c) {
