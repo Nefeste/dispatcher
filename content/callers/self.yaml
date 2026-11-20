@@ -5,7 +5,7 @@ self: true
 at: [home, street]
 weight: 30
 relations:
-  - { caller: сам, as: m, patient: { m: сам, f: сама } }
+  - { caller: сам, as: m, patient: { m: сам, f: сама }, picture: { m: man, f: daughter } }
 # не отвечает, путается, судороги, речь нарушена — сам не позвонит
 cannot: [sign.gcs_low, sym.confusion, sign.postictal, sym.seizure, sym.speech_trouble, sym.strange_behavior]
 unsure: ["Не знаю, не замечал{|а}", "Не могу сказать"]

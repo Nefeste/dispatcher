@@ -7,7 +7,7 @@
 import { useSyncExternalStore } from 'react';
 import { DB } from '../content/generated/db';
 import { MED } from '../content/generated/med';
-import { type Command, type Logged, type Notice, newShift, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, advance as advanceShift, apply } from '../engine/shift';
+import { type Command, type Logged, type Notice, newShift, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
 import { loadMap } from '../map/load';
 import { KEYS, readRaw, writeRaw } from './storage';
 
@@ -30,6 +30,10 @@ export interface Session {
   autopause: boolean;
   /** на какую скорость вернуться, когда всё, ради чего встала автопауза, решено; null — паузы-автомата нет */
   resume: Speed | null;
+  /** ввод новой смены ещё на экране: часы стоят, пока игрок его не закрыл */
+  intro: boolean;
+  /** сколько настоящего времени идёт смена, мс: «время игры» в итоге (§5) */
+  played: number;
   /** номер изменения: растёт с каждым шагом, экран перерисовывается по нему */
   v: number;
 }
@@ -38,6 +42,33 @@ let ctxCache: ShiftCtx | null = null;
 function ctxOf(): ShiftCtx {
   if (!ctxCache) ctxCache = shiftCtx(DB, MED, SHIFT_ID, loadMap(DB.cities[DB.shifts[SHIFT_ID].city].map));
   return ctxCache;
+}
+
+export type LoadStep = 'map' | 'roads' | 'paths' | 'medicine';
+export const LOAD_STEPS: readonly LoadStep[] = ['map', 'roads', 'paths', 'medicine'];
+
+/**
+ * Загрузка с настоящим ходом (спецификация прототипа, §3, шаг 2): файл карты, граф дорог и время рёбер, пути Skia,
+ * медицина — по шагу за кадр; `onStep` — какой шаг начался. Уже загружено — сразу. `paths` строит экран (Skia).
+ */
+export async function prepare(onStep: (step: LoadStep, i: number) => void, buildPaths: (map: ShiftCtx['map']) => void): Promise<void> {
+  const frame = () => new Promise<void>(r => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => r()) : setTimeout(r, 0)));
+  const setup = DB.shifts[SHIFT_ID];
+  onStep('map', 0);
+  await frame();
+  const map = ctxCache?.map ?? loadMap(DB.cities[setup.city].map);
+  onStep('roads', 1);
+  await frame();
+  if (!ctxCache) ctxCache = shiftCtx(DB, MED, SHIFT_ID, map);
+  timesAt(ctxCache, 0);
+  onStep('paths', 2);
+  await frame();
+  buildPaths(map);
+  onStep('medicine', 3);
+  await frame();
+  // первый больной смены — чтобы его рождение не пришлось на первый кадр пульта
+  newShift(ctxCache, 1);
+  await frame();
 }
 
 let cur: Session | null = null;
@@ -69,7 +100,8 @@ export function useSession(): Session | null {
 /** Новая смена. Зерно — от часов телефона: случайность смены живёт в состоянии, движок её не берёт сам. */
 export function startShift(seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true): Session {
   const ctx = ctxOf();
-  cur = { ctx, s: newShift(ctx, seed), log: [], speed: 1, looked: 0, autopause, resume: null, v: 0 };
+  cur = { ctx, s: newShift(ctx, seed), log: [], speed: 0, looked: 0, autopause, resume: null, intro: true, played: 0, v: 0 };
+  lastTouch = Date.now();
   void save();
   emit();
   return cur;
@@ -87,6 +119,8 @@ interface Save {
   seed: number;
   t: number;
   log: Logged[];
+  /** время игры, мс */
+  played?: number;
 }
 
 function parseSave(raw: string): Save | null {
@@ -106,7 +140,8 @@ export async function resumeShift(autopause = true): Promise<Session | null> {
   const ctx = ctxOf();
   const s = replay(ctx, sv.seed, sv.log);
   if (sv.t > s.t) advanceShift(ctx, s, sv.t - s.t);
-  cur = { ctx, s, log: sv.log, speed: 0, looked: s.notices.length, autopause, resume: null, v: 0 };
+  cur = { ctx, s, log: sv.log, speed: 0, looked: s.notices.length, autopause, resume: null, intro: false, played: sv.played ?? 0, v: 0 };
+  lastTouch = Date.now();
   emit();
   return cur;
 }
@@ -115,8 +150,30 @@ let lastSave = 0;
 async function save(): Promise<void> {
   if (!cur) return;
   lastSave = Date.now();
-  const sv: Save = { v: SAVE_V, setup: cur.ctx.setup.id, seed: cur.s.seed, t: cur.s.t, log: cur.log };
+  const sv: Save = { v: SAVE_V, setup: cur.ctx.setup.id, seed: cur.s.seed, t: cur.s.t, log: cur.log, played: cur.played };
   await writeRaw(KEYS.current, cur.s.over ? null : JSON.stringify(sv));
+}
+
+/** Время игры: настоящее время между касаниями смены; перерыв дольше `GAP` (игру свернули) не считается. */
+const GAP = 5000;
+let lastTouch = 0;
+function touch(x: Session): void {
+  const now = Date.now();
+  if (!x.s.over) x.played += Math.min(GAP, Math.max(0, now - lastTouch));
+  lastTouch = now;
+}
+
+/** Настройка «Автопауза» поменялась — идущая смена слушается сразу. */
+export function setAutopause(on: boolean): void {
+  if (cur) cur.autopause = on;
+}
+
+/** Закрыть ввод новой смены: часы пошли. */
+export function dismissIntro(): void {
+  if (!cur) return;
+  cur.intro = false;
+  cur.speed = 1;
+  emit();
 }
 
 /** Закончить: сохранение больше не нужно. */
@@ -126,8 +183,18 @@ export function closeShift(): void {
   emit();
 }
 
-/** Новые извещения: автопауза на звонке, докладе и повторном звонке (ADR 0003; настройка «автопауза»). */
+/** Отклик на извещения: звонок телефона, щелчок рации (src/audio/feedback.ts подставляет App). */
+type CueFn = (what: 'ring' | 'radio') => void;
+let cueFn: CueFn = () => {};
+export function setCue(f: CueFn): void {
+  cueFn = f;
+}
+const RADIO: readonly Notice['kind'][] = ['scene', 'report', 'auto', 'free', 'base', 'recall'];
+
+/** Новые извещения: звук и автопауза на звонке, докладе и повторном звонке (ADR 0003; настройка «автопауза»). */
 function look(x: Session, fresh: readonly Notice[]): void {
+  if (fresh.some(n => n.kind === 'ring' || n.kind === 'repeat')) cueFn('ring');
+  else if (fresh.some(n => RADIO.includes(n.kind))) cueFn('radio');
   if (!x.autopause) return;
   const stop = fresh.some(n => n.kind === 'ring' || n.kind === 'repeat' || (n.kind === 'report' && x.s.calls.find(c => c.id === n.call)?.state === 'report'));
   if (!stop) return;
@@ -149,6 +216,7 @@ function after(x: Session, rev: number): void {
  *  случилось или сменилась игровая минута. */
 export function tick(realMs: number): void {
   const x = cur;
+  if (x) touch(x);
   if (!x || x.speed === 0 || x.s.open || x.s.over) return;
   const rev = x.s.rev;
   const minute = Math.floor(x.s.t / 60_000);
@@ -162,6 +230,7 @@ export function tick(realMs: number): void {
 export function command(cmd: Command): Refusal | null {
   const x = cur;
   if (!x) return 'over';
+  touch(x);
   const t = x.s.t;
   const rev = x.s.rev;
   const why = apply(x.ctx, x.s, cmd);

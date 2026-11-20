@@ -25,6 +25,13 @@
       "file": "assets/scenes/caller-daughter.jpg",
       "sha256": "ed513cabdf591ba54edcacfaf8835757dfad2a77495915d4c212bfc68e5942c4",
       "bytes": 74026
+    },
+    "man": {
+      "avatar": "Adults/Male_Adult_01/Export/Male_Adult_01.fbx",
+      "room": "kitchen",
+      "file": "assets/scenes/caller-man.jpg",
+      "sha256": "6552ec6ab0f3e838b0242dfa27349c0f4c1c50fe714a84fb63ee9f400fdddb51",
+      "bytes": 65622
     }
   }
 }

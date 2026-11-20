@@ -1,12 +1,13 @@
-# Видеовставка «бригада выезжает» (ADR 0009; docs/08-game-design.md, §9 и §11; docs/13-art.md, «Сцены»): вечер, двор
-# подстанции, машина скорой выезжает из гаража и уходит из кадра. Blender строит двор и машину своим кодом, Cycles
-# рендерит кадры, ffmpeg собирает ролик H.264; первый кадр с машиной во дворе — картинка для «Меньше движения».
+# Видеовставки (ADR 0009; docs/08-game-design.md, §9 и §11; docs/13-art.md, «Сцены»): вечер, двор подстанции.
+# «Бригада выезжает» (depart, 5 с) — машина скорой выезжает из гаража и уходит из кадра; «начало смены» (start, 4 с,
+# часть П8) — машина стоит у ворот гаража, камера медленно подходит. Blender строит двор и машину своим кодом, Cycles
+# рендерит кадры, ffmpeg собирает ролик H.264; один кадр — картинка для «Меньше движения».
 #
-# Запуск: python blender/insert.py [--preview]
-# Пишет:
-# - assets/scenes/insert-depart.mp4 — ролик 540 × 960, 24 кадра в секунду;
-# - assets/scenes/insert-depart.jpg — один кадр вместо ролика;
-# - assets/scenes/inserts.json — паспорт: версия Blender, рендер, кадры, ffmpeg, отпечатки файлов.
+# Запуск: python blender/insert.py [--insert=depart|start] [--preview]
+# Пишет (<вид> — depart или start):
+# - assets/scenes/insert-<вид>.mp4 — ролик 540 × 960, 24 кадра в секунду;
+# - assets/scenes/insert-<вид>.jpg — один кадр вместо ролика;
+# - assets/scenes/inserts.json — паспорт обеих вставок: версия Blender, рендер, кадры, ffmpeg, отпечатки файлов.
 # --preview — три кадра малым размером в папку scratch, для подбора камеры; файлы игры не трогает.
 #
 # Машина — по ГОСТ Р 50574-2019 (docs/09-content.md, «Машина скорой»): класс B, кузов белый, по борту красная полоса
@@ -32,13 +33,18 @@ if bpy.app.version_string.split(' ')[0] != VERSION:
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREVIEW = '--preview' in sys.argv
+# какая вставка: depart — «бригада выезжает» (первый выезд), start — «начало смены» (часть П8): тот же двор, машина у
+# гаража, камера медленно подходит
+INSERT = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--insert=')), 'depart')
+if INSERT not in ('depart', 'start'):
+    sys.exit('--insert=depart или --insert=start')
 W, H = (540, 960) if not PREVIEW else (270, 480)
 FPS = 24
-SECONDS = 5
+SECONDS = 5 if INSERT == 'depart' else 4
 FRAMES = FPS * SECONDS
 SAMPLES = 24 if not PREVIEW else 8
 SEED = 5
-STILL = 84  # кадр для «Меньше движения»: машина во дворе, видна полоса с надписью
+STILL = 84 if INSERT == 'depart' else 72  # кадр для «Меньше движения»: машина во дворе, видна полоса с надписью
 FONT = os.path.join(ROOT, 'node_modules', '@expo-google-fonts', 'onest', '600SemiBold', 'Onest_600SemiBold.ttf')
 # маячки — мягкое мерцание 1,5 раза в секунду, без резких вспышек
 BEACON_HZ = 1.5
@@ -303,7 +309,20 @@ def camera():
     cam.rotation_euler = (look - cam.location).to_track_quat('-Z', 'Y').to_euler()
     cam.data.lens = 26
     bpy.context.scene.camera = cam
+    if INSERT == 'start':
+        # начало смены: камера медленно подходит к подстанции, плавно, без рывков
+        for f, loc, lk in ((1, (7.0, -14.5, 2.6), (-0.2, 2.0, 1.8)), (FRAMES, (4.2, -10.2, 1.7), (-0.6, 1.6, 1.7))):
+            cam.location = loc
+            cam.rotation_euler = (Vector(lk) - Vector(loc)).to_track_quat('-Z', 'Y').to_euler()
+            cam.keyframe_insert('location', frame=f)
+            cam.keyframe_insert('rotation_euler', frame=f)
     return cam
+
+
+def park(car):
+    """Начало смены: машина стоит во дворе у ворот гаража, мордой к выезду."""
+    car.location = (0, 4.2, 0)
+    car.rotation_euler = (0, 0, math.radians(-90))
 
 
 def setup(scene):
@@ -340,7 +359,10 @@ def main():
     scene = bpy.context.scene
     yard()
     car = ambulance()
-    drive(car)
+    if INSERT == 'start':
+        park(car)
+    else:
+        drive(car)
     camera()
     setup(scene)
     out_dir = os.environ.get('INSERT_FRAMES', '/tmp/insert-frames')
@@ -353,8 +375,8 @@ def main():
     if PREVIEW:
         print('предпросмотр:', out_dir)
         return
-    mp4 = os.path.join(ROOT, 'assets', 'scenes', 'insert-depart.mp4')
-    jpg = os.path.join(ROOT, 'assets', 'scenes', 'insert-depart.jpg')
+    mp4 = os.path.join(ROOT, 'assets', 'scenes', f'insert-{INSERT}.mp4')
+    jpg = os.path.join(ROOT, 'assets', 'scenes', f'insert-{INSERT}.jpg')
     ffmpeg = shutil.which('ffmpeg')
     if not ffmpeg:
         sys.exit('нужен ffmpeg')
@@ -366,19 +388,25 @@ def main():
     subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-i', os.path.join(out_dir, f'f{STILL:04d}.png'), '-q:v', '3',
                     '-fflags', '+bitexact', '-flags:v', '+bitexact', jpg], check=True)
     ver = subprocess.run([ffmpeg, '-version'], capture_output=True, text=True).stdout.split('\n')[0]
+    path = os.path.join(ROOT, 'assets', 'scenes', 'inserts.json')
+    old = {}
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as fh:
+            old = json.load(fh)
+    made = {'script': 'blender/insert.py', 'blender': VERSION, 'engine': 'CYCLES', 'samples': SAMPLES,
+            'denoiser': 'OPENIMAGEDENOISE', 'seed': SEED, 'size': [W, H], 'fps': FPS, 'frames': FRAMES,
+            'still': STILL, 'ffmpeg': ver, 'codec': 'H.264 (libx264, CRF 26)'}
+    files = {k: v for k, v in old.get('files', {}).items() if f'insert-{INSERT}.' not in k}
+    files[f'assets/scenes/insert-{INSERT}.mp4'] = {'sha256': sha(mp4), 'bytes': os.path.getsize(mp4)}
+    files[f'assets/scenes/insert-{INSERT}.jpg'] = {'sha256': sha(jpg), 'bytes': os.path.getsize(jpg)}
     passport = {
         'id': 'inserts',
-        'name': 'Видеовставка «бригада выезжает»: двор подстанции вечером, машина скорой выезжает из гаража',
+        'name': 'Видеовставки: «начало смены» — двор подстанции вечером, камера подходит к машине у гаража; «бригада выезжает» — машина скорой выезжает из гаража',
         'licence': 'своя работа студии «Горница»; шрифт надписи — Onest (SIL OFL 1.1, assets/fonts/Onest-OFL.txt)',
-        'made': {'script': 'blender/insert.py', 'blender': VERSION, 'engine': 'CYCLES', 'samples': SAMPLES,
-                 'denoiser': 'OPENIMAGEDENOISE', 'seed': SEED, 'size': [W, H], 'fps': FPS, 'frames': FRAMES,
-                 'still': STILL, 'ffmpeg': ver, 'codec': 'H.264 (libx264, CRF 26)'},
-        'files': {
-            'assets/scenes/insert-depart.mp4': {'sha256': sha(mp4), 'bytes': os.path.getsize(mp4)},
-            'assets/scenes/insert-depart.jpg': {'sha256': sha(jpg), 'bytes': os.path.getsize(jpg)},
-        },
+        'made': {**old.get('made', {}), INSERT: made} if 'script' not in old.get('made', {}) else {'depart': old['made'], INSERT: made},
+        'files': dict(sorted(files.items())),
     }
-    with open(os.path.join(ROOT, 'assets', 'scenes', 'inserts.json'), 'w', encoding='utf-8', newline='\n') as fh:
+    with open(path, 'w', encoding='utf-8', newline='\n') as fh:
         json.dump(passport, fh, ensure_ascii=False, indent=2)
         fh.write('\n')
     print('вставка:', mp4, os.path.getsize(mp4))

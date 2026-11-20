@@ -14,6 +14,8 @@ export function AboutScreen({ onBack }: { onBack: () => void }) {
       <Txt>{T.about.fictional}</Txt>
       <Txt dim testID="about-osm">{T.about.map}</Txt>
       <Txt dim>{T.about.medicine}</Txt>
+      <Txt style={styles.head}>{T.about.sourcesHead}</Txt>
+      {T.about.sources.map(x => <Txt dim key={x} style={styles.source}>{`· ${x}`}</Txt>)}
       <Txt dim>{T.about.studio}</Txt>
       <Txt dim testID="about-version">{T.about.version}</Txt>
       <Button label={T.common.back} kind="ghost" onPress={onBack} testID="about-back" />
@@ -23,4 +25,6 @@ export function AboutScreen({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   root: { padding: 24, paddingTop: 48, gap: 14 },
+  head: { fontWeight: '600' },
+  source: { fontSize: 14, lineHeight: 20 },
 });

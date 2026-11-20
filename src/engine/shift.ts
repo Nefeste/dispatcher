@@ -11,6 +11,7 @@ import { Rng } from './core/rng';
 import { atBase, atHospital, type Crew, crewAtBase, crewNext, free, home, hourPct, nodeNow, onScene, send, toHospital } from './crews';
 import { gapAfter } from './flow';
 import { edgeTimes, type Road, roadOf } from './road/graph';
+import { arrival, passed } from './road/pos';
 import { FAR, search } from './road/route';
 import { AGAIN, ANSWER, DECIDE, HANDOVER, REPEAT, REPORT_WAIT } from './rules';
 import { formByKnown, threatsHeard } from './form';
@@ -148,7 +149,17 @@ export interface Shift {
   /** вызов, разговор по которому открыт: часы стоят */
   open: string | null;
   notices: Notice[];
+  /** след бригад за смену: каждый путь по улицам — для снимка смены (спецификация, §5) */
+  trail: Trail[];
   over: boolean;
+}
+
+/** Путь бригады за смену: узлы и рёбра, зачем ехала (на вызов, в больницу, домой). */
+export interface Trail {
+  crew: string;
+  state: Crew['state'];
+  nodes: number[];
+  edges: number[];
 }
 
 export type Command =
@@ -169,7 +180,7 @@ export function newShift(ctx: ShiftCtx, seed: number): Shift {
   const node = (id: string) => ctx.city.bases.find(b => b.id === id)!.node;
   const s: Shift = {
     setup: ctx.setup.id, seed: seed >>> 0, t: 0, rev: 0, n: 0, script: 0, nextRing: FAR, flowN: 0,
-    rings: [], calls: [], crews: ctx.setup.crews.map(c => crewAtBase(c.id, c.kind, node(c.base))), open: null, notices: [], over: false,
+    rings: [], calls: [], crews: ctx.setup.crews.map(c => crewAtBase(c.id, c.kind, node(c.base))), open: null, notices: [], trail: [], over: false,
   };
   // поток — после последнего учебного звонка
   const last = ctx.setup.script.length ? ctx.setup.script[ctx.setup.script.length - 1].at * 1000 : 0;
@@ -190,7 +201,10 @@ function ring(ctx: ShiftCtx, s: Shift, scripted: ShiftSetup['script'][number] | 
   s.n += 1;
   const id = `call.${s.n}`;
   const r = rngOf(s, `call:${s.n}`);
-  const opts = { season: ctx.setup.season, ...(scripted ? { condition: scripted.condition, caller: scripted.caller, where: scripted.where } : {}) };
+  const opts = {
+    season: ctx.setup.season,
+    ...(scripted ? { condition: scripted.condition, caller: scripted.caller, where: scripted.where, ...(scripted.params ? { params: scripted.params } : {}), ...(scripted.first ? { first: scripted.first } : {}) } : {}),
+  };
   let truth = newCall(ctx.db, ctx.med, r.fork('seed').u32(), opts);
   // учебный звонок — случай без редкостей: у болезни есть свой признак, о котором можно спросить, а у экстренной —
   // свой признак угрозы (иначе первый урок учит не тому)
@@ -212,7 +226,11 @@ function ring(ctx: ShiftCtx, s: Shift, scripted: ShiftSetup['script'][number] | 
 function typical(ctx: ShiftCtx, truth: CallTruth): boolean {
   const pc = ctx.db.phone.conditions[truth.condition];
   const own = truth.patient.truth.findings.filter(x => x.cause === truth.condition && ctx.db.phone.findings[x.f]);
-  return pc.form === 'emergency' ? own.some(x => ctx.db.phone.findings[x.f].threat) : own.length > 0;
+  if (!own.length) return false;
+  if (pc.form === 'emergency' && !own.some(x => ctx.db.phone.findings[x.f].threat)) return false;
+  // «сразу о главном» — значит, есть повод, который называет признак основной болезни
+  if (truth.first === 'clear') return Object.values(ctx.db.phone.reasons).some(r => r.when.some(f => own.some(x => x.f === f)));
+  return true;
 }
 
 /** Ближайшая больница профиля болезни от места вызова; нет такой — общего профиля; нет и её — любая. */
@@ -235,7 +253,20 @@ function goToHospital(ctx: ShiftCtx, s: Shift, call: CallRec, crew: Crew, hospit
 }
 
 function setCrew(s: Shift, c: Crew): void {
-  s.crews[s.crews.findIndex(x => x.id === c.id)] = c;
+  const i = s.crews.findIndex(x => x.id === c.id);
+  const old = s.crews[i];
+  if (old.route && old.route !== c.route) {
+    // путь сменился раньше конца (развернули, послали с дороги домой) — в следе остаётся проеханное
+    let last: Trail | undefined;
+    for (let j = s.trail.length - 1; j >= 0 && !last; j--) if (s.trail[j].crew === c.id) last = s.trail[j];
+    if (last && s.t < arrival(old.route)) {
+      const k = passed(old.route, s.t);
+      last.nodes = last.nodes.slice(0, k + 1);
+      last.edges = last.edges.slice(0, k);
+    }
+  }
+  if (c.route && c.route !== old.route) s.trail.push({ crew: c.id, state: c.state, nodes: Array.from(c.route.nodes), edges: Array.from(c.route.edges) });
+  s.crews[i] = c;
 }
 
 function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {

@@ -1,12 +1,16 @@
 // Сцена «Разговор» как экран (ADR 0009; часть П5): открытый вызов смены (src/state/session.ts). Вопрос — команда
 // смены, часы сдвигаются на его цену (ADR 0003); решение — форма вызова; потом — кого послать или оставить ждать.
 // Первый выезд смены — видеовставка (onSent).
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { CallScene } from '../scenes/call/CallScene';
 import { SCENE } from '../scenes/palette';
 import { callView } from '../state/callView';
-import { command, useSession } from '../state/session';
+import { command, tick, useSession } from '../state/session';
+import { callHint } from '../state/tutorial';
+import { T } from '../i18n';
+import { HintBar } from '../scenes/hint';
+import { callLayout } from '../scenes/call/layout';
 
 export function CallScreen({ onDone, onSent }: { onDone: () => void; onSent: () => void }) {
   const x = useSession();
@@ -16,6 +20,12 @@ export function CallScreen({ onDone, onSent }: { onDone: () => void; onSent: () 
     if (!size || size.w !== width || size.h !== height) setSize({ w: width, h: height });
   };
   const view = x?.s.open ? callView(x.ctx, x.s, x.s.open) : null;
+  const hint = x?.s.open ? callHint(x.ctx, x.s, x.s.open) : null;
+  // время игры идёт и в разговоре: часы смены стоят, а настоящие — нет
+  useEffect(() => {
+    const id = setInterval(() => tick(0), 1000);
+    return () => clearInterval(id);
+  }, []);
   return (
     <View style={styles.root} onLayout={onLayout}>
       {size && view ? (
@@ -36,6 +46,7 @@ export function CallScreen({ onDone, onSent }: { onDone: () => void; onSent: () 
           }}
         />
       ) : null}
+      {size && hint ? <HintBar text={T.tutorial[hint]} top={callLayout(size.w, size.h).tabs.y - 70} /> : null}
     </View>
   );
 }

@@ -10,7 +10,22 @@ export const MAP = {
   rail: '#a3a69c',
   casing: '#c8cabd',
   road: ['#ffffff', '#ffffff', '#fcfcf8', '#f6f6f1'] as const,
+  /** вечер: синяя дымка поверх карты, самое тёмное — ночью; знаки — над ней */
+  night: '#0d1b30',
+  nightMax: 0.3,
 } as const;
+
+/**
+ * Сколько вечера в этот час суток, 0…1 (спецификация прототипа, §6: «к 19:00 — вечер»): днём (7–15) — 0, с 15 до 19
+ * темнеет, ночью — 1, с 5 до 7 светает.
+ */
+export function duskOf(secOfDay: number): number {
+  const h = (secOfDay / 3600) % 24;
+  if (h >= 7 && h < 15) return 0;
+  if (h >= 15 && h < 19) return (h - 15) / 4;
+  if (h >= 5 && h < 7) return 1 - (h - 5) / 2;
+  return 1;
+}
 
 /** Ширина дорог на экране, точки, при подробном масштабе; издалека — тоньше (MapView). */
 export const ROAD_PX = [5, 4, 3, 1.8] as const;

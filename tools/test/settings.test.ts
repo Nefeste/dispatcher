@@ -4,15 +4,15 @@ import { describe, expect, test } from 'bun:test';
 import { DEFAULT_SETTINGS, lessMotionOf, parseSettings } from '../../src/state/settings';
 
 describe('настройки', () => {
-  test('пусто и мусор — по умолчанию: автопауза и звук включены', () => {
+  test('пусто и мусор — по умолчанию: автопауза, звук и отклик включены', () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings('{не json')).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings('42')).toEqual(DEFAULT_SETTINGS);
-    expect(DEFAULT_SETTINGS).toEqual({ autopause: true, sound: true });
+    expect(DEFAULT_SETTINGS).toEqual({ autopause: true, sound: true, haptics: true });
   });
 
   test('сохранённый выбор читается как был', () => {
-    expect(parseSettings(JSON.stringify({ autopause: false, sound: false, lessMotion: true }))).toEqual({ autopause: false, sound: false, lessMotion: true });
+    expect(parseSettings(JSON.stringify({ autopause: false, sound: false, haptics: false, lessMotion: true }))).toEqual({ autopause: false, sound: false, haptics: false, lessMotion: true });
   });
 
   test('«меньше движения»: выбор игрока важнее системы, без выбора — система', () => {

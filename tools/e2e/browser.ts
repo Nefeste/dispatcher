@@ -53,9 +53,27 @@ try {
   await see(page, 'title-start', 'Начать смену');
   await snap(page, 'title');
 
-  // смена (П5): пульт — карта района на мониторе, на ней указание OpenStreetMap; сдвиг мышью не роняет её
+  // настройки: переключатели пишутся сразу
+  await page.getByTestId('title-settings').click();
+  await see(page, 'settings-sound', 'Звук');
+  await page.getByTestId('settings-haptics').click();
+  await page.getByTestId('settings-haptics').click();
+  await snap(page, 'settings');
+  await page.getByTestId('settings-back').click();
+  await see(page, 'title-start');
+
+  // смена: загрузка с ходом полосы → вставка «начало смены» (касание пропускает) → пульт с вводом поверх карты; часы
+  // стоят, пока ввод не закрыт
   await page.getByTestId('title-start').click();
+  await see(page, 'insert');
+  await page.waitForTimeout(1500);
+  await snap(page, 'insert-start');
+  await page.getByTestId('insert').click();
   await see(page, 'pult');
+  await see(page, 'intro', 'диспетчер скорой');
+  await page.waitForTimeout(500);
+  await snap(page, 'intro');
+  await page.getByTestId('intro-go').click();
   await see(page, 'map-view');
   await see(page, 'map-osm', '© участники OpenStreetMap');
   const box = (await page.getByTestId('map-view').boundingBox())!;
@@ -69,23 +87,25 @@ try {
   for (let i = 0; i < 100 && (await line()) === 0; i++) await page.waitForTimeout(100);
   if ((await line()) !== 1) throw new Error('первый звонок не пришёл');
   if ((await speed()) !== 'пауза') throw new Error(`звонок не поставил паузу: ${await speed()}`);
+  await see(page, 'hint', 'коснитесь телефона');
   await snap(page, 'pult-ring');
   checks++;
 
   // разговор: вопросы — по вкладкам, каждый двигает часы на свою цену; решение — форма, потом бригада
+  // первый учебный звонок (§3, шаг 4): подсказки ведут — спросить, как дышит, экстренная, ближайшая бригада
   await page.getByTestId('pult-phone').click();
   await see(page, 'call');
+  await see(page, 'hint', 'как он дышит');
   await page.waitForTimeout(500);
   await snap(page, 'call');
-  await page.getByTestId('call-q-q.conscious').click();
   await page.getByTestId('call-q-q.breathing').click();
-  await page.getByTestId('call-tab-see').click();
-  await page.getByTestId('call-q-q.face').click();
+  await see(page, 'hint', '«Экстренная»');
   await page.getByTestId('call-tab-who').click();
   await page.getByTestId('call-q-q.age').click();
   await page.waitForTimeout(300);
   await snap(page, 'call-asked');
   await page.getByTestId('call-form-emergency').click();
+  await see(page, 'hint', 'ближайшей бригаде');
   await see(page, 'call-crews', 'Кого послать');
   await snap(page, 'call-crews');
   await page.getByTestId('call-crew-0').click();
@@ -135,9 +155,16 @@ try {
   }
   await see(page, 'end-emergency', 'Экстренные с доездом до 20 минут');
   console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта`);
-  if (calls < 15 || reports < 3 || picked < 1) throw new Error('смена прошла не вся');
+  // послать с пульта удаётся, только когда свободна бригада, — это не всегда; звонки и доклады — всегда
+  if (calls < 15 || reports < 3) throw new Error('смена прошла не вся');
   await see(page, 'review-main', 'Главная ошибка');
   await snap(page, 'review');
+  // снимок смены: в браузере — скачивается картинкой
+  const download = page.waitForEvent('download', { timeout: 15000 });
+  await page.getByTestId('end-snapshot').click();
+  const file = await download;
+  await file.saveAs(join(OUT, `${String(++shot).padStart(2, '0')}-snapshot.png`));
+  await see(page, 'end-snapshot-done', 'Снимок готов');
   // разбор вызова: разговор, решение, по известному и по правде — отдельно
   if (await visible('review-main-call')) await page.getByTestId('review-main-call').click();
   else await page.getByTestId('review-row-1').click();

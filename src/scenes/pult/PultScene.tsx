@@ -62,6 +62,8 @@ export interface PultProps {
   /** звонков после конца смены не будет */
   closing?: boolean;
   overlay?: MapOverlay;
+  /** свет часа на карте, 0…1 */
+  dusk?: number;
   /** окно программы поверх карты: выбор бригады, доклад */
   panel?: React.ReactNode;
   onPhone: () => void;
@@ -88,7 +90,7 @@ function width(font: SkFont | null, s: string) {
   return font ? font.getTextWidth(s) : 0;
 }
 
-export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, overlay, panel, onPhone, onWaiting, onRadio, onClock, onSpeed }: PultProps) {
+export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, dusk, overlay, panel, onPhone, onWaiting, onRadio, onClock, onSpeed }: PultProps) {
   const L = useMemo(() => pultLayout(W, H), [W, H]);
   const desk = useImage(DESK);
   const bar = useFont(Onest_500Medium, 15);
@@ -131,7 +133,7 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
       </View>
 
       <View style={[styles.abs, { left: L.map.x, top: L.map.y }]}>
-        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} />
+        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} dusk={dusk} />
       </View>
 
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

@@ -164,7 +164,8 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
   }
   for (const f of Object.keys(findings)) if (!Object.values(questions).some(q => q.opens.includes(f))) err(`${f}: no question opens it`);
 
-  // звонящие
+  // звонящие; картинки — из паспорта кадров звонящих (blender/caller.py)
+  const pictures = new Set(Object.keys((JSON.parse(readFileSync(join(ROOT, 'assets/scenes/callers.json'), 'utf8')) as { callers: Record<string, unknown> }).callers));
   const callers: Record<string, CallerKind> = {};
   for (const [id, r] of files(join(dir, 'callers'), 'caller')) {
     const k: CallerKind = {
@@ -178,7 +179,11 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
     if (!(k.weight > 0)) err(`${id}: weight must be positive`);
     if (!k.at.length || k.at.some(a => a !== 'home' && a !== 'street')) err(`${id}: at must list home and/or street`);
     if (!k.relations.length) err(`${id}: no relations`);
-    for (const rel of k.relations) if (rel.as !== 'm' && rel.as !== 'f') err(`${id}: relation ${rel.caller} needs as: m or f`);
+    for (const rel of k.relations) {
+      if (rel.as !== 'm' && rel.as !== 'f') err(`${id}: relation ${rel.caller} needs as: m or f`);
+      const pics = typeof rel.picture === 'string' ? [rel.picture] : Object.values(rel.picture ?? {});
+      for (const pic of pics) if (!pictures.has(pic)) err(`${id}: relation ${rel.caller} has picture ${pic}, which is not in assets/scenes/callers.json`);
+    }
     for (const f of k.cannot) if (!med.findings[f]) err(`${id}: cannot ${f} — no such finding`);
     if (!k.unsure.length || !k.nothing.length) err(`${id}: needs unsure and nothing words`);
     callers[id] = k;

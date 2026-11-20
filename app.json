@@ -2,13 +2,13 @@
   "expo": {
     "name": "Dispatcher 03",
     "slug": "dispatcher",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#ECEDE6",
     "android": {
       "package": "games.gornitsa.dispatcher",
-      "versionCode": 8,
+      "versionCode": 9,
       "allowBackup": false,
       "predictiveBackGestureEnabled": false,
       "blockedPermissions": [
@@ -38,7 +38,15 @@
     "plugins": [
       "expo-font",
       "expo-asset",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false,
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

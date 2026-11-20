@@ -1,5 +1,5 @@
 rank: 2
-say: 75
+say: 70
 when: [sym.seizure]
 words:
   self: []

@@ -45,7 +45,19 @@ CALLERS = {
         'room': 'kitchen',
         'yaw': -28,
     },
+    # мужчина дома: сын, муж, сосед, сам больной (часть П8)
+    'man': {
+        'avatar': 'Adults/Male_Adult_01/Export/Male_Adult_01.fbx',
+        'room': 'kitchen',
+        # повёрнут сильнее: при −28° рука с телефоном закрывала лицо
+        'yaw': -50,
+        # он выше: камера смотрит выше и чуть шире, чтобы голова не упиралась в край кадра
+        'look': 0.04,
+        'lens': 52,
+    },
 }
+# --only имя,имя — нарисовать только этих; паспорт остальных остаётся как был
+ONLY = next((a.split('=', 1)[1].split(',') for a in ARGS if a.startswith('--only=')), None)
 
 
 def lin(hexs):
@@ -265,14 +277,14 @@ def phone_in_hand(arm, ear):
     return ph
 
 
-def camera(arm):
+def camera(arm, spec):
     head = bone_head(arm, 'Bip01 Head')
     fwd = arm.matrix_world.to_quaternion() @ Vector((0, -1, 0))
     bpy.ops.object.camera_add(location=head + Vector((0.3, -1.3, -0.05)))
     cam = bpy.context.object
-    look = head + Vector((0.02, 0, -0.12))
+    look = head + Vector((0.02, 0, spec.get('look', -0.12)))
     cam.rotation_euler = (look - cam.location).to_track_quat('-Z', 'Y').to_euler()
-    cam.data.lens = 62
+    cam.data.lens = spec.get('lens', 62)
     cam.data.dof.use_dof = True
     cam.data.dof.focus_distance = (head - cam.location).length
     cam.data.dof.aperture_fstop = 2.0
@@ -320,12 +332,17 @@ def sha(path):
 def main():
     done = {}
     for cid, spec in CALLERS.items():
+        if ONLY and cid not in ONLY:
+            continue
+        HEAD_BOX.clear()   # рамка головы — своя у каждого человека
+        if os.environ.get('CALLER_YAW'):
+            spec = {**spec, 'yaw': float(os.environ['CALLER_YAW'])}
         bpy.ops.wm.read_factory_settings(use_empty=True)
         kitchen()
         arm, _ = person(spec)
         ear = pose_call(arm)
         phone_in_hand(arm, ear)
-        camera(arm)
+        camera(arm, spec)
         if PREVIEW:
             out = os.path.join(os.environ.get('CALLER_PREVIEW', '/tmp'), f'caller-{cid}-preview.jpg')
             render(out)
@@ -340,6 +357,11 @@ def main():
         return
     with open(os.path.join(ROOT, 'tools', 'people', 'sources.json'), encoding='utf-8') as fh:
         sources = json.load(fh)
+    old = os.path.join(ROOT, 'assets', 'scenes', 'callers.json')
+    if ONLY and os.path.exists(old):
+        with open(old, encoding='utf-8') as fh:
+            kept = json.load(fh).get('callers', {})
+        done = {**{k: v for k, v in kept.items() if k not in done}, **done}
     passport = {
         'id': 'callers',
         'name': 'Звонящие для сцены «Разговор»: люди Microsoft Rocketbox в позе «телефон у уха»',

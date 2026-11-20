@@ -7,7 +7,7 @@ import { hasSaved } from '../state/session';
 import { Button, Txt } from '../ui/kit';
 import { S } from '../ui/theme';
 
-export function TitleScreen({ onStart, onResume, onDesk, onAbout }: { onStart: () => void; onResume: () => void; onDesk: () => void; onAbout: () => void }) {
+export function TitleScreen({ onStart, onResume, onDesk, onSettings, onAbout }: { onStart: () => void; onResume: () => void; onDesk: () => void; onSettings: () => void; onAbout: () => void }) {
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -25,6 +25,7 @@ export function TitleScreen({ onStart, onResume, onDesk, onAbout }: { onStart: (
         <Button label={T.title.start} kind={saved ? 'ghost' : 'primary'} onPress={onStart} testID="title-start" />
         <Txt dim style={styles.center}>{T.title.shift}</Txt>
         <Button label={T.title.desk} kind="ghost" onPress={onDesk} testID="title-desk" />
+        <Button label={T.title.settings} kind="ghost" onPress={onSettings} testID="title-settings" />
         <Button label={T.title.about} kind="ghost" onPress={onAbout} testID="title-about" />
       </View>
       <Txt dim style={styles.center} testID="title-not-training">{T.title.notTraining}</Txt>

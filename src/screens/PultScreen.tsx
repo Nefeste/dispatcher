@@ -12,8 +12,12 @@ import { PultScene } from '../scenes/pult/PultScene';
 import { ProgramPanel } from '../scenes/panel';
 import { crewNo } from '../state/callView';
 import { pultView } from '../state/pultView';
-import { command, nextSpeed, session, tick, togglePause, useSession } from '../state/session';
+import { command, dismissIntro, nextSpeed, session, tick, togglePause, useSession } from '../state/session';
+import { pultHint } from '../state/tutorial';
+import { HintBar } from '../scenes/hint';
+import { pultLayout } from '../scenes/pult/layout';
 import { FONTS } from '../ui/fonts';
+import { duskOf } from '../ui/map/palette';
 import { Txt } from '../ui/kit';
 
 /** Где бригады сейчас — точки карты по очереди x, y: едущая — на пути, стоящая — в узле. */
@@ -63,8 +67,20 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
     if (!size || size.w !== width || size.h !== height) setSize({ w: width, h: height });
   };
   const picked = pick ? view.waiting.find(w => w.id === pick) : undefined;
+  const hint = pultHint(ctx, s);
   let panel: React.ReactNode = null;
-  if (view.report) {
+  if (x.intro) {
+    // ввод новой смены (§3, шаг 3): три строки поверх карты; часы стоят, пока его не закрыли
+    panel = (
+      <ProgramPanel
+        testID="intro"
+        title={T.intro.lines[0]}
+        lead={`${T.intro.lines[1]}\n\n${T.intro.lines[2]}`}
+        rows={[]}
+        actions={[{ label: T.intro.go, onPress: dismissIntro, testID: 'intro-go' }]}
+      />
+    );
+  } else if (view.report) {
     const r = view.report;
     panel = (
       <ProgramPanel
@@ -119,6 +135,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           waiting={view.waiting.map(w => ({ id: w.id, kind: w.form, minutes: w.minutes, repeats: w.repeats }))}
           radio={view.radio}
           closing={view.closing}
+          dusk={duskOf(view.clock)}
           overlay={zoom => <CrewLayer ctx={ctx} shift={s} pos={pos} zoom={zoom} />}
           panel={panel}
           onPhone={() => { if (!command({ c: 'answer' })) onCall(); }}
@@ -128,6 +145,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           onSpeed={nextSpeed}
         />
       ) : null}
+      {size && !x.intro && hint ? <HintBar text={T.tutorial[hint]} top={pultLayout(size.w, size.h).map.y + 8} /> : null}
       <Pressable style={styles.back} onPress={onBack} accessibilityRole="button" testID="map-back">
         <Txt style={styles.backText}>{T.common.back}</Txt>
       </Pressable>
