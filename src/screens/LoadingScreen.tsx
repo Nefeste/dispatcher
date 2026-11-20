@@ -12,7 +12,7 @@ import { Txt } from '../ui/kit';
 import { cachedMapImage, cachedMapPaths } from '../ui/map/paths';
 import { fitOf } from '../ui/map/scale';
 
-export function LoadingScreen({ onReady }: { onReady: () => void }) {
+export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: () => void }) {
   const [step, setStep] = useState<{ s: LoadStep; i: number }>({ s: 'map', i: 0 });
   // экран загрузки — во весь экран, как пульт: по его размеру — окно карты пульта
   const size = useRef<{ w: number; h: number } | null>(null);
@@ -28,9 +28,9 @@ export function LoadingScreen({ onReady }: { onReady: () => void }) {
       const box = pultLayout(z.w, z.h).map;
       cachedMapImage(map, fitOf(map, box.w, box.h));
     };
-    void prepare((s, i) => { if (alive) setStep({ s, i }); }, build).then(() => { if (alive) onReady(); });
+    void prepare(shiftId, (s, i) => { if (alive) setStep({ s, i }); }, build).then(() => { if (alive) onReady(); });
     return () => { alive = false; };
-  }, [onReady]);
+  }, [shiftId, onReady]);
   const share = (step.i + 1) / LOAD_STEPS.length;
   return (
     <View style={styles.root} testID="loading" onLayout={onLayout}>

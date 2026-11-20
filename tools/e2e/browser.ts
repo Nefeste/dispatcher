@@ -1,5 +1,5 @@
 // Сценарий в браузере (спецификация прототипа, критерий 1): веб-сборка, Chromium без окна, настоящие нажатия.
-// Сейчас — первый экран → «Начать смену» → пульт (карта района, автопауза на звонке) → разговор (вопросы по вкладкам,
+// Сейчас — первый экран → «Первая неделя» → выбор смены → пульт (карта района, автопауза на звонке) → разговор (вопросы по вкладкам,
 // решение, бригада) → видеовставка → вся смена до конца (звонки, ожидание, доклады бригад, выбор больницы) → итог →
 // разбор (главная ошибка, вызов: по известному и по правде) → рабочее место (сцена Three.js) → «Об игре» → назад;
 // к П8 путь растёт до сквозного (§3).
@@ -56,7 +56,7 @@ try {
 
   await see(page, 'title-name', 'Диспетчер 03');
   await see(page, 'title-not-training', 'Это игра. Если нужна помощь');
-  await see(page, 'title-start', 'Начать смену');
+  await see(page, 'title-start', 'Первая неделя');
   await snap(page, 'title');
 
   // настройки: переключатели пишутся сразу
@@ -71,6 +71,11 @@ try {
   // смена: загрузка с ходом полосы → вставка «начало смены» (касание пропускает) → пульт с вводом поверх карты; часы
   // стоят, пока ввод не закрыт
   await page.getByTestId('title-start').click();
+  // выбор смены «Первой недели» (срез, часть С1): открыта только первая
+  await see(page, 'week', 'Понедельник, утро');
+  await see(page, 'week-2', 'Откроется после смены 1');
+  await snap(page, 'week');
+  await page.getByTestId('week-1').click();
   await see(page, 'insert');
   await page.waitForTimeout(1500);
   await snap(page, 'insert-start');
@@ -107,8 +112,10 @@ try {
   await page.mouse.move(box.x + box.width / 2 - 60, box.y + box.height / 2 - 80, { steps: 8 });
   await page.mouse.up();
   // первый учебный звонок: автопауза, на линии — один
-  const speed = async () => /Скорость смены: (.+)/.exec((await page.getByTestId('pult-speed').getAttribute('aria-label')) ?? '')?.[1] ?? null;
-  const line = async () => Number(/на линии (\d+)/.exec((await page.getByTestId('pult-phone').getAttribute('aria-label')) ?? '')?.[1] ?? 0);
+  // подписи пульта читаются без ожидания: смена может кончиться между проверкой экрана и чтением — тогда пульта уже нет
+  const label = (id: string) => page.getByTestId(id).getAttribute('aria-label', { timeout: 1500 }).catch(() => null);
+  const speed = async () => /Скорость смены: (.+)/.exec((await label('pult-speed')) ?? '')?.[1] ?? null;
+  const line = async () => Number(/на линии (\d+)/.exec((await label('pult-phone')) ?? '')?.[1] ?? 0);
   for (let i = 0; i < 100 && (await line()) === 0; i++) await page.waitForTimeout(100);
   if ((await line()) !== 1) throw new Error('первый звонок не пришёл');
   if ((await speed()) !== 'пауза') throw new Error(`звонок не поставил паузу: ${await speed()}`);
@@ -181,7 +188,8 @@ try {
   await see(page, 'end-emergency', 'Экстренные с доездом до 20 минут');
   console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта`);
   // послать с пульта удаётся, только когда свободна бригада, — это не всегда; звонки и доклады — всегда
-  if (calls < 15 || reports < 3) throw new Error('смена прошла не вся');
+  // первая смена недели — учебная, поток вполовину (§8 геймдизайна): около девяти звонков
+  if (calls < 7 || reports < 1) throw new Error('смена прошла не вся');
   await see(page, 'review-main', 'Главная ошибка');
   await snap(page, 'review');
   // снимок смены: в браузере — скачивается картинкой
@@ -198,7 +206,12 @@ try {
   await snap(page, 'call-review');
   await page.getByTestId('call-review-back').click();
   await see(page, 'review-main');
+  // «К неделе»: первая смена пройдена — вторая открыта, у первой — лучший итог
   await page.getByTestId('end-home').click();
+  await see(page, 'week-1', 'Лучший итог');
+  await see(page, 'week-2', 'Понедельник, вечер');
+  await snap(page, 'week-after');
+  await page.getByTestId('week-back').click();
   await see(page, 'title-name');
 
   // рабочее место: модель из Blender на Three.js, экраны мониторов — Skia; палец поворачивает взгляд
@@ -242,7 +255,7 @@ try {
   await page.getByTestId('bench-result').waitFor({ state: 'visible', timeout: 60000 });
   await see(page, 'bench-result', 'Замер «Диспетчера 03»');
   await see(page, 'bench-result', 'Поиск пути по району');
-  await see(page, 'bench-result', 'Загрузка смены: от «Начать смену» до готовности');
+  await see(page, 'bench-result', 'Загрузка смены: от выбора смены до готовности');
   console.log((await page.getByTestId('bench-result').innerText()).split('\n').map(l => `  ${l}`).join('\n'));
   await snap(page, 'bench');
   checks++;

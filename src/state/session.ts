@@ -15,8 +15,11 @@ import { KEYS, readRaw, writeRaw } from './storage';
 export const SPEED_X1 = 24;
 export const SPEEDS = [0, 1, 2, 4] as const;
 export type Speed = (typeof SPEEDS)[number];
-/** Смена прототипа (docs/specs/2026-11-prototype.md, §3, шаг 7). */
-export const SHIFT_ID = 'shift.proto';
+/** Смена прототипа (docs/specs/2026-11-prototype.md, §3, шаг 7): её берёт «Замер». Смены игры — «Первая неделя»
+ *  (content/shifts/week-*.yaml, срез, часть С1). */
+export const PROTO_SHIFT = 'shift.proto';
+/** Первая смена недели — с неё начинают. */
+export const FIRST_SHIFT = 'shift.week-1';
 /** Версия формата сохранения: изменился смысл — новая версия и шаг миграции (docs/04-data-model.md, §3). */
 const SAVE_V = 1;
 
@@ -38,15 +41,23 @@ export interface Session {
   v: number;
 }
 
-let ctxCache: ShiftCtx | null = null;
-/** Всё, что за смену не меняется: база, карта, дороги, город — одно на приложение (его берёт и «Замер»). */
-export function shiftContext(): ShiftCtx {
-  return ctxOf();
+/** Всё, что за смену не меняется: база, карта, дороги, город — по одному на смену; карта — одна на файл карты. */
+const ctxCache = new Map<string, ShiftCtx>();
+const mapCache = new Map<string, ShiftCtx['map']>();
+function mapOf(shiftId: string): ShiftCtx['map'] {
+  const id = DB.cities[DB.shifts[shiftId].city].map;
+  let m = mapCache.get(id);
+  if (!m) mapCache.set(id, (m = loadMap(id)));
+  return m;
 }
-
-function ctxOf(): ShiftCtx {
-  if (!ctxCache) ctxCache = shiftCtx(DB, MED, SHIFT_ID, loadMap(DB.cities[DB.shifts[SHIFT_ID].city].map));
-  return ctxCache;
+function ctxOf(shiftId: string): ShiftCtx {
+  let c = ctxCache.get(shiftId);
+  if (!c) ctxCache.set(shiftId, (c = shiftCtx(DB, MED, shiftId, mapOf(shiftId))));
+  return c;
+}
+/** Смена прототипа — для «Замера». */
+export function shiftContext(): ShiftCtx {
+  return ctxOf(PROTO_SHIFT);
 }
 
 export type LoadStep = 'map' | 'roads' | 'paths' | 'medicine';
@@ -56,23 +67,22 @@ export const LOAD_STEPS: readonly LoadStep[] = ['map', 'roads', 'paths', 'medici
  * Загрузка с настоящим ходом (спецификация прототипа, §3, шаг 2): файл карты, граф дорог и время рёбер, пути Skia,
  * медицина — по шагу за кадр; `onStep` — какой шаг начался. Уже загружено — сразу. `paths` строит экран (Skia).
  */
-export async function prepare(onStep: (step: LoadStep, i: number) => void, buildPaths: (map: ShiftCtx['map']) => void): Promise<void> {
+export async function prepare(shiftId: string, onStep: (step: LoadStep, i: number) => void, buildPaths: (map: ShiftCtx['map']) => void): Promise<void> {
   const frame = () => new Promise<void>(r => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => r()) : setTimeout(r, 0)));
-  const setup = DB.shifts[SHIFT_ID];
   onStep('map', 0);
   await frame();
-  const map = ctxCache?.map ?? loadMap(DB.cities[setup.city].map);
+  const map = mapOf(shiftId);
   onStep('roads', 1);
   await frame();
-  if (!ctxCache) ctxCache = shiftCtx(DB, MED, SHIFT_ID, map);
-  timesAt(ctxCache, 0);
+  const ctx = ctxOf(shiftId);
+  timesAt(ctx, 0);
   onStep('paths', 2);
   await frame();
   buildPaths(map);
   onStep('medicine', 3);
   await frame();
   // первый больной смены — чтобы его рождение не пришлось на первый кадр пульта
-  newShift(ctxCache, 1);
+  newShift(ctx, 1);
   await frame();
 }
 
@@ -102,9 +112,9 @@ export function useSession(): Session | null {
   return cur;
 }
 
-/** Новая смена. Зерно — от часов телефона: случайность смены живёт в состоянии, движок её не берёт сам. */
-export function startShift(seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true): Session {
-  const ctx = ctxOf();
+/** Новая смена `shiftId`. Зерно — от часов телефона: случайность смены живёт в состоянии, движок её не берёт сам. */
+export function startShift(shiftId: string, seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true): Session {
+  const ctx = ctxOf(shiftId);
   cur = { ctx, s: newShift(ctx, seed), log: [], speed: 0, looked: 0, autopause, resume: null, intro: true, played: 0, v: 0 };
   lastTouch = Date.now();
   void save();
@@ -114,8 +124,13 @@ export function startShift(seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = t
 
 /** Есть ли сохранённая незаконченная смена. */
 export async function hasSaved(): Promise<boolean> {
+  return (await savedShift()) !== null;
+}
+
+/** Какая смена сохранена незаконченной; нет — null. */
+export async function savedShift(): Promise<string | null> {
   const raw = await readRaw(KEYS.current);
-  return Boolean(raw && parseSave(raw));
+  return (raw && parseSave(raw)?.setup) || null;
 }
 
 interface Save {
@@ -131,7 +146,7 @@ interface Save {
 function parseSave(raw: string): Save | null {
   try {
     const x = JSON.parse(raw) as Save;
-    return x.v === SAVE_V && x.setup === SHIFT_ID && Number.isInteger(x.seed) && Array.isArray(x.log) ? x : null;
+    return x.v === SAVE_V && Boolean(DB.shifts[x.setup]) && Number.isInteger(x.seed) && Array.isArray(x.log) ? x : null;
   } catch {
     return null;
   }
@@ -142,7 +157,7 @@ export async function resumeShift(autopause = true): Promise<Session | null> {
   const raw = await readRaw(KEYS.current);
   const sv = raw ? parseSave(raw) : null;
   if (!sv) return null;
-  const ctx = ctxOf();
+  const ctx = ctxOf(sv.setup);
   const s = replay(ctx, sv.seed, sv.log);
   if (sv.t > s.t) advanceShift(ctx, s, sv.t - s.t);
   cur = { ctx, s, log: sv.log, speed: 0, looked: s.notices.length, autopause, resume: null, intro: false, played: sv.played ?? 0, v: 0 };

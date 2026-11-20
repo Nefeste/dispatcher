@@ -67,6 +67,12 @@ export interface ShiftSetup {
   crews: ShiftCrew[];
   /** учебные звонки — до потока */
   script: ScriptedRing[];
+  /** поток звонков смены — процент от кривой часа (content/flow.yaml): 100 — как есть (docs/08-game-design.md, §8) */
+  flowPct: number;
+  /** больницы смены — часть больниц города; null — все */
+  hospitals: string[] | null;
+  /** место в «Первой неделе» (срез, часть С1): номер, день и час словами, что нового; null — смена не из недели */
+  week: { n: number; day: string; what: string } | null;
 }
 
 /** Поток звонков: сколько в час — с какого часа суток (оценка). */

@@ -48,3 +48,8 @@ export function recordBestOnce(key: string, shift: string, t: Best): Promise<{ b
   }
   return p;
 }
+
+/** Лучшие итоги всех смен. */
+export async function readBest(): Promise<Record<string, Best>> {
+  return parse(await readRaw(KEYS.progress));
+}

@@ -67,7 +67,8 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
     if (!title || !body || !small) return;
     let png: Uint8Array | null = null;
     try {
-      png = shiftSnapshot(x.ctx, x.s, { title: T.end.snapshotTitle, crews: T.end.snapshotCrews, lines, osm: T.map.osm }, { title, body, small });
+      const w = x.ctx.setup;
+      png = shiftSnapshot(x.ctx, x.s, { title: T.end.snapshotTitle(w.week?.day ?? '', T.pult.clock(w.start), T.pult.clock(w.start + w.length)), crews: T.end.snapshotCrews, lines, osm: T.map.osm }, { title, body, small });
     } catch {
       // снимок — не главное: не вышел — так и скажем
     }
@@ -106,7 +107,7 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
       {view.rows.map(r => <Row key={r.id} r={r} onPress={() => onCall(r.id)} />)}
       <View style={styles.actions}>
         <Button label={T.review.again} onPress={onAgain} testID="review-again" />
-        <Button label={T.review.home} kind="ghost" onPress={onHome} testID="end-home" />
+        <Button label={T.week.toWeek} kind="ghost" onPress={onHome} testID="end-home" />
       </View>
     </ScrollView>
   );
