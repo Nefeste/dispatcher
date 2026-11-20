@@ -7,9 +7,15 @@ const nb = ' ';
 /** Бригады по рации: «Четвёртая, на месте». */
 const ORDINAL = ['Первая', 'Вторая', 'Третья', 'Четвёртая', 'Пятая', 'Шестая', 'Седьмая', 'Восьмая'];
 
-export type RadioWhat = 'scene' | 'report' | 'auto' | 'free' | 'base' | 'recall';
-const RADIO = { scene: 'на месте', report: 'везём, куда?', stay: 'помощь на месте, свободна', auto: 'везём в предложенную', free: 'свободна', base: 'на подстанции', recall: 'разворачиваемся на экстренный' } as const;
-const RADIO_LCD = { scene: 'НА МЕСТЕ', report: 'ДОКЛАД', stay: 'СВОБОДНА', auto: 'ВЕЗЁТ', free: 'СВОБОДНА', base: 'НА ПОДСТАНЦИИ', recall: 'РАЗВОРОТ' } as const;
+export type RadioWhat = 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'recall';
+const RADIO = { scene: 'на месте', report: 'везём, куда?', stay: 'помощь на месте, свободна', auto: 'везём в предложенную', free: 'свободна', restock: 'укладка пустая, едем пополнять', base: 'на подстанции', recall: 'разворачиваемся на экстренный' } as const;
+const RADIO_LCD = { scene: 'НА МЕСТЕ', report: 'ДОКЛАД', stay: 'СВОБОДНА', auto: 'ВЕЗЁТ', free: 'СВОБОДНА', restock: 'УКЛАДКА', base: 'НА ПОДСТАНЦИИ', recall: 'РАЗВОРОТ' } as const;
+
+/** Игровые рубли фонда станции: «320 тыс. ₽», «−15 тыс. ₽». */
+function money(rub: number): string {
+  const k = Math.round(Math.abs(rub) / 1000);
+  return `${rub < 0 ? '−' : ''}${k}${nb}тыс.${nb}₽`;
+}
 
 /** Русское число: 1 звонок, 2 звонка, 5 звонков. */
 export function plural(n: number, one: string, few: string, many: string): string {
@@ -140,7 +146,10 @@ export const T = {
       transport: 'Везёт в больницу',
       hospital: 'В больнице, сдаёт больного',
       back: 'Возвращается на подстанцию — свободна, можно послать с дороги',
+      toRestock: 'Укладка пустая — едет на подстанцию пополнять, не свободна',
+      restock: 'Пополняет укладку на подстанции',
     } as const,
+    kit: (n: number) => (n ? `Укладки хватит ещё на ${n} ${plural(n, 'вызов', 'вызова', 'вызовов')}` : 'Укладка пустая'),
     call: (no: number, form: string | null) => `Вызов № ${no}${form ? ` · ${form}` : ''}`,
     hospital: (name: string) => `Больница: ${name}`,
     left: {
@@ -149,6 +158,7 @@ export const T = {
       transport: (min: number) => `Доедет до больницы через ${min} мин`,
       hospital: (min: number) => `Освободится через ${min} мин`,
       back: (min: number) => `На подстанции через ${min} мин`,
+      restock: (min: number) => `Пополнит через ${min} мин`,
     } as const,
     close: 'Закрыть',
   },
@@ -198,6 +208,93 @@ export const T = {
     locked: (n: number) => `Откроется после смены ${n}`,
     label: (n: number, day: string, open: boolean) => (open ? `Смена ${n}, ${day}. Начать` : `Смена ${n}, ${day}: закрыта`),
     toWeek: 'К неделе',
+    toStation: 'К станции',
+  },
+  /** Станция между сменами (срез, часть С2; docs/08-game-design.md, §15): письмо, табель, журнал фонда, укладки */
+  station: {
+    title: (n: number) => `Станция · перерыв после смены ${n}`,
+    titleWeek: 'Станция · неделя пройдена',
+    fund: (rub: number, left: number, all: number) => `Фонд: ${money(rub)} · решений осталось: ${left} из ${all}`,
+    hint: 'Коснитесь письма, табеля, журнала фонда или укладки',
+    toWeek: 'К неделе',
+    next: (n: number) => `Смена ${n}`,
+    close: 'Закрыть',
+    items: {
+      letter: 'Письмо старшего врача',
+      roster: 'Табель бригад на следующую смену',
+      ledger: 'Журнал фонда станции',
+      bag: 'Укладки бригад',
+    },
+    /** строки на предметах сцены — коротко, крупно */
+    on: {
+      letterHead: 'Старший врач',
+      letterNone: 'Писем нет',
+      letterScore: (n: number, inNorm: number, all: number) => `Смена ${n}: ${inNorm} из ${all}`,
+      letterThanks: 'Благодарность',
+      letterComplaints: (k: number) => `Жалоб: ${k}`,
+      rosterHead: (n: number) => `На смену ${n}`,
+      rosterDone: 'Неделя пройдена',
+      rosterRow: (no: number, base: string, kit: number, all: number) => `${no} · ${base} · ${kit}/${all}`,
+      ledgerHead: 'ФОНД',
+      bagHead: 'УКЛАДКИ',
+      bagFull: 'полные',
+      bagShort: (k: number) => `неполных: ${k}`,
+    },
+    letter: {
+      title: (n: number) => `Письмо старшего врача после смены ${n}`,
+      none: 'Писем пока нет: первое придёт после первой смены.',
+      score: (n: number, day: string, inNorm: number, all: number) => `Смена ${n}, ${day.toLowerCase()}: экстренных с доездом до 20 минут — ${inNorm} из ${all}.`,
+      income: (rub: number, perShift: number, perInNorm: number) => `На счёт станции — ${money(rub)}: ${money(perShift)} за смену и по ${money(perInNorm)} за каждый экстренный вызов в норму.`,
+      thanks: (rub: number) => `Ошибок, которые стоили больным времени, не было. Спасибо за смену — станции премия ${money(rub)}.`,
+      mistakes: 'В разборе смены есть ошибки, которые стоили больным времени, — посмотрите, где решение было против услышанного.',
+      longWaits: (k: number) => `Родные жалуются: неотложный вызов ждал бригаду дольше двух часов — ${k} ${plural(k, 'раз', 'раза', 'раз')}.`,
+      refusals: (k: number) => `Родные жалуются: «без выезда», когда повод к выезду был, — ${k} ${plural(k, 'раз', 'раза', 'раз')}.`,
+      fine: (rub: number) => `С фонда за жалобы — ${money(rub)}.`,
+      end: 'Что выйдет на следующую смену — решать вам: табель и укладки на столе.',
+    },
+    roster: {
+      title: (n: number, day: string) => `Табель на смену ${n} — ${day.toLowerCase()}`,
+      row: (no: number, kind: string, base: string) => `Бригада ${no} · ${kind} · «${base}»`,
+      own: 'бригада станции',
+      kit: (n: number, all: number) => (n ? `укладка на ${n} из ${all}` : 'укладка пустая — смену начнёт с пополнения'),
+      crew: (base: string) => `Вывести ещё общепрофильную бригаду на подстанцию «${base}»`,
+      crewSub: (car: number, two: number) => `Машина класса B — ${money(car)}, два фельдшера — ${money(two)}. Бригада выходит на каждую следующую смену.`,
+      none: 'Неделя пройдена: следующей смены нет.',
+    },
+    kits: {
+      title: 'Укладки бригад',
+      lead: (kit: number, min: number) => `Каждый вызов, где бригада работала на месте, тратит укладку; её хватает на ${kit} ${plural(kit, 'вызов', 'вызова', 'вызовов')}. Пустая — бригада после вызова едет на подстанцию пополнять: ${min} минут она не на вызовах.`,
+      short: (no: number, kit: number) => (kit ? `Бригада ${no}: укладка на ${kit} ${plural(kit, 'вызов', 'вызова', 'вызовов')}` : `Бригада ${no}: укладка пустая`),
+      full: 'Все укладки полные.',
+      refill: 'Пополнить укладки всех бригад',
+      refillSub: 'Следующая смена начнётся с полными укладками.',
+    },
+    ledger: {
+      title: 'Журнал фонда',
+      lead: 'Фонд станции — из итогов смен: за смену и за экстренные в норму, премия за смену без ошибок, вычеты за жалобы. За настоящие деньги не продаётся.',
+      empty: 'Записей пока нет.',
+      shift: (n: number) => `Смена ${n}: за смену и экстренные в норму`,
+      thanks: (n: number) => `Смена ${n}: премия — благодарность`,
+      complaint: (n: number) => `Смена ${n}: жалоба родных`,
+      crew: (no: number, base: string) => `Бригада ${no} на подстанции «${base}»: машина и люди`,
+      kits: 'Укладки пополнены',
+      amount: (rub: number) => `${rub > 0 ? '+' : rub < 0 ? '−' : ''}${money(Math.abs(rub))}`,
+      total: (rub: number) => `Сейчас в фонде: ${money(rub)}`,
+    },
+    price: (rub: number) => money(rub),
+    no: {
+      noShift: 'после первой смены',
+      limit: 'решения перерыва кончились',
+      fund: 'не хватает фонда',
+      garage: 'в гараже нет места',
+      full: 'укладки полные',
+    } as const,
+    confirm: {
+      crew: (base: string) => `Вывести бригаду на подстанцию «${base}»?`,
+      kits: 'Пополнить укладки?',
+      text: (rub: number, left: number) => `Из фонда — ${money(rub)}. Решений в этом перерыве останется: ${left}.`,
+      yes: 'Да',
+    },
   },
   /** Настройки (docs/08-game-design.md, §10) */
   settings: {

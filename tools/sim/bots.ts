@@ -1,9 +1,10 @@
 // Диспетчеры-правила (docs/02-architecture.md, §8; спецификация прототипа, §4): кто как играет смену. Их зовут
 // «виртуальный диспетчер» (tools/sim/shift.ts) и тесты разбора. Бот видит то же, что игрок: вид вызова — что
 // сказано, бригады, линию; правду о больном он не читает.
+import { free } from '../../src/engine/crews';
 import { formByKnown } from '../../src/engine/form';
 import { FAR } from '../../src/engine/road/route';
-import { advance, apply, callOf, type Command, crewOptions, type Logged, newShift, nextEvent, type Shift, type ShiftCtx } from '../../src/engine/shift';
+import { advance, apply, callOf, type Command, crewOptions, type Lineup, type Logged, newShift, nextEvent, type Shift, type ShiftCtx } from '../../src/engine/shift';
 
 export interface Bot {
   name: string;
@@ -33,7 +34,7 @@ export const BOTS: Record<string, Bot> = {
 const general = (s: Shift, crew: string) => s.crews.find(c => c.id === crew)?.kind === 'crew.general';
 
 function freeCount(s: Shift): number {
-  return s.crews.filter(c => c.state === 'base' || c.state === 'back').length;
+  return s.crews.filter(free).length;
 }
 
 /** Что бот сделал бы сейчас; null — ждать. */
@@ -73,8 +74,8 @@ export function botMove(ctx: ShiftCtx, s: Shift, bot: Bot): Command | null {
 }
 
 /** Бот играет смену до конца; журнал — как сохранение игры. */
-export function play(ctx: ShiftCtx, seed: number, bot: Bot): { s: Shift; log: Logged[] } {
-  const s = newShift(ctx, seed);
+export function play(ctx: ShiftCtx, seed: number, bot: Bot, lineup?: Lineup): { s: Shift; log: Logged[] } {
+  const s = newShift(ctx, seed, lineup);
   const log: Logged[] = [];
   for (let i = 0; i < 20000 && !s.over; i++) {
     const cmd = botMove(ctx, s, bot);

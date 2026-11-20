@@ -4,8 +4,8 @@
 # ближайшему узлу дорог и проверяет, что от каждой подстанции доезжают до каждой больницы и обратно.
 map: nn-center
 bases:
-  - { id: base.north, name: "Подстанция «Север»", at: [3200, 6200] }
-  - { id: base.south, name: "Подстанция «Юг»", at: [8600, 12600] }
+  - { id: base.north, name: "Подстанция «Север»", short: "Север", at: [3200, 6200] }
+  - { id: base.south, name: "Подстанция «Юг»", short: "Юг", at: [8600, 12600] }
 hospitals:
   - { id: hosp.61, name: "Городская больница № 61", at: [9600, 14400], profiles: [stroke, cardio, neuro, uro, general] }
   - { id: hosp.62, name: "Больница скорой помощи № 62", at: [2600, 9200], profiles: [trauma, general] }

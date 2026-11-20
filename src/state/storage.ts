@@ -9,6 +9,8 @@ export const KEYS = {
   current: 'dispatcher.shift.current.v1',
   history: 'dispatcher.shift.history.v1',
   progress: 'dispatcher.progress.v1',
+  /** станция недели: фонд, свои бригады, укладки, журнал фонда, письмо (срез, часть С2) */
+  station: 'dispatcher.station.v1',
 } as const;
 
 export async function readRaw(key: string): Promise<string | null> {

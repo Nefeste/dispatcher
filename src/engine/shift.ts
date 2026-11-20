@@ -9,7 +9,7 @@ import type { ContentDb } from '../content/med';
 import type { City, Db, FormKind, ShiftSetup } from '../content/types';
 import { type CallTruth, newCall } from './callers';
 import { Rng } from './core/rng';
-import { atBase, atHospital, type Crew, crewAtBase, crewNext, free, home, hourPct, nodeNow, onScene, send, toHospital } from './crews';
+import { atBase, atHospital, type Crew, crewAtBase, crewNext, free, home, hourPct, nodeNow, onScene, restocked, send, toHospital, used } from './crews';
 import { gapAfter } from './flow';
 import { edgeTimes, type Road, roadOf } from './road/graph';
 import { arrival, passed } from './road/pos';
@@ -125,7 +125,7 @@ export interface CallRec {
   bypassed: string[];
 }
 
-export type NoticeKind = 'ring' | 'scene' | 'report' | 'auto' | 'free' | 'base' | 'repeat' | 'recall' | 'end';
+export type NoticeKind = 'ring' | 'scene' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'repeat' | 'recall' | 'end';
 
 export interface Notice {
   t: number;
@@ -134,9 +134,22 @@ export interface Notice {
   crew?: string;
 }
 
+/**
+ * Что смене даёт станция (срез, часть С2; docs/08-game-design.md, §15): её бригады сверх записи смены и сколько
+ * вызовов осталось в укладке каждой бригады с прошлой смены. Нет — бригады записи с полными укладками.
+ */
+export interface Lineup {
+  extra: readonly { id: string; kind: string; base: string }[];
+  kits: Readonly<Record<string, number>>;
+}
+
+export const NO_LINEUP: Lineup = { extra: [], kits: {} };
+
 export interface Shift {
   setup: string;
   seed: number;
+  /** что дала станция: сохраняется со сменой — переигровка начинает с того же */
+  lineup: Lineup;
   t: number;
   rev: number;
   /** сколько вызовов родилось — номер следующего */
@@ -180,11 +193,12 @@ export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'n
 const lengthOf = (ctx: ShiftCtx) => ctx.setup.length * 1000;
 const rngOf = (s: Shift, name: string) => Rng.seeded(s.seed).fork(name);
 
-export function newShift(ctx: ShiftCtx, seed: number): Shift {
+export function newShift(ctx: ShiftCtx, seed: number, lineup: Lineup = NO_LINEUP): Shift {
   const node = (id: string) => ctx.city.bases.find(b => b.id === id)!.node;
+  const crews = [...ctx.setup.crews, ...lineup.extra.filter(x => !ctx.setup.crews.some(c => c.id === x.id))];
   const s: Shift = {
-    setup: ctx.setup.id, seed: seed >>> 0, t: 0, rev: 0, n: 0, script: 0, nextRing: FAR, flowN: 0,
-    rings: [], calls: [], crews: ctx.setup.crews.map(c => crewAtBase(c.id, c.kind, node(c.base))), open: null, notices: [], trail: [], over: false,
+    setup: ctx.setup.id, seed: seed >>> 0, lineup, t: 0, rev: 0, n: 0, script: 0, nextRing: FAR, flowN: 0,
+    rings: [], calls: [], crews: crews.map(c => crewAtBase(c.id, c.kind, node(c.base), lineup.kits[c.id])), open: null, notices: [], trail: [], over: false,
   };
   // поток — после последнего учебного звонка
   const last = ctx.setup.script.length ? ctx.setup.script[ctx.setup.script.length - 1].at * 1000 : 0;
@@ -282,18 +296,21 @@ function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
     call.arrivedAt = s.t;
     s.notices.push({ t: s.t, kind: 'scene', call: call.id, crew: crew.id });
   } else if (crew.state === 'scene' && call && call.state === 'scene') {
-    // отработала на месте: доклад; везти — ждёт ответа диспетчера, не везти — свободна
+    // отработала на месте — укладка на вызов меньше; доклад: везти — ждёт ответа диспетчера, не везти — свободна, а с
+    // пустой укладкой — едет пополнять
+    const worked = used(crew);
     call.reportAt = s.t;
     if (call.transport) {
       call.state = 'report';
       call.suggested = suggestHospital(ctx, s, call);
-      setCrew(s, { ...crew, until: s.t + REPORT_WAIT });
+      setCrew(s, { ...worked, until: s.t + REPORT_WAIT });
       s.notices.push({ t: s.t, kind: 'report', call: call.id, crew: crew.id });
     } else {
       call.state = 'done';
       call.doneAt = s.t;
-      setCrew(s, home(ctx.road, times, crew, s.t));
+      setCrew(s, home(ctx.road, times, worked, s.t));
       s.notices.push({ t: s.t, kind: 'report', call: call.id, crew: crew.id });
+      if (!worked.kit) s.notices.push({ t: s.t, kind: 'restock', call: call.id, crew: crew.id });
     }
   } else if (crew.state === 'scene' && call && call.state === 'report') {
     // на доклад не ответили — везёт в больницу, которую предложила
@@ -307,9 +324,14 @@ function crewEvent(ctx: ShiftCtx, s: Shift, crew: Crew): void {
     call.state = 'done';
     call.doneAt = s.t;
     setCrew(s, home(ctx.road, times, crew, s.t));
-    s.notices.push({ t: s.t, kind: 'free', call: call.id, crew: crew.id });
+    s.notices.push({ t: s.t, kind: crew.kit ? 'free' : 'restock', call: call.id, crew: crew.id });
   } else if (crew.state === 'back') {
-    setCrew(s, atBase(crew));
+    // с пустой укладкой — пополняет, извещения нет: «едем пополнять» уже было
+    const at = atBase(crew, s.t);
+    setCrew(s, at);
+    if (at.state === 'base') s.notices.push({ t: s.t, kind: 'base', crew: crew.id });
+  } else if (crew.state === 'restock') {
+    setCrew(s, restocked(crew));
     s.notices.push({ t: s.t, kind: 'base', crew: crew.id });
   } else {
     // вызова нет (не должно быть): бригада свободна
@@ -555,8 +577,8 @@ export interface Logged {
 }
 
 /** Переиграть смену: часы до времени команды, команда — и так по порядку. Тот же итог байт в байт. */
-export function replay(ctx: ShiftCtx, seed: number, log: readonly Logged[]): Shift {
-  const s = newShift(ctx, seed);
+export function replay(ctx: ShiftCtx, seed: number, log: readonly Logged[], lineup: Lineup = NO_LINEUP): Shift {
+  const s = newShift(ctx, seed, lineup);
   for (const { t, cmd } of log) {
     if (t > s.t) advance(ctx, s, t - s.t);
     apply(ctx, s, cmd);

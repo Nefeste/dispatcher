@@ -1,7 +1,8 @@
 // Сценарий в браузере (спецификация прототипа, критерий 1): веб-сборка, Chromium без окна, настоящие нажатия.
 // Сейчас — первый экран → «Первая неделя» → выбор смены → пульт (карта района, автопауза на звонке) → разговор (вопросы по вкладкам,
 // решение, бригада) → видеовставка → вся смена до конца (звонки, ожидание, доклады бригад, выбор больницы) → итог →
-// разбор (главная ошибка, вызов: по известному и по правде) → рабочее место (сцена Three.js) → «Об игре» → назад;
+// разбор (главная ошибка, вызов: по известному и по правде) → станция (письмо, журнал, табель, укладки, решение) →
+// неделя → рабочее место (сцена Three.js) → «Об игре» → назад;
 // к П8 путь растёт до сквозного (§3).
 // Снимки — tools/e2e/out/. Ошибка в консоли — провал. По образцу shelter: tools/e2e/browser.ts @ 396daee.
 //
@@ -206,8 +207,39 @@ try {
   await snap(page, 'call-review');
   await page.getByTestId('call-review-back').click();
   await see(page, 'review-main');
-  // «К неделе»: первая смена пройдена — вторая открыта, у первой — лучший итог
+  // «К станции» (срез, С2): письмо старшего врача, журнал фонда, табель следующей смены, укладки; решение — с
+  // подтверждением, решений в перерыве — три
   await page.getByTestId('end-home').click();
+  await see(page, 'station-fund', 'решений осталось: 3 из 3');
+  await page.waitForTimeout(800);
+  await snap(page, 'station');
+  await page.getByTestId('station-letter').click();
+  await see(page, 'station-panel-letter', 'Письмо старшего врача после смены 1');
+  await see(page, 'station-panel-letter', 'На счёт станции');
+  await snap(page, 'station-letter');
+  await page.getByTestId('station-close').click();
+  await page.getByTestId('station-ledger').click();
+  await see(page, 'station-panel-ledger', 'Смена 1: за смену и экстренные в норму');
+  await page.getByTestId('station-close').click();
+  await page.getByTestId('station-roster').click();
+  await see(page, 'station-panel-roster', 'Табель на смену 2');
+  // после первой смены на новую бригаду фонда ещё нет: машина и два фельдшера — 320 тыс.
+  await see(page, 'station-crew-base.north', 'не хватает фонда');
+  await snap(page, 'station-roster');
+  await page.getByTestId('station-close').click();
+  await page.getByTestId('station-bag').click();
+  await see(page, 'station-panel-bag', 'Укладки бригад');
+  const refill = (await page.getByTestId('station-kits').count()) > 0 && !(await page.getByTestId('station-kits').innerText()).includes('укладки полные');
+  if (refill) {
+    await page.getByTestId('station-kits').click();
+    await page.getByRole('button', { name: 'Да', exact: true }).click();
+    await see(page, 'station-fund', 'решений осталось: 2 из 3');
+  }
+  await snap(page, 'station-bag');
+  await page.getByTestId('station-close').click();
+  console.log(`станция: ${(await page.getByTestId('station-fund').innerText()).trim()}${refill ? ', укладки пополнены' : ''}`);
+  // «К неделе»: первая смена пройдена — вторая открыта, у первой — лучший итог
+  await page.getByTestId('station-week').click();
   await see(page, 'week-1', 'Лучший итог');
   await see(page, 'week-2', 'Понедельник, вечер');
   await snap(page, 'week-after');

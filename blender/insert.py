@@ -412,4 +412,6 @@ def main():
     print('вставка:', mp4, os.path.getsize(mp4))
 
 
-main()
+# запуск — только из командной строки: blender/station.py берёт отсюда машину, не запуская вставку
+if __name__ == '__main__':
+    main()

@@ -3,7 +3,8 @@
 // вызов, на месте, больница, обратно; время доезда из одного обратного поиска совпадает с прямым путём каждой бригады.
 import { describe, expect, test } from 'bun:test';
 import { DB } from '../../src/content/generated/db';
-import { atBase, atHospital, crewAtBase, crewNext, etas, free, home, hourPct, nodeNow, onScene, send, toHospital } from '../../src/engine/crews';
+import { atBase, atHospital, crewAtBase, crewNext, etas, free, home, hourPct, nodeNow, onScene, restocked, send, toHospital, used } from '../../src/engine/crews';
+import { KIT, RESTOCK } from '../../src/engine/rules';
 import { edgeTimes, roadOf } from '../../src/engine/road/graph';
 import { arrival, passed, pointAt, routeOf } from '../../src/engine/road/pos';
 import { FAR } from '../../src/engine/road/route';
@@ -89,9 +90,29 @@ describe('бригада', () => {
     expect(c.state).toBe('back');
     expect(c.call).toBeNull();
     expect(free(c)).toBe(true);
-    c = atBase(c);
+    c = atBase(c, crewNext(c));
     expect([c.state, c.at]).toEqual(['base', south]);
     expect(crewNext(c)).toBe(0xffffffff);
+  });
+
+  test('укладка: вызов тратит одну; пустая — не свободна, на подстанции пополняет 20 минут, потом полная (С2)', () => {
+    let c = crewAtBase('crew.4', 'crew.general', south, 1);
+    expect([c.kit, free(c)]).toEqual([1, true]);
+    c = send(road, times, c, 'call.1', hosp, 0)!;
+    c = used(onScene(c, crewNext(c) + SCENE));
+    expect(c.kit).toBe(0);
+    c = home(road, times, c, c.until);
+    expect(c.state).toBe('back');
+    expect(free(c)).toBe(false);
+    const at = crewNext(c);
+    c = atBase(c, at);
+    expect([c.state, c.until, free(c)]).toEqual(['restock', at + RESTOCK, false]);
+    expect(crewNext(c)).toBe(at + RESTOCK);
+    c = restocked(c);
+    expect([c.state, c.kit, free(c)]).toEqual(['base', KIT, true]);
+    // пустая с прошлой смены — смена начинается с пополнения
+    const empty = crewAtBase('crew.1', 'crew.general', north, 0);
+    expect([empty.state, empty.until, free(empty)]).toEqual(['restock', RESTOCK, false]);
   });
 
   test('с дороги домой бригаду посылают от того места, где она сейчас', () => {

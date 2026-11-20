@@ -29,10 +29,15 @@ export interface Hospital extends Place {
   profiles: Profile[];
 }
 
+/** Подстанция: короткое имя — для табеля станции («Север»). */
+export interface Base extends Place {
+  short: string;
+}
+
 export interface City {
   id: string;
   map: string;
-  bases: Place[];
+  bases: Base[];
   hospitals: Hospital[];
 }
 

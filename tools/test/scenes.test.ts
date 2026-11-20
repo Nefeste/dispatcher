@@ -6,7 +6,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PULT } from '../../src/art/pult.gen';
+import { STATION_ART } from '../../src/art/station.gen';
 import { callLayout } from '../../src/scenes/call/layout';
+import { ITEMS, stationLayout } from '../../src/scenes/station/layout';
 import { applyMatrix, pultLayout, quadMatrix, type Rect } from '../../src/scenes/pult/layout';
 
 const root = join(import.meta.dir, '../..');
@@ -38,6 +40,37 @@ describe('паспорта кадров', () => {
       expect(Object.keys(src.files)).toContain(`Assets/Avatars/${c.avatar}`);
     }
   });
+});
+
+describe('станция (срез, С2)', () => {
+  test('кадр: отпечатки файлов, скрипт и версия Blender', () => {
+    const p = json('assets/scenes/station.json');
+    for (const [file, f] of Object.entries(p.files as Record<string, { sha256: string; bytes: number }>)) {
+      expect([file, sha(file)]).toEqual([file, f.sha256]);
+    }
+    expect(readFileSync(join(root, p.made.script), 'utf8')).toContain(`VERSION = '${p.made.blender}'`);
+    expect([STATION_ART.w, STATION_ART.h]).toEqual(p.made.size);
+  });
+
+  test('предметы — внутри кадра, листы — внутри своих предметов', () => {
+    for (const it of ITEMS) {
+      const [x0, y0, x1, y1] = STATION_ART[it].tap;
+      expect(x0 >= 0 && y0 >= 0 && x1 <= STATION_ART.w && y1 <= STATION_ART.h && x1 > x0 && y1 > y0).toBe(true);
+      for (const [x, y] of STATION_ART[it].quad) expect(x >= x0 - 1 && x <= x1 + 1 && y >= y0 - 1 && y <= y1 + 1).toBe(true);
+    }
+  });
+
+  for (const [w, h] of PHONES) {
+    test(`${w} × ${h}: четыре предмета на экране, касания не наезжают и не меньше 44 точек`, () => {
+      const L = stationLayout(w, h - 180);
+      const taps = ITEMS.map(it => L.tap[it]);
+      for (const t of taps) {
+        expect(inside(t, w, h - 180)).toBe(true);
+        expect(Math.min(t.w, t.h)).toBeGreaterThanOrEqual(44);
+      }
+      for (let i = 0; i < taps.length; i++) for (let j = i + 1; j < taps.length; j++) expect(overlap(taps[i], taps[j])).toBe(false);
+    });
+  }
 });
 
 describe('видеовставки', () => {

@@ -34,7 +34,7 @@ test('карточка посреди смены: вызов у занятых, 
       const card = crewCard(ctx, s, c.id)!;
       cards++;
       states.add(card.state);
-      expect(Object.keys(card).sort()).toEqual(['call', 'hospital', 'id', 'kind', 'minutes', 'no', 'state']);
+      expect(Object.keys(card).sort()).toEqual(['call', 'hospital', 'id', 'kind', 'kit', 'minutes', 'no', 'state']);
       if (card.state === 'base') expect(card.call).toBeNull();
       if (card.state === 'drive' || card.state === 'scene' || card.state === 'transport') expect(card.call).not.toBeNull();
       if (card.state === 'transport') expect(card.hospital).not.toBeNull();

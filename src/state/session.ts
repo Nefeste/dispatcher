@@ -7,7 +7,7 @@
 import { useSyncExternalStore } from 'react';
 import { DB } from '../content/generated/db';
 import { MED } from '../content/generated/med';
-import { type Command, type Logged, type Notice, newShift, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
+import { type Command, type Lineup, type Logged, NO_LINEUP, type Notice, newShift, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
 import { loadMap } from '../map/load';
 import { KEYS, readRaw, writeRaw } from './storage';
 
@@ -20,8 +20,11 @@ export type Speed = (typeof SPEEDS)[number];
 export const PROTO_SHIFT = 'shift.proto';
 /** Первая смена недели — с неё начинают. */
 export const FIRST_SHIFT = 'shift.week-1';
-/** Версия формата сохранения: изменился смысл — новая версия и шаг миграции (docs/04-data-model.md, §3). */
-const SAVE_V = 1;
+/** Версия формата сохранения: изменился смысл — новая версия и шаг миграции (docs/04-data-model.md, §3).
+ *  2 — 0.13.0: укладки и бригады станции меняют жизнь смены, у первой смены другие номера бригад; команды смены 0.12.0
+ *  переигрались бы в другую смену — такая смена не продолжается (шага миграции нет: переиграть её по старым правилам
+ *  нечем). */
+const SAVE_V = 2;
 
 export interface Session {
   ctx: ShiftCtx;
@@ -112,10 +115,11 @@ export function useSession(): Session | null {
   return cur;
 }
 
-/** Новая смена `shiftId`. Зерно — от часов телефона: случайность смены живёт в состоянии, движок её не берёт сам. */
-export function startShift(shiftId: string, seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true): Session {
+/** Новая смена `shiftId` с тем, что дала станция. Зерно — от часов телефона: случайность смены живёт в состоянии,
+ *  движок её не берёт сам. */
+export function startShift(shiftId: string, seed = (Date.now() ^ 0x5bd1e995) >>> 0, autopause = true, lineup: Lineup = NO_LINEUP): Session {
   const ctx = ctxOf(shiftId);
-  cur = { ctx, s: newShift(ctx, seed), log: [], speed: 0, looked: 0, autopause, resume: null, intro: true, played: 0, v: 0 };
+  cur = { ctx, s: newShift(ctx, seed, lineup), log: [], speed: 0, looked: 0, autopause, resume: null, intro: true, played: 0, v: 0 };
   lastTouch = Date.now();
   void save();
   emit();
@@ -141,6 +145,19 @@ interface Save {
   log: Logged[];
   /** время игры, мс */
   played?: number;
+  /** что дала станция (срез, С2); нет — бригады записи с полными укладками */
+  lineup?: Lineup;
+}
+
+/** Состав из сохранения: только знакомые виды и подстанции; не та форма — без станции. */
+function lineupFrom(x: unknown): Lineup {
+  const l = x as Partial<Lineup> | undefined;
+  if (!l || !Array.isArray(l.extra) || typeof l.kits !== 'object' || !l.kits) return NO_LINEUP;
+  const bases = new Set(Object.values(DB.cities).flatMap(c => c.bases.map(b => b.id)));
+  const extra = l.extra.filter(c => c && typeof c.id === 'string' && Boolean(DB.crews[c.kind]) && bases.has(c.base));
+  const kits: Record<string, number> = {};
+  for (const [id, n] of Object.entries(l.kits)) if (Number.isInteger(n)) kits[id] = n as number;
+  return { extra, kits };
 }
 
 function parseSave(raw: string): Save | null {
@@ -158,7 +175,7 @@ export async function resumeShift(autopause = true): Promise<Session | null> {
   const sv = raw ? parseSave(raw) : null;
   if (!sv) return null;
   const ctx = ctxOf(sv.setup);
-  const s = replay(ctx, sv.seed, sv.log);
+  const s = replay(ctx, sv.seed, sv.log, lineupFrom(sv.lineup));
   if (sv.t > s.t) advanceShift(ctx, s, sv.t - s.t);
   cur = { ctx, s, log: sv.log, speed: 0, looked: s.notices.length, autopause, resume: null, intro: false, played: sv.played ?? 0, v: 0 };
   lastTouch = Date.now();
@@ -170,7 +187,7 @@ let lastSave = 0;
 async function save(): Promise<void> {
   if (!cur) return;
   lastSave = Date.now();
-  const sv: Save = { v: SAVE_V, setup: cur.ctx.setup.id, seed: cur.s.seed, t: cur.s.t, log: cur.log, played: cur.played };
+  const sv: Save = { v: SAVE_V, setup: cur.ctx.setup.id, seed: cur.s.seed, t: cur.s.t, log: cur.log, played: cur.played, lineup: cur.s.lineup };
   await writeRaw(KEYS.current, cur.s.over ? null : JSON.stringify(sv));
 }
 
@@ -209,7 +226,7 @@ let cueFn: CueFn = () => {};
 export function setCue(f: CueFn): void {
   cueFn = f;
 }
-const RADIO: readonly Notice['kind'][] = ['scene', 'report', 'auto', 'free', 'base', 'recall'];
+const RADIO: readonly Notice['kind'][] = ['scene', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
 
 /** Новые извещения: звук и автопауза на звонке, докладе и повторном звонке (ADR 0003; настройка «автопауза»). */
 function look(x: Session, fresh: readonly Notice[]): void {

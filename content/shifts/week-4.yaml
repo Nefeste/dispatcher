@@ -7,8 +7,10 @@ start: 3600
 length: 7200
 season: autumn
 flow: 110
+# Бригады — бригады станции под своими номерами (у номера всю неделю тот же вид и подстанция, часть С2); ночью выходят
+# первая, вторая, третья (реанимационная) и четвёртая.
 crews:
   - { id: crew.1, kind: crew.general, base: base.north }
-  - { id: crew.2, kind: crew.resus, base: base.south }
-  - { id: crew.3, kind: crew.general, base: base.south }
-  - { id: crew.4, kind: crew.general, base: base.north }
+  - { id: crew.2, kind: crew.general, base: base.north }
+  - { id: crew.3, kind: crew.resus, base: base.south }
+  - { id: crew.4, kind: crew.general, base: base.south }

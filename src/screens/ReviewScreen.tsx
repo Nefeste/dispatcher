@@ -12,6 +12,7 @@ import { mistakeText, mistakeWhy } from './reviewWords';
 import { reviewView } from '../state/reviewView';
 import { shiftSnapshot } from '../scenes/snapshot';
 import { type Best, recordBestOnce } from '../state/progress';
+import { recordShiftOnce } from '../state/station';
 import { useSession } from '../state/session';
 import { saveImage } from '../ui/saveImage';
 import { Button, Card, Txt } from '../ui/kit';
@@ -39,6 +40,7 @@ function Row({ r, onPress }: { r: ReviewRow; onPress: () => void }) {
 }
 
 export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string) => void; onAgain: () => void; onHome: () => void }) {
+  // смена недели: итог — на станцию (срез, С2), дальше — «К станции»
   const x = useSession();
   const view = useMemo(() => (x ? reviewView(x.ctx, x.s) : null), [x]);
   // лучший итог этой смены — до этой; записывается один раз, когда открыт итог
@@ -56,6 +58,11 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
     void recordBestOnce(`${shift}:${seed}`, shift, totals).then(r => { if (alive) setBest(r); });
     return () => { alive = false; };
   }, [shift, seed, totals]);
+  useEffect(() => {
+    // итог смены недели — на станцию один раз (повтор пройденной смены станцию не меняет)
+    if (!x || !x.s.over || !x.ctx.setup.week) return;
+    void recordShiftOnce(x.ctx, x.s);
+  }, [x]);
   if (!view || !x) return null;
   const t = view.totals;
   const lines = [
@@ -107,7 +114,7 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
       {view.rows.map(r => <Row key={r.id} r={r} onPress={() => onCall(r.id)} />)}
       <View style={styles.actions}>
         <Button label={T.review.again} onPress={onAgain} testID="review-again" />
-        <Button label={T.week.toWeek} kind="ghost" onPress={onHome} testID="end-home" />
+        <Button label={x.ctx.setup.week ? T.week.toStation : T.week.toWeek} kind="ghost" onPress={onHome} testID="end-home" />
       </View>
     </ScrollView>
   );

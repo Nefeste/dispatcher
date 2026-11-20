@@ -6,11 +6,15 @@
 // Состояния: на подстанции → едет на вызов → на месте → везёт в больницу → в больнице → возвращается → на
 // подстанции. Бригада, которая возвращается, уже свободна: её можно послать с дороги, она поедет от того места, где
 // она сейчас. Бригаду, которая едет на неотложный вызов, можно развернуть на экстренный (§5, «Снять бригаду»).
+// Укладка (срез, часть С2; docs/08-game-design.md, §15; 388н, прил. 5, пп. 3.26, 5.31): запас на несколько вызовов,
+// каждый вызов, где бригада работала на месте, тратит один. Пустая укладка — бригада после вызова едет на подстанцию
+// пополнять, а не на следующий вызов: пока едет и пополняет, она не свободна.
 import type { Road } from './road/graph';
 import { arrival, passed, type Route, routeOf } from './road/pos';
 import { FAR, search } from './road/route';
+import { KIT, RESTOCK } from './rules';
 
-export type CrewState = 'base' | 'drive' | 'scene' | 'transport' | 'hospital' | 'back';
+export type CrewState = 'base' | 'drive' | 'scene' | 'transport' | 'hospital' | 'back' | 'restock';
 
 export interface Crew {
   id: string;
@@ -21,19 +25,29 @@ export interface Crew {
   /** где стоит, если не едет: узел; едет — куда */
   at: number;
   route: Route | null;
-  /** на месте и в больнице — до какого момента, мс */
+  /** на месте, в больнице и пополняя укладку — до какого момента, мс */
   until: number;
   /** вызов, на котором бригада, или пусто */
   call: string | null;
+  /** сколько вызовов ещё хватит укладки; 0 — пустая, бригада едет пополнять */
+  kit: number;
 }
 
-export function crewAtBase(id: string, kind: string, base: number): Crew {
-  return { id, kind, base, state: 'base', at: base, route: null, until: 0, call: null };
+/** Бригада на подстанции в начале смены; укладка — сколько вызовов в ней осталось (станция знает это с прошлой
+ *  смены). Пустая — смена начинается с пополнения. */
+export function crewAtBase(id: string, kind: string, base: number, kit = KIT): Crew {
+  const c: Crew = { id, kind, base, state: 'base', at: base, route: null, until: 0, call: null, kit: Math.max(0, Math.min(KIT, Math.floor(kit))) };
+  return atBase(c, 0);
 }
 
-/** Свободна ли бригада для нового вызова: на подстанции или возвращается. */
+/** Свободна ли бригада для нового вызова: на подстанции или возвращается — и укладка не пустая. */
 export function free(c: Crew): boolean {
-  return c.state === 'base' || c.state === 'back';
+  return (c.state === 'base' || c.state === 'back') && c.kit > 0;
+}
+
+/** Отработала на месте: укладка стала на вызов меньше. */
+export function used(c: Crew): Crew {
+  return { ...c, kit: Math.max(0, c.kit - 1) };
 }
 
 /** Узел, откуда бригада поедет сейчас: последний пройденный на пути или где стоит. */
@@ -78,18 +92,24 @@ export function atHospital(c: Crew, until: number): Crew {
 export function home(road: Road, times: Uint32Array, c: Crew, t: number): Crew {
   const from = nodeNow(c, t);
   const r = from === c.base ? null : routeOf(road, times, from, c.base, t);
-  return r ? { ...c, state: 'back', route: r, at: c.base, call: null, until: 0 } : { ...c, state: 'base', at: c.base, route: null, call: null, until: 0 };
+  return r ? { ...c, state: 'back', route: r, at: c.base, call: null, until: 0 } : atBase({ ...c, call: null }, t);
 }
 
-/** Доехала до подстанции. */
-export function atBase(c: Crew): Crew {
+/** Доехала до подстанции в момент `t`: укладка пустая — пополняет до `t + RESTOCK`, иначе на подстанции. */
+export function atBase(c: Crew, t: number): Crew {
+  if (c.kit <= 0) return { ...c, state: 'restock', at: c.base, route: null, until: t + RESTOCK };
   return { ...c, state: 'base', at: c.base, route: null, until: 0 };
+}
+
+/** Пополнила укладку — на подстанции, полная. */
+export function restocked(c: Crew): Crew {
+  return { ...c, state: 'base', at: c.base, route: null, until: 0, kit: KIT };
 }
 
 /** Когда у бригады следующее событие, мс: конец пути или конец стоянки; нет — FAR. */
 export function crewNext(c: Crew): number {
   if (c.route && (c.state === 'drive' || c.state === 'transport' || c.state === 'back')) return arrival(c.route);
-  if (c.state === 'scene' || c.state === 'hospital') return c.until;
+  if (c.state === 'scene' || c.state === 'hospital' || c.state === 'restock') return c.until;
   return FAR;
 }
 
