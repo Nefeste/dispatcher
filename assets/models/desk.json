@@ -5,10 +5,10 @@
   "made": {
     "script": "blender/build.py",
     "blender": "4.5.15",
-    "aoSamples": 64,
+    "aoSamples": 256,
     "aoDistance": 0.6
   },
-  "triangles": 12280,
+  "triangles": 13896,
   "screens": [
     "videowall",
     "mon_call",
@@ -43,12 +43,12 @@
   ],
   "files": {
     "src/art/desk.gen.ts": {
-      "sha256": "b45dc5a8dc1713ddfad358347b3c8a6028746ffaf155489577e82bf095da4de7",
-      "bytes": 892482
+      "sha256": "86baae059ffe14cbeeae494c3200a39368a87ec3b038ac8dbe194bbbfa88932f",
+      "bytes": 1016579
     },
     "assets/models/desk.glb": {
-      "sha256": "2c9dd18dc7060942fd3ed498ff4f0ff02c0a69cab2a04bfb1ad925f2b2482a0c",
-      "bytes": 626452
+      "sha256": "f2067d64e702ee29e7584eb4537b67a1402897056aea1c6fda83aa1809d742fc",
+      "bytes": 721872
     }
   }
 }

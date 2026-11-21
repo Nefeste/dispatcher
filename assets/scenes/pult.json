@@ -16,8 +16,8 @@
   },
   "files": {
     "assets/scenes/pult-desk.png": {
-      "sha256": "336b0f8df9af2924cde9c4e8ff496a02d0e3fa9ad8159ba16c96ea46f95deef4",
-      "bytes": 470953
+      "sha256": "1a87c2322274aff7ac59eb5b8fe43a9387e867a6d755ef53f54e85692a240372",
+      "bytes": 509353
     },
     "src/art/pult.gen.ts": {
       "sha256": "e8018cd0b20b5fe694d166840c3192a3da7d3979599e3f013baabb424904050f",

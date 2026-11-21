@@ -6,7 +6,7 @@
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
-import { Canvas, Group, Image, LinearGradient, Rect, RoundedRect, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
+import { Canvas, Group, Image, LinearGradient, Rect, rect, RoundedRect, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { QuestionGroup } from '../../content/types';
@@ -15,7 +15,7 @@ import { useTextScale } from '../../ui/textScale';
 import type { CallView } from '../../state/callView';
 import { ProgramPanel } from '../panel';
 import { FORM, SCENE, UI } from '../palette';
-import { callLayout, fit, wrap } from './layout';
+import { pictureRect, callLayout, fit, wrap } from './layout';
 
 /** Картинки звонящих (assets/scenes/callers.json) — по имени из записи звонящего. */
 const PICTURES: Record<string, number> = {
@@ -51,6 +51,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
   // размер текста (§12 геймдизайна; срез, С8б): шрифты — по ступени, касания и строки карточки — выше
   const s = useTextScale();
   const L = useMemo(() => callLayout(W, H, s), [W, H, s]);
+  const pic = pictureRect(L.picture);
   const [group, setGroup] = useState<QuestionGroup>('vital');
   const picture = useImage(view.picture ? (PICTURES[view.picture] ?? null) : null);
   const big = useFont(Onest_500Medium, 16 * s);
@@ -88,7 +89,12 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
         <Canvas style={StyleSheet.absoluteFill}>
           <Rect x={0} y={0} width={W} height={H} color={SCENE.hallTop} />
           {/* звонящий: картинка по ширине, лицо — в верхней трети; кого ещё не нарисовали — тёмная сцена */}
-          {hasPicture && picture ? <Image image={picture} x={L.picture.x} y={L.picture.y} width={L.picture.w} height={L.picture.h} fit="cover" /> : null}
+          {/* картинка — от верха кадра, лишнее срезается снизу: голова звонящего видна и в низком окне */}
+          {hasPicture && picture ? (
+            <Group clip={rect(L.picture.x, L.picture.y, L.picture.w, L.picture.h)}>
+              <Image image={picture} x={pic.x} y={pic.y} width={pic.w} height={pic.h} fit="fill" />
+            </Group>
+          ) : null}
           {!hasPicture ? (
             <Group>
               <Rect x={0} y={0} width={W} height={L.picture.h}>

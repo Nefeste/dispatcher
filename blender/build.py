@@ -32,7 +32,8 @@ REGIONS = ['floor', 'wall', 'partition', 'desk', 'edge', 'metal', 'plastic', 'da
            'paper', 'mug', 'lamp', 'glass', 'pad', 'glow']
 
 AO_DISTANCE = 0.6
-AO_SAMPLES = 64
+# 256 проходов: при 64 в тенях под предметами был виден шум — пятна на столе
+AO_SAMPLES = 256
 AO_FLOOR = 0.35
 
 DESK_TOP = 0.74
@@ -142,6 +143,17 @@ def cylinder(name, region, r, h, x, y, z, sides=12, r2=None, axis='y'):
     return part(name, region, bm)
 
 
+def blob(name, region, rx, ry, rz, x, y, z, yaw=0.0, segments=10, rings=6):
+    """Сплюснутый шар (мышь, чашки гарнитуры): полуоси по осям игры, середина в (x, y, z)."""
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=1.0)
+    for v in bm.verts:
+        bx, by, bz = v.co
+        p = rot((bx * rx, bz * ry, -by * rz), yaw)
+        v.co = g2b(x + p[0], y + p[1], z + p[2])
+    return part(name, region, bm)
+
+
 def monitor(name, w, h, x, y, z, yaw=0.0, pitch=0.0):
     """Монитор: рамка, задняя крышка, экран — описание для Three.js (SCREENS)."""
     box(f'{name}_frame', 'plastic', w + 0.02, h + 0.02, 0.022, x, y - (h + 0.02) / 2, z, grid=0.12, yaw=yaw, pitch=pitch)
@@ -162,6 +174,20 @@ def room():
     box('ceiling', 'wall', 8.0, 0.05, 9.0, 0, 3.2, -1.0, grid=0.5)
     for i, (x, z) in enumerate(((-1.6, -3.4), (1.6, -3.4), (-1.6, -1.0), (1.6, -1.0), (0.0, 1.3))):
         box(f'ceiling_light{i}', 'glow', 1.2, 0.02, 0.6, x, 3.18, z, grid=0.3)
+    for i, (x, z) in enumerate(((-1.6, -3.4), (1.6, -3.4), (-1.6, -1.0), (1.6, -1.0), (0.0, 1.3))):
+        # рамка светильника
+        box(f'ceiling_frame{i}', 'metal', 1.26, 0.012, 0.66, x, 3.188, z, grid=0.7)
+    # плинтус вдоль стен, дверь зала в правой стене, доска объявлений слева — для обстановки, без источника
+    box('skirt_far', 'edge', 7.0, 0.08, 0.02, 0, 0, -4.99, grid=1.0)
+    box('skirt_left', 'edge', 0.02, 0.08, 8.6, -3.49, 0, -1.0, grid=1.0)
+    box('skirt_right', 'edge', 0.02, 0.08, 8.6, 3.49, 0, -1.0, grid=1.0)
+    box('door', 'edge', 0.04, 2.05, 0.9, 3.49, 0, -2.6, grid=0.5)
+    box('door_frame_top', 'metal', 0.05, 0.06, 1.02, 3.485, 2.05, -2.6)
+    for k, dz in enumerate((-0.48, 0.48)):
+        box(f'door_frame{k}', 'metal', 0.05, 2.05, 0.06, 3.485, 0, -2.6 + dz, grid=0.7)
+    box('door_handle', 'metal', 0.05, 0.02, 0.12, 3.45, 1.02, -2.28)
+    box('board_frame', 'metal', 0.03, 0.92, 1.42, -3.49, 1.1, 0.3, grid=0.5)
+    box('board', 'paper', 0.035, 0.84, 1.34, -3.487, 1.14, 0.3, grid=0.3)
     # МФУ на тумбе у левой стены — одно на пять диспетчеров (388н, прил. 8, п. 8; docs/13-art.md, «Рабочее место»)
     box('mfp_cabinet', 'edge', 0.9, 0.72, 0.5, -3.1, 0, -1.6, grid=0.3)
     box('mfp_body', 'lamp', 0.5, 0.42, 0.44, -3.1, 0.72, -1.6, grid=0.15)
@@ -189,11 +215,16 @@ def neighbour(i, x, z, yaw):
     p = rot((0, 0, 0.55), yaw)
     box(f'nb{i}_chair', 'chair', 0.48, 0.5, 0.07, x + p[0], 0.55, z + p[2], yaw=yaw, pitch=-6)
     box(f'nb{i}_seat', 'chair', 0.48, 0.07, 0.46, x + p[0], 0.45, z + p[2] - 0.22, yaw=yaw)
+    q = rot((0, 0, 0.33), yaw)
+    cylinder(f'nb{i}_post', 'metal', 0.03, 0.41, x + q[0], 0.04, z + q[2], sides=8)
+    k = rot((0, 0, 0.12), yaw)
+    box(f'nb{i}_kbd', 'dark', 0.44, 0.016, 0.15, x + k[0], DESK_TOP, z + k[2], yaw=yaw)
 
 
 def desk():
     # столешница и боковины
-    box('desk_top', 'desk', 1.9, 0.03, 0.85, 0, DESK_TOP - 0.03, -0.08, grid=0.2)
+    # сетка столешницы мелкая: затенению под предметами есть где лечь
+    box('desk_top', 'desk', 1.9, 0.03, 0.85, 0, DESK_TOP - 0.03, -0.08, grid=0.12)
     box('desk_edge', 'edge', 1.9, 0.03, 0.012, 0, DESK_TOP - 0.03, 0.35)
     for s in (-1, 1):
         box(f'desk_side{s}', 'edge', 0.03, DESK_TOP - 0.03, 0.8, s * 0.935, 0, -0.08)
@@ -223,10 +254,15 @@ def devices():
     box('kbd', 'dark', 0.44, 0.016, 0.15, 0, DESK_TOP, 0.07, grid=0.1, pitch=-3)
     for r in range(5):
         for c in range(15):
+            if r == 4 and 4 <= c <= 9:
+                continue
             box(f'key{r}_{c}', 'key', 0.022, 0.008, 0.022, -0.196 + c * 0.028, DESK_TOP + 0.014 + r * 0.0012,
                 0.012 + r * 0.028, grid=0.05)
-    box('pad', 'pad', 0.26, 0.003, 0.21, 0.36, DESK_TOP, 0.08)
-    box('mouse', 'dark', 0.06, 0.03, 0.1, 0.36, DESK_TOP + 0.003, 0.08, grid=0.05)
+    # пробел — одна длинная клавиша в ближнем ряду
+    box('key_space', 'key', 0.162, 0.008, 0.022, -0.196 + 6.5 * 0.028, DESK_TOP + 0.014 + 4 * 0.0012, 0.012 + 4 * 0.028, grid=0.2)
+    box('pad', 'pad', 0.26, 0.003, 0.21, 0.36, DESK_TOP, 0.08, grid=0.07)
+    blob('mouse', 'dark', 0.031, 0.019, 0.052, 0.36, DESK_TOP + 0.014, 0.08)
+    cylinder('mouse_wheel', 'key', 0.006, 0.007, 0.36, DESK_TOP + 0.031, 0.06, sides=8, axis='x')
     # телефон слева: корпус, экранчик, кнопки, трубка, огонёк линии
     box('phone_base', 'plastic', 0.21, 0.05, 0.19, -0.66, DESK_TOP, -0.06, grid=0.06, pitch=12)
     box('phone_display', 'glass', 0.1, 0.004, 0.05, -0.64, DESK_TOP + 0.06, -0.1, grid=0.05, pitch=12)
@@ -257,21 +293,35 @@ def devices():
             0.02, grid=0.05, roll=-math.degrees(a))
     for s in (-1, 1):
         cylinder(f'hs_cup{s}', 'chair', 0.035, 0.025, -0.42 + s * 0.085, DESK_TOP + 0.17, 0.02, sides=14, axis='x')
+        cylinder(f'hs_pad{s}', 'dark', 0.03, 0.012, -0.42 + s * 0.068, DESK_TOP + 0.17, 0.02, sides=14, axis='x')
     box('hs_mic', 'dark', 0.008, 0.008, 0.12, -0.34, DESK_TOP + 0.15, 0.07, grid=0.05, yaw=-25)
     # лампа справа сзади
     cylinder('lamp_base', 'lamp', 0.07, 0.02, 0.8, DESK_TOP, -0.36, sides=16)
     box('lamp_arm1', 'lamp', 0.015, 0.34, 0.015, 0.8, DESK_TOP + 0.02, -0.36, pitch=18)
     box('lamp_arm2', 'lamp', 0.015, 0.015, 0.26, 0.8, DESK_TOP + 0.34, -0.28, pitch=-12)
     cylinder('lamp_head', 'lamp', 0.075, 0.1, 0.8, DESK_TOP + 0.24, -0.16, sides=16, r2=0.03)
+    # лампа горит: светлый диск под абажуром
+    cylinder('lamp_bulb', 'glow', 0.06, 0.004, 0.8, DESK_TOP + 0.236, -0.16, sides=16)
     # кружка, блокнот, ручка
     cylinder('mug', 'mug', 0.04, 0.1, 0.52, DESK_TOP, 0.17, sides=16)
-    box('mug_handle', 'mug', 0.012, 0.05, 0.035, 0.565, DESK_TOP + 0.03, 0.17, grid=0.05)
+    for k, (dy, dx, w) in enumerate(((0.068, 0.048, 0.03), (0.03, 0.062, 0.012), (0.018, 0.048, 0.03))):
+        box(f'mug_handle{k}', 'mug', w, 0.012 if k != 1 else 0.05, 0.012, 0.52 + dx, DESK_TOP + dy, 0.17, grid=0.05)
+    cylinder('mug_tea', 'dark', 0.034, 0.002, 0.52, DESK_TOP + 0.099, 0.17, sides=16)
     box('notepad', 'paper', 0.15, 0.008, 0.21, -0.22, DESK_TOP, 0.2, grid=0.08, yaw=8)
     cylinder('pen', 'accent', 0.004, 0.14, -0.13, DESK_TOP + 0.012, 0.2, sides=8, axis='x')
+    # листки-напоминания у телефона
+    box('sticky0', 'paper', 0.07, 0.002, 0.07, -0.52, DESK_TOP, 0.16, yaw=-8)
+    box('sticky1', 'lamp', 0.07, 0.002, 0.07, -0.6, DESK_TOP, 0.2, yaw=12)
     # кресло диспетчера откатили вправо — место ждёт игрока; в кадре оно, только если оглядеться
     box('chair_back', 'chair', 0.5, 0.56, 0.07, 0.73, 0.56, 1.16, grid=0.12, yaw=-30, pitch=-8)
     box('chair_seat', 'chair', 0.5, 0.08, 0.48, 0.85, 0.44, 0.95, grid=0.12, yaw=-30)
     cylinder('chair_post', 'metal', 0.03, 0.4, 0.85, 0.04, 0.95, sides=10)
+    # подлокотники и подголовник
+    for k, sx in enumerate((-1, 1)):
+        a = rot((sx * 0.27, 0, 0), yaw=-30)
+        box(f'chair_arm{k}', 'dark', 0.05, 0.03, 0.3, 0.85 + a[0], 0.66, 0.95 + a[2], yaw=-30)
+        box(f'chair_arm_post{k}', 'metal', 0.025, 0.16, 0.025, 0.85 + a[0], 0.5, 0.95 + a[2], yaw=-30)
+    box('chair_head', 'chair', 0.3, 0.16, 0.06, 0.7, 1.16, 1.22, yaw=-30, pitch=-8)
     for k in range(5):
         a = math.radians(72 * k + 10)
         box(f'chair_leg{k}', 'dark', 0.04, 0.035, 0.3, 0.85 + 0.15 * math.sin(a), 0.03, 0.95 + 0.15 * math.cos(a),

@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PULT } from '../../src/art/pult.gen';
 import { STATION_ART } from '../../src/art/station.gen';
-import { callLayout } from '../../src/scenes/call/layout';
+import { callLayout, pictureRect } from '../../src/scenes/call/layout';
 import { ITEMS, stationLayout } from '../../src/scenes/station/layout';
 import { TEXT_SCALES } from '../../src/ui/textScale';
 import { applyMatrix, pultLayout, quadMatrix, type Rect } from '../../src/scenes/pult/layout';
@@ -176,6 +176,20 @@ describe('разговор', () => {
       }
       for (let i = 0; i < taps.length; i++) for (let j = i + 1; j < taps.length; j++) expect(overlap(taps[i], taps[j])).toBe(false);
       expect(L.picture.h).toBeGreaterThan(h * 0.3);
+    });
+  }
+  // картинка звонящего закрывает окно целиком, по ширине — посередине, по высоте — от верха кадра: лишнее срезается
+  // снизу, и голова подростка в низком окне цела (отделка кадров, 0.24.0)
+  for (const [w, h] of PHONES) for (const s of TEXT_SCALES) {
+    test(`${w} × ${h}, текст ×${s}: картинка звонящего — от верха кадра, окно закрыто`, () => {
+      const box = callLayout(w, h, s).picture;
+      const r = pictureRect(box);
+      expect(r.y).toBe(box.y);
+      expect(r.x).toBeLessThanOrEqual(box.x + 0.01);
+      expect(r.x + r.w).toBeGreaterThanOrEqual(box.x + box.w - 0.01);
+      expect(r.y + r.h).toBeGreaterThanOrEqual(box.y + box.h - 0.01);
+      expect(Math.abs(r.w / r.h - 1080 / 960)).toBeLessThan(1e-9);
+      expect(Math.abs((r.x - box.x) + (r.x + r.w - box.x - box.w))).toBeLessThan(1e-6);
     });
   }
   // крупный текст: касания выше и не наезжают, решение — в нижней половине, в карточке — хотя бы повод и ответ

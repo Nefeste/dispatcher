@@ -18,8 +18,8 @@
   },
   "files": {
     "assets/scenes/station-desk.jpg": {
-      "sha256": "2e135232eff1b82c1a60a7ac9ada5b70b27509baef37a5a1afa0be45624d7f3a",
-      "bytes": 93271
+      "sha256": "7365142a0d9234ee5eb2dc2790632e310fc30005373d7b5297c9af5443f9a88a",
+      "bytes": 154596
     },
     "src/art/station.gen.ts": {
       "sha256": "36973329cc54fa27fde17aba662fd7b1adb26f05db6ecbc997b8827761b4c989",

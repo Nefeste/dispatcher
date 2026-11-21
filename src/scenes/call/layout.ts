@@ -57,6 +57,15 @@ export function callLayout(width: number, height: number, s = 1): CallLayout {
   return { picture, monitor, screen, fields, fieldStep, rows, tabs, questions, choice, forms };
 }
 
+/** Где рисовать картинку звонящего 1080 × 960, чтобы она закрыла окно `box` целиком: по ширине — посередине, по высоте
+ *  — от верха кадра. Лишнее срезается снизу, а не поровну сверху и снизу («cover»): голова у кадров — в верхней трети,
+ *  и на низком окне (маленький экран, крупный текст) её не срезает. */
+export function pictureRect(box: Rect): Rect {
+  const k = Math.max(box.w / 1080, box.h / 960);
+  const w = 1080 * k, h = 960 * k;
+  return { x: box.x + (box.w - w) / 2, y: box.y, w, h };
+}
+
 /** Строки текста не шире `max` по мерке `measure` — переносом по словам; длинное слово режется. */
 export function wrap(text: string, max: number, measure: (s: string) => number, limit = 3): string[] {
   const out: string[] = [];
