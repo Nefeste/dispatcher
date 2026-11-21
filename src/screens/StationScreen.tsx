@@ -18,7 +18,7 @@ import { SCENE, UI } from '../scenes/palette';
 const FOOT = 116;
 const HEAD = 64;
 
-export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: (shiftId: string) => void }) {
+export function StationScreen({ onWeek, onNext, onWeekEnd }: { onWeek: () => void; onNext: (shiftId: string) => void; onWeekEnd: () => void }) {
   const { width, height } = useWindowDimensions();
   const [view, setView] = useState<StationView | null>(null);
   const [open, setOpen] = useState<StationItem | null>(null);
@@ -124,6 +124,8 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
           <View style={styles.button}><Button label={S.toWeek} kind="onDark" onPress={onWeek} testID="station-week" /></View>
           {view.next ? (
             <View style={styles.button}><Button label={S.next(view.next.n)} onPress={() => onNext(view.next!.id)} testID="station-next" /></View>
+          ) : view.complete ? (
+            <View style={styles.button}><Button label={T.week.end} onPress={onWeekEnd} testID="station-weekend" /></View>
           ) : null}
         </View>
       </View>

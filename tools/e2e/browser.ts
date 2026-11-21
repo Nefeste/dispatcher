@@ -13,6 +13,12 @@ import { chromium, type Page } from 'playwright';
 import { DB } from '../../src/content/generated/db';
 import { MED } from '../../src/content/generated/med';
 import { newShift, shiftCtx } from '../../src/engine/shift';
+import { afterShift, decide, lineupOf, newStation, reportOf } from '../../src/engine/station';
+import { KEYS } from '../../src/state/storage';
+import { weekShifts } from '../../src/state/week';
+import { addEntry, entryOf, newWeekLog } from '../../src/state/weekLog';
+import { BOTS, play } from '../sim/bots';
+import { policyMoves } from '../sim/week';
 import { loadMap } from '../../src/map/load';
 import { fitOf } from '../../src/ui/map/scale';
 
@@ -29,6 +35,31 @@ const server = Bun.serve({
     return (await file.exists()) ? new Response(file) : new Response(Bun.file(join(DIST, 'index.html')));
   },
 });
+
+/** Неделя «виртуального диспетчера» «по правилам» с лучшими решениями станции — строками хранилища телефона после
+ *  каждой смены: станция, журнал недели, лучшие итоги (срез, С8). Сценарий сам играет первую смену; остальные шесть — за
+ *  него движок: те же функции, что у телефона, поэтому строки — те, что телефон записал бы сам. */
+function weekStorage(): Record<string, string>[] {
+  const map = loadMap(DB.cities['city.proto'].map);
+  let st = newStation();
+  let log = newWeekLog(map.id, map.edges.a.length);
+  const best: Record<string, { emergency: number; inNorm: number; urgentMedian: number | null; accepted: number }> = {};
+  const week = weekShifts();
+  return week.map((sh, i) => {
+    const ctx = shiftCtx(DB, MED, sh.id, map);
+    const { s } = play(ctx, 900 + i, BOTS.rules, lineupOf(st));
+    const rep = reportOf(ctx, s);
+    st = afterShift(st, rep);
+    log = addEntry(log, map.id, map.edges.a.length, entryOf(ctx, s, rep));
+    best[sh.id] = { emergency: rep.emergency, inNorm: rep.inNorm, urgentMedian: null, accepted: s.calls.length };
+    for (const d of policyMoves(st, week[i + 1]?.id ?? null, 'best')) {
+      const y = decide(st, d);
+      if (typeof y !== 'string') st = y;
+    }
+    return { [KEYS.station]: JSON.stringify(st), [KEYS.week]: JSON.stringify(log), [KEYS.progress]: JSON.stringify({ best: { ...best } }) };
+  });
+}
+const WEEK = weekStorage();
 
 const errors: string[] = [];
 let shot = 0;
@@ -279,6 +310,12 @@ try {
   await snap(page, 'week-after');
   await page.getByTestId('week-back').click();
   await see(page, 'title-name');
+  // неделя начата — «Продолжить неделю» ведёт на станцию (срез, С8; §3, шаг 1)
+  await see(page, 'title-week', 'Продолжить неделю');
+  await page.getByTestId('title-week').click();
+  await see(page, 'station-next', 'Смена 2');
+  await page.getByTestId('station-week').click();
+  await page.getByTestId('week-back').click();
 
   // рабочее место: модель из Blender на Three.js, экраны мониторов — Skia; палец поворачивает взгляд
   await page.getByTestId('title-desk').click();
@@ -326,6 +363,43 @@ try {
   await snap(page, 'bench');
   checks++;
   await page.getByTestId('bench-back').click();
+  await see(page, 'title-name');
+
+  // итог недели (срез, С8; §3, шаги 9–10) — в конце: перезагрузка страницы стирает замеры загрузки смены в памяти,
+  // которые читает «Замер»: шесть смен сыграны — станция зовёт на седьмую; семь — итог недели, снимок
+  // недели, «Неделя заново»
+  const put = async (rows: Record<string, string>) => {
+    await page.evaluate(r => { for (const [k, v] of Object.entries(r)) localStorage.setItem(k, v); }, rows);
+    await page.reload();
+    await see(page, 'title-name');
+  };
+  await put(WEEK[5]);
+  await see(page, 'title-week', 'Продолжить неделю');
+  await page.getByTestId('title-week').click();
+  await see(page, 'station-next', 'Смена 7');
+  await put(WEEK[6]);
+  if (await visible('title-week')) throw new Error('неделя пройдена, а на заглавном экране «Продолжить неделю»');
+  await page.getByTestId('title-start').click();
+  await see(page, 'week-end-open', 'Итог недели');
+  await snap(page, 'week-done');
+  await page.getByTestId('week-end-open').click();
+  await see(page, 'week-end', 'Неделя пройдена');
+  await see(page, 'week-end-7', 'Суббота, ночь');
+  await see(page, 'week-end-total', 'За неделю');
+  await see(page, 'week-end-station', 'Фонд в конце недели');
+  await snap(page, 'week-end');
+  const weekShot = page.waitForEvent('download', { timeout: 15000 });
+  await page.getByTestId('week-end-snapshot').click();
+  await (await weekShot).saveAs(join(OUT, `${String(++shot).padStart(2, '0')}-week-snapshot.png`));
+  await see(page, 'week-end-snapshot-done', 'Снимок готов');
+  // «Неделя заново»: с подтверждением; станция с нуля, лучшие итоги — на месте
+  await page.getByTestId('week-end-again').click();
+  await page.getByRole('button', { name: 'Начать заново', exact: true }).click();
+  await see(page, 'week-1', 'Лучший итог');
+  await see(page, 'week-7', 'Лучший итог');
+  if (await visible('week-end-open')) throw new Error('после «Неделя заново» над сменами всё ещё «Итог недели»');
+  await snap(page, 'week-again');
+  await page.getByTestId('week-back').click();
   await see(page, 'title-name');
 
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);

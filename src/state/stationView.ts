@@ -46,6 +46,8 @@ export interface StationView {
   letter: (Letter & { n: number; day: string }) | null;
   /** следующая смена недели — её номер, день и табель; неделя пройдена — null */
   next: { id: string; n: number; day: string; roster: RosterRow[] } | null;
+  /** все смены недели приняты станцией: дальше — итог недели (срез, С8) */
+  complete: boolean;
   /** бригады с неполной укладкой в табеле следующей смены */
   short: RosterRow[];
   crew: Choice[];
@@ -85,6 +87,7 @@ export function stationView(st: Station, db: Db = DB): StationView {
     left: Math.max(0, STATION.decisions - st.decided),
     letter: st.letter ? { ...st.letter, n: nOf(st.letter.after), day: db.shifts[st.letter.after]?.week?.day ?? '' } : null,
     next: nextShift ? { id: nextShift.id, n: nextShift.week!.n, day: nextShift.week!.day, roster } : null,
+    complete: week.every(s => st.done.includes(s.id)),
     short: roster.filter(r => r.kit < KIT),
     crew: bases.map(base => choice({ d: 'crew', base })),
     resus: bases.flatMap(base => {

@@ -18,6 +18,7 @@ import { BenchScreen } from './src/screens/BenchScreen';
 import { DeskScreen } from './src/screens/DeskScreen';
 import { type InsertKind, InsertScreen } from './src/screens/InsertScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
+import { WeekEndScreen } from './src/screens/WeekEndScreen';
 import { StationScreen } from './src/screens/StationScreen';
 import { DB } from './src/content/generated/db';
 import { NO_LINEUP } from './src/engine/shift';
@@ -35,7 +36,7 @@ import { setLessMotion } from './src/ui/motion';
 import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'week' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'station' | 'desk' | 'bench' | 'settings' | 'about';
+type Screen = 'title' | 'week' | 'weekEnd' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'station' | 'desk' | 'bench' | 'settings' | 'about';
 
 keepSplash();
 setCue(cue);
@@ -113,7 +114,7 @@ export default function App() {
       if (screen === 'title') return false;
       // разговор кончается решением (§3): «Назад» его не закрывает
       if (screen === 'call') return true;
-      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : screen === 'station' ? 'week' : 'title');
+      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : screen === 'station' || screen === 'weekEnd' ? 'week' : 'title');
       return true;
     });
     return () => sub.remove();
@@ -140,6 +141,7 @@ export default function App() {
                       setScreen('loading');
                     });
                   }}
+                  onStation={() => setScreen('station')}
                   onDesk={() => setScreen('desk')}
                   onBench={() => setScreen('bench')}
                   onSettings={() => {
@@ -157,8 +159,10 @@ export default function App() {
                     setScreen('loading');
                   }}
                   onBack={() => setScreen('title')}
+                  onWeekEnd={() => setScreen('weekEnd')}
                 />
               ) : null}
+              {screen === 'weekEnd' ? <WeekEndScreen onWeek={() => setScreen('week')} /> : null}
               {screen === 'loading' ? <LoadingScreen shiftId={picked} onReady={onLoaded} /> : null}
               {screen === 'map' ? <PultScreen onBack={() => setScreen('title')} onCall={toCall} onEnd={toEnd} /> : null}
               {screen === 'call' ? (
@@ -203,6 +207,7 @@ export default function App() {
               {screen === 'station' ? (
                 <StationScreen
                   onWeek={() => setScreen('week')}
+                  onWeekEnd={() => setScreen('weekEnd')}
                   onNext={id => {
                     mark('startTap');
                     setPicked(id);

@@ -6,6 +6,7 @@ import { KIT } from '../engine/rules';
 import type { Shift, ShiftCtx } from '../engine/shift';
 import { afterShift, decide as decideStation, type Decision, newStation, reportOf, type Station, type StationRefusal } from '../engine/station';
 import { KEYS, readRaw, writeRaw } from './storage';
+import { addEntry, entryOf, newWeekLog, parseWeekLog, type WeekLog } from './weekLog';
 
 /** Прочитать станцию из строки хранилища: не та форма — станция с начала недели. */
 export function parseStation(raw: string | null): Station {
@@ -58,7 +59,12 @@ export function recordShiftOnce(ctx: ShiftCtx, s: Shift): Promise<Station> {
     const rep = reportOf(ctx, s);
     p = load().then(async st => {
       const next = afterShift(st, rep);
-      if (next !== st) await write(next);
+      if (next !== st) {
+        await write(next);
+        // та же смена — в журнал недели, с путями бригад: из него итог и снимок недели (срез, С8)
+        const log = addEntry(await readWeekLog(), ctx.map.id, ctx.map.edges.a.length, entryOf(ctx, s, rep));
+        await writeRaw(KEYS.week, JSON.stringify(log));
+      }
       return next;
     });
     applied.set(key, p);
@@ -73,4 +79,26 @@ export async function decideAndSave(d: Decision): Promise<Station | StationRefus
   if (typeof next === 'string') return next;
   await write(next);
   return next;
+}
+
+/** Журнал недели этой станции (src/state/weekLog.ts). */
+export async function readWeekLog(): Promise<WeekLog> {
+  return parseWeekLog(await readRaw(KEYS.week));
+}
+
+/** «Неделя заново» (спецификация среза, §3, шаг 10): новая станция — фонд, свои бригады, укладки, письма — и пустой
+ *  журнал недели; лучшие итоги смен остаются (§7 геймдизайна: «лучший итог смены хранится»). Незаконченная смена
+ *  недели забыта: её бригады и укладки — со старой станции. */
+export async function resetWeek(): Promise<void> {
+  await pending;
+  applied.clear();
+  await write(newStation());
+  await writeRaw(KEYS.week, JSON.stringify(newWeekLog('', 0)));
+  const saved = await readRaw(KEYS.current);
+  try {
+    const setup = saved ? (JSON.parse(saved) as { setup?: string }).setup : null;
+    if (setup && DB.shifts[setup]?.week) await writeRaw(KEYS.current, null);
+  } catch {
+    // сохранение не читается — его и так не продолжить
+  }
 }
