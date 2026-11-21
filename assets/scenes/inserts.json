@@ -99,36 +99,36 @@
       "bytes": 86523
     },
     "assets/scenes/insert-door.jpg": {
-      "sha256": "8d0906e1f4e5bccb6cd9923ed78ef5266ab62e8cb3a63073b0147726187d9d26",
-      "bytes": 31639
+      "sha256": "a004c152901ecc30029d4b5b92732f9bc524a42d76d97e1a46db162ffadb51f5",
+      "bytes": 69076
     },
     "assets/scenes/insert-door.mp4": {
-      "sha256": "eb6906b7e5732ee2a56703ca0dfe768ad1c69ebb0d5a553a9d41455113266dd3",
-      "bytes": 91502
+      "sha256": "903ce1e0efe67252c056c891ed3d075bed098279131a2fe5cd3d7197bf11acc3",
+      "bytes": 151372
     },
     "assets/scenes/insert-flat.jpg": {
-      "sha256": "ee26a0aef8cdb911f55c9e005f562a65c4ad39acde493d35b3dda59099a0337f",
-      "bytes": 20573
+      "sha256": "3d6c2a6a7311e5de8e0677f6d48f4bbf317705562f62534ad8b13a70843aec66",
+      "bytes": 48605
     },
     "assets/scenes/insert-flat.mp4": {
-      "sha256": "ba29cc5ebef9fdf894da3f3e8eb21c26068aa01d2a08e73dc5790d7eee3644ac",
-      "bytes": 61414
+      "sha256": "79a9481e959bb6a87ecab7c17b01a7dc75a62a3f8216e57285bb4fe9a28c6d9f",
+      "bytes": 121501
     },
     "assets/scenes/insert-start.jpg": {
-      "sha256": "98f14456396abd92d304bedb0081000d9711801fab6c2943752bade9e4eabe93",
-      "bytes": 23388
+      "sha256": "120bebd3756f6d9ddb38ec07bd316f8adccde6524f32a500f4db91c722e84b01",
+      "bytes": 48385
     },
     "assets/scenes/insert-start.mp4": {
-      "sha256": "c842cc4943fbe4d6acfa55314dc57279844d61a33f683dfdfdd0d3bbb084de93",
-      "bytes": 76803
+      "sha256": "be7bd04198568e5451a46c031cd7f534d2133a65abe94d3fd753957e7b76fb34",
+      "bytes": 269071
     },
     "assets/scenes/insert-stop.jpg": {
-      "sha256": "351bc7d8e51410927dc7c3578285e6300d5e2f4fb3282085770efb2e4c99fda4",
-      "bytes": 35320
+      "sha256": "80cd09d4a4e4d4bd2417baf0eb04e85c6f7dc1b02379d556aaadb0ff59a851d7",
+      "bytes": 72547
     },
     "assets/scenes/insert-stop.mp4": {
-      "sha256": "05ee8421a3d41c8754534d4b92b81221aa974baf417b1235e5eac35382ad00f9",
-      "bytes": 77806
+      "sha256": "21fe1eead1dfae5f4d34a2663060ad914bd9b7acb25b0b89048506b6655db320",
+      "bytes": 165448
     }
   }
 }
