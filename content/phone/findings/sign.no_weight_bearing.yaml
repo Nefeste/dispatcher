@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: usually, bystander: usually }
 says:
   present:
-    self: ["Встать не могу"]
-    other: ["Встать не может, на ногу не наступает"]
+    self: ["Встать не могу", "На ногу не наступить", "Опереться на ногу не могу"]
+    other: ["Встать не может, на ногу не наступает", "Наступить на ногу не может", "Не встаёт, ногу не ставит"]
 estimate: true
 sources: ["anamnez"]
 review: draft

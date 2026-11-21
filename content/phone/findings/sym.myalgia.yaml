@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: often, bystander: never }
 says:
   present:
-    self: ["Всё тело ломит"]
-    other: ["Говорит, всё тело ломит"]
+    self: ["Всё тело ломит", "Ломота во всём теле", "Мышцы все болят"]
+    other: ["Говорит, всё тело ломит", "Жалуется, что ломит всё", "Всё у {него|неё} ломит"]
 estimate: true
 sources: ["anamnez"]
 review: draft

@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
 says:
   present:
-    self: ["Голова кружится"]
-    other: ["Говорит, голова кружится"]
+    self: ["Голова кружится", "Всё плывёт, кружится", "Кружится голова, шатает"]
+    other: ["Говорит, голова кружится", "Жалуется, что всё кружится", "Голова у {него|неё} кружится, шатается"]
 estimate: true
 sources: ["anamnez"]
 review: draft

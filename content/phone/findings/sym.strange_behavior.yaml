@@ -2,7 +2,7 @@ tell: { self: never, relative: usually, neighbour: often, bystander: sometimes }
 says:
   present:
     self: []
-    other: ["Ведёт себя странно, сам{|а} на себя не похож{|а}"]
+    other: ["Ведёт себя странно, сам{|а} на себя не похож{|а}", "Странн{ый|ая} какой-то, не как обычно", "Ведёт себя не как всегда, чудит"]
 estimate: true
 sources: ["anamnez"]
 review: draft

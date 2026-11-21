@@ -45,6 +45,11 @@ describe('содержание', () => {
       const q = join(dir, 'questions/seizure.yaml');
       writeFileSync(q, readFileSync(q, 'utf8').replace('opens: [sym.seizure]', 'opens: [sym.seizure, sym.nope]'));
       rmSync(join(dir, 'phone/conditions/cond.influenza.yaml'));
+      // звонящие разные (срез, С7): два варианта слов у признака и у строк звонящего — мало
+      const w = join(dir, 'phone/findings/sym.cough.yaml');
+      writeFileSync(w, readFileSync(w, 'utf8').replace('self: ["Кашляю", "Кашель у меня", "Кашляю, не перестаю"]', 'self: ["Кашляю", "Кашель у меня"]'));
+      const k = join(dir, 'callers/self.yaml');
+      writeFileSync(k, readFileSync(k, 'utf8').replace('nothing: ["Да больше ничего, всё сказал{|а}", "Больше ничего", "Всё, вроде больше нет"]', 'nothing: ["Больше ничего"]'));
       const r = join(dir, 'reasons/hip.yaml');
       writeFileSync(r, readFileSync(r, 'utf8').replace('встать не может', 'встать не может, дали аспирин'));
       const { errors } = buildDb(dir);
@@ -56,6 +61,8 @@ describe('содержание', () => {
       expect(errors.some(e => e.includes('real institution'))).toBe(true);
       expect(errors.some(e => e.includes('from the nearest road'))).toBe(true);
       expect(errors.some(e => e.includes('unknown kind'))).toBe(true);
+      expect(errors.some(e => e.includes('sym.cough: says.present.self needs at least 3 wordings, has 2'))).toBe(true);
+      expect(errors.some(e => e.includes('caller.self: nothing needs at least 3 wordings, has 1'))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

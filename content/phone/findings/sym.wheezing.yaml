@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
 says:
   present:
-    self: ["В груди свистит, когда дышу"]
-    other: ["Дышит со свистом, слышно"]
+    self: ["В груди свистит, когда дышу", "Дышу со свистом", "Свистит в груди при каждом вдохе"]
+    other: ["Дышит со свистом, слышно", "В груди у {него|неё} свистит", "Слышно, как свистит при дыхании"]
 estimate: true
 sources: ["anamnez"]
 review: draft
