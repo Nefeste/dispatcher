@@ -76,7 +76,7 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
     let png: Uint8Array | null = null;
     try {
       const w = x.ctx.setup;
-      png = shiftSnapshot(x.ctx, x.s, { title: T.end.snapshotTitle(w.week?.day ?? '', T.pult.clock(w.start), T.pult.clock(w.start + w.length)), crews: T.end.snapshotCrews, lines, osm: T.map.osm }, { title, body, small });
+      png = shiftSnapshot(x.ctx, x.s, { title: T.end.snapshotTitle(w.week?.day ?? T.free.day, T.pult.clock(w.start), T.pult.clock(w.start + w.length)), crews: T.end.snapshotCrews, lines, osm: T.map.osm }, { title, body, small });
     } catch {
       // снимок — не главное: не вышел — так и скажем
     }
