@@ -29,6 +29,8 @@ if bpy.app.version_string.split(' ')[0] != VERSION:
     sys.exit(f'нужен Blender {VERSION}, а это {bpy.app.version_string}')
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import look  # noqa: E402 — общие материалы: зерно, полосы, свечение
 PREVIEW = '--preview' in sys.argv
 
 W, H = (1080, 640) if not PREVIEW else (540, 320)
@@ -119,20 +121,31 @@ def parent(children, name, loc, yaw):
 
 
 # --- материалы
+def shade(c, k):
+    return (c[0] * k, c[1] * k, c[2] * k, 1.0)
+
+
 def materials():
     return {
-        'desk': mat('desk', COL['desk'], rough=0.42, coat=0.15),
+        # столешница — светлый ламинат: едва заметные волокна, блеск неровный — в нём живёт отсвет монитора
+        'desk': look.grain('desk', shade(COL['desk'], 0.9), COL['desk'], scale=5.0, rough=(0.25, 0.5), bump=0.03, coat=0.15, stretch=(1, 14, 14)),
         'edge': mat('edge', COL['edge'], rough=0.5),
-        'plastic': mat('plastic', COL['plastic'], rough=0.32, coat=0.2),
-        'dark': mat('dark', COL['dark'], rough=0.45),
+        # пластик корпусов — мелкая фактура: блик мягкий, не зеркальный
+        'plastic': look.grain('plastic', shade(COL['plastic'], 0.85), COL['plastic'], scale=900.0, rough=(0.3, 0.45), bump=0.04, coat=0.15),
+        'dark': look.grain('dark', shade(COL['dark'], 0.85), COL['dark'], scale=900.0, rough=(0.38, 0.55), bump=0.04),
         'key': mat('key', COL['key'], rough=0.55),
         'metal': mat('metal', COL['metal'], rough=0.28, metal=0.9),
         'glass': mat('glass', (0.004, 0.007, 0.009, 1), rough=0.06, coat=0.6),
         'lamp': mat('lamp', COL['kumach'], rough=0.25, coat=0.4),
         'paper': mat('paper', COL['paper'], rough=0.8),
         'mug': mat('mug', COL['spruce'], rough=0.3, coat=0.5),
-        'cushion': mat('cushion', COL['chair'], rough=0.7),
-        'pad': mat('pad', COL['pad'], rough=0.85),
+        'cushion': look.grain('cushion', shade(COL['chair'], 0.8), COL['chair'], scale=300.0, rough=(0.65, 0.85), bump=0.3),
+        'pad': look.grain('pad', shade(COL['pad'], 0.85), COL['pad'], scale=500.0, rough=(0.8, 0.95), bump=0.2),
+        # блокнот в линейку
+        'ruled': look.stripes('ruled', COL['paper'], look.lin('#b9c6d6'), width=0.0085, rough=0.85, axis=1, soft=0.42),
+        'note': mat('note', look.lin('#e6cf6a'), rough=0.8),
+        'tea': mat('tea', look.lin('#2b160b'), rough=0.08, coat=0.5),
+        'led': look.glow('led', look.lin('#55d98a'), 6.0),
     }
 
 
@@ -252,10 +265,51 @@ def scene_objects(M):
     parent(hs, 'headset', (0.04, 0.09, TOP), -8)
 
     # блокнот с ручкой, кружка
-    box('notepad', M['paper'], (0.13, 0.18, 0.008), (-0.17, 0.1, TOP), rot=(0, 0, 9), bevel=0.001)
+    box('notepad', M['ruled'], (0.13, 0.18, 0.008), (-0.17, 0.1, TOP), rot=(0, 0, 9), bevel=0.001)
+    # пружина блокнота — по верхнему краю
+    c9, s9 = math.cos(math.radians(9)), math.sin(math.radians(9))
+    for i in range(12):
+        dx = -0.055 + i * 0.01
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.005, minor_radius=0.0008, major_segments=12, minor_segments=5,
+                                         location=(-0.17 + dx * c9 - 0.088 * s9, 0.1 + dx * s9 + 0.088 * c9, TOP + 0.006),
+                                         rotation=(0, math.radians(90), math.radians(9 + 90)))
+        ring = bpy.context.object
+        ring.name = f'notepad_ring{i}'
+        ring.data.materials.append(M['metal'])
+    # листок-напоминание у телефона — пустой: слова на кадре пишет только Skia
+    box('sticky', M['note'], (0.07, 0.07, 0.0015), (-0.37, 0.05, TOP), rot=(0, 0, -7), bevel=0.0004)
     cyl('pen', M['lamp'], 0.0045, 0.14, (-0.15, 0.09, TOP + 0.009), rot=(0, 90, 18), sides=12)
     cyl('mug', M['mug'], 0.04, 0.1, (0.3, 0.1, TOP), sides=40, bevel=0.003)
-    box('mug_handle', M['mug'], (0.012, 0.035, 0.05), (0.345, 0.1, TOP + 0.025), bevel=0.005)
+    cyl('mug_rim', M['mug'], 0.036, 0.0012, (0.3, 0.1, TOP + 0.1), sides=40)
+    cyl('mug_tea', M['tea'], 0.0345, 0.0012, (0.3, 0.1, TOP + 0.1003), sides=40)
+    for i, (dz, dx, w) in enumerate(((0.072, 0.048, 0.03), (0.05, 0.063, 0.012), (0.03, 0.048, 0.03))):
+        box(f'mug_handle{i}', M['mug'], (w, 0.012, 0.014 if i != 1 else 0.036), (0.3 + dx, 0.1, TOP + dz - (0.007 if i != 1 else 0.018)), bevel=0.005)
+    # коврик под мышью, колесо и шов кнопок мыши
+    box('mouse_pad', M['pad'], (0.17, 0.17, 0.003), (0.305, 0.27, TOP - 0.0005), rot=(0, 0, -3), bevel=0.001)
+    cyl('mouse_wheel', M['key'], 0.0055, 0.006, (0.277, 0.293, TOP + 0.026), rot=(0, 90, 0), sides=14)
+    box('mouse_seam', M['key'], (0.0012, 0.04, 0.002), (0.28, 0.296, TOP + 0.0275), rot=(-16, 0, 0))
+    # огоньки питания: рация и клавиатура — зелёные точки
+    led = cyl('radio_led', M['led'], 0.0028, 0.002, (-0.085, -0.0955, 0.058), rot=(90, 0, 0), sides=10)
+    led.parent = bpy.data.objects['radio']
+    led2 = box('kbd_led', M['led'], (0.004, 0.002, 0.001), (0.2, 0.066, 0.02))
+    led2.parent = bpy.data.objects['keyboard']
+    # витой шнур трубки телефона — от трубки за корпус
+    hc = bpy.data.curves.new('handset_cord', 'CURVE')
+    hc.dimensions = '3D'
+    hc.bevel_depth = 0.002
+    hsp = hc.splines.new('POLY')
+    a2, b2 = Vector((-0.46, 0.13, TOP + 0.012)), Vector((-0.33, 0.36, TOP + 0.012))
+    n2 = 260
+    hsp.points.add(n2 - 1)
+    for i in range(n2):
+        t = i / (n2 - 1)
+        pnt = a2.lerp(b2, t)
+        ang = t * math.pi * 2 * 30
+        bow = math.sin(t * math.pi) * 0.05
+        hsp.points[i].co = (pnt.x - bow + 0.006 * math.cos(ang), pnt.y, pnt.z + 0.006 * math.sin(ang) - 0.005, 1)
+    hcord = bpy.data.objects.new('handset_cord', hc)
+    bpy.context.collection.objects.link(hcord)
+    hcord.data.materials.append(M['dark'])
     return parts
 
 
@@ -264,20 +318,30 @@ def lights():
     bpy.ops.object.light_add(type='AREA', location=(0.3, 0.1, 3.0))
     top = bpy.context.object
     top.data.size = 3.0
-    top.data.energy = 90
+    top.data.energy = 70
     top.data.color = (0.92, 0.96, 1.0)
     # настольная лампа справа — тёплый свет
-    bpy.ops.object.light_add(type='POINT', location=(0.95, 0.5, 1.2))
+    # (площадкой, не точкой: точка отражалась в лаке стола белым кругом у правого края)
+    bpy.ops.object.light_add(type='AREA', location=(0.95, 0.5, 1.2))
     warm = bpy.context.object
-    warm.data.energy = 28
-    warm.data.shadow_soft_size = 0.06
+    warm.data.size = 0.45
+    warm.data.energy = 42
     warm.data.color = (1.0, 0.8, 0.55)
+    warm.rotation_euler = (Vector((0.2, 0.25, TOP)) - warm.location).to_track_quat('-Z', 'Y').to_euler()
+    warm.visible_glossy = False
     # монитор с картой светит на стол сзади; в кадре его нет — его рисует Skia
     bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0.62, 1.12), rotation=(math.radians(90), 0, 0))
     glow = bpy.context.object
     glow.scale = (0.62, 0.36, 1)
     glow.data.materials.append(mat('glow', (0, 0, 0, 1), emit=COL['linen'], strength=2.5))
     glow.visible_camera = False
+    # слабый холодный свет слева сзади — кромка на телефоне и гарнитуре, отделяет тёмные корпуса от стола
+    bpy.ops.object.light_add(type='AREA', location=(-1.0, 0.9, 1.25))
+    edge = bpy.context.object
+    edge.data.size = 0.8
+    edge.data.energy = 30
+    edge.data.color = (0.75, 0.86, 1.0)
+    edge.rotation_euler = (Vector((-0.2, 0.25, TOP)) - edge.location).to_track_quat('-Z', 'Y').to_euler()
     world = bpy.data.worlds.new('hall')
     world.use_nodes = True
     world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.03, 0.035, 0.04, 1)
