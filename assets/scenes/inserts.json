@@ -70,6 +70,23 @@
       "still": 48,
       "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
       "codec": "H.264 (libx264, CRF 26)"
+    },
+    "flat": {
+      "script": "blender/insert.py",
+      "blender": "4.5.15",
+      "engine": "CYCLES",
+      "samples": 16,
+      "denoiser": "OPENIMAGEDENOISE",
+      "seed": 5,
+      "size": [
+        540,
+        960
+      ],
+      "fps": 24,
+      "frames": 72,
+      "still": 48,
+      "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "codec": "H.264 (libx264, CRF 26)"
     }
   },
   "files": {
@@ -88,6 +105,14 @@
     "assets/scenes/insert-door.mp4": {
       "sha256": "eb6906b7e5732ee2a56703ca0dfe768ad1c69ebb0d5a553a9d41455113266dd3",
       "bytes": 91502
+    },
+    "assets/scenes/insert-flat.jpg": {
+      "sha256": "ee26a0aef8cdb911f55c9e005f562a65c4ad39acde493d35b3dda59099a0337f",
+      "bytes": 20573
+    },
+    "assets/scenes/insert-flat.mp4": {
+      "sha256": "ba29cc5ebef9fdf894da3f3e8eb21c26068aa01d2a08e73dc5790d7eee3644ac",
+      "bytes": 61414
     },
     "assets/scenes/insert-start.jpg": {
       "sha256": "98f14456396abd92d304bedb0081000d9711801fab6c2943752bade9e4eabe93",
