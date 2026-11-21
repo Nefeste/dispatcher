@@ -43,7 +43,7 @@ describe('содержание', () => {
       const g = join(dir, 'phone/findings/sym.hives.yaml');
       writeFileSync(g, readFileSync(g, 'utf8').replace('sources: ["anamnez"]', 'sources: ["wiki"]'));
       const q = join(dir, 'questions/seizure.yaml');
-      writeFileSync(q, readFileSync(q, 'utf8').replace('opens: [sym.seizure]', 'opens: [sym.seizure, sym.nope]'));
+      writeFileSync(q, readFileSync(q, 'utf8').replace('opens: [sym.seizure, sym.seizure_ongoing]', 'opens: [sym.seizure, sym.seizure_ongoing, sym.nope]'));
       rmSync(join(dir, 'phone/conditions/cond.influenza.yaml'));
       // звонящие разные (срез, С7): два варианта слов у признака и у строк звонящего — мало
       const w = join(dir, 'phone/findings/sym.cough.yaml');

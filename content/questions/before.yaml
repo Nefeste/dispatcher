@@ -4,7 +4,7 @@ text: Было так раньше?
 label: Раньше
 cost: 15
 tell: { self: always, relative: usually, neighbour: sometimes, bystander: never }
-opens: [hx.epilepsy, hx.kidney_stones, hx.asthma]
+opens: [hx.epilepsy, hx.kidney_stones, hx.asthma, hx.first_seizure]
 none:
   self: ["Нет, такого не было"]
   other: ["Нет, первый раз такое", "Нет, раньше не было"]

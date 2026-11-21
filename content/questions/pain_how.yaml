@@ -4,7 +4,7 @@ text: Какая боль? Отдаёт куда-нибудь?
 label: Какая боль
 cost: 20
 tell: { self: always, relative: often, neighbour: sometimes, bystander: rarely }
-opens: [sym.chest_pain_rest_long, sym.pain_radiation, sym.colicky_pain, sym.groin_radiation, sym.sciatica]
+opens: [sym.chest_pain_rest_long, sym.pain_radiation, sym.colicky_pain, sym.groin_radiation, sym.sciatica, sym.pleuritic_pain]
 none:
   self: ["Просто болит, никуда не отдаёт"]
   other: ["Говорит, просто болит"]

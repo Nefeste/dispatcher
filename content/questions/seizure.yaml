@@ -4,7 +4,7 @@ text: Судороги были?
 label: Судороги
 cost: 10
 tell: { self: often, relative: usually, neighbour: often, bystander: often }
-opens: [sym.seizure]
+opens: [sym.seizure, sym.seizure_ongoing]
 none:
   self: ["Нет, судорог не было"]
   other: ["Нет, не было судорог"]

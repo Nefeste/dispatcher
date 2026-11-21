@@ -4,7 +4,7 @@ text: Как дышит?
 label: Дыхание
 cost: 15
 tell: { self: always, relative: usually, neighbour: usually, bystander: often }
-opens: [sign.stridor, sym.dyspnea, sym.wheezing]
+opens: [sign.stridor, sym.dyspnea, sym.wheezing, sym.dyspnea_sudden]
 none:
   self: ["Дышу нормально"]
   other: ["Дышит ровно", "Нормально дышит"]

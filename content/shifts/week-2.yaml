@@ -6,7 +6,7 @@ city: city.proto
 start: 61200
 length: 7200
 season: autumn
-flow: 100
+flow: 95
 crews:
   - { id: crew.1, kind: crew.general, base: base.north }
   - { id: crew.2, kind: crew.general, base: base.north }

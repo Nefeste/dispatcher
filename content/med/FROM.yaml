@@ -2,8 +2,8 @@
 # Записи под content/med/ — копии «Анамнеза» байт в байт; anamnez.json — подмножество его собранной базы.
 anamnez: d05c615ceccbf9389a1b1c102b7a4832c949e505
 contentVersion: 87
-bundle: { file: anamnez.json, sha256: 58b01c8a964cfda2b1c574788dfc4203671f594e3fd34161da25c4a02d01950f }
-counts: { conditions: 19, findings: 173, risks: 28, jobs: 21, rules: 2 }
+bundle: { file: anamnez.json, sha256: 52bfb2d268ecedc38fde1f8bb88108e2ac4e57c698c978e1abba217f07aa02d0 }
+counts: { conditions: 23, findings: 193, risks: 28, jobs: 21, rules: 3 }
 files:
   - { path: conditions/chronic/alcohol_dependence.yaml, sha256: 2a90e323d7200abc45fc51402d36c28b57ca3952944d8f4394b7d6f1fafd9831 }
   - { path: conditions/chronic/asthma.yaml, sha256: 6f35b6d799ac51fcebbfb4137b5d3f79130d734a3115c822757a925a67ad7bed }
@@ -11,23 +11,28 @@ files:
   - { path: conditions/chronic/copd.yaml, sha256: 3721a5870581aac7db618e519495fd1992119d886d98f02ee9a9dd34c84f952f }
   - { path: conditions/chronic/diabetes2.yaml, sha256: 17410dd3e48af61b8585f776db17a899ff4e1dc2878faa54e8fe474a316e8982 }
   - { path: conditions/chronic/hypertension.yaml, sha256: 8463920a05c9399680fbf0f2340258a79458b770894be1a9b96203750a1a069d }
+  - { path: conditions/neurology/sah.yaml, sha256: 6256cbe65f766a4f3a1be088f7c45a8ae6ae032210b9cfdca061242a36ac9cce }
   - { path: conditions/neurology/seizure.yaml, sha256: aafa0324d72b9f2f46946a962d3e08656327b112d63414859c78f619e73d235a }
+  - { path: conditions/neurology/status_epilepticus.yaml, sha256: 8f2309a0befb10733ecacc0f8f55c8f9cf053de667494306094629bba439f199 }
   - { path: conditions/neurology/stroke_ischemic.yaml, sha256: 827cb2228d7b70308ea64678b98da05adfc2cf95bf266cf685953b5704d25b2d }
   - { path: conditions/surgery/cholelithiasis.yaml, sha256: 6fded781dacdc0f19319b2577987aca21fe0679c7684c112b7f4862693c78b98 }
   - { path: conditions/surgery/renal_colic.yaml, sha256: 232cc4d7e10c33b4f8b5f7a6bc89083643a2d715ff4f47d77c6a235fd97e0964 }
   - { path: conditions/therapy/acs.yaml, sha256: 49ea67eae15b7062b9b21c2a9ddefabadebefefc583d7e9ba0d2051a35f1ebb5 }
   - { path: conditions/therapy/anaphylaxis.yaml, sha256: 247a3f92ab9211796c2ab0cd78f40dc127090de1375fdac2467d2a93c0242719 }
+  - { path: conditions/therapy/aortic_dissection.yaml, sha256: 417adb97c5798cd70ee08ab3adf04ddcc8b12d8ac00f7294beb71f61580d688c }
   - { path: conditions/therapy/asthma_exacerbation.yaml, sha256: 10e79a0ea5c95845fc007c7dc2051fb088e2a624a00b1c3926dd80c31908f734 }
   - { path: conditions/therapy/bp_uncontrolled.yaml, sha256: b98205a9aed796d91cf9c9664980c2b38db6e0de6423bd3fb37ce533a75d34f4 }
   - { path: conditions/therapy/hypoglycemia.yaml, sha256: 45f83c283ed7edda97f42e5601b02294371f443b12fadcb81979408f8f8c508a }
   - { path: conditions/therapy/influenza.yaml, sha256: 1c87b2d5a05f6b8158c7b1817c65a1eb1da5e566c71e7c05db4a9de430f5c474 }
   - { path: conditions/therapy/low_back_pain.yaml, sha256: db1d5430ddfbb13e3a9504db1cdf95027e6fce19a99965d8a236514cacc7b33b }
+  - { path: conditions/therapy/pe.yaml, sha256: fba9a5167d384545652260dabfa3cd9042a7c7ca24b2315404df0e0bdb2db0ec }
   - { path: conditions/trauma/concussion.yaml, sha256: 3398faa3191761696715a2a2d5e50f5f8bc383d0ee0b9dec1346506ffe57974f }
   - { path: conditions/trauma/femoral_neck_fracture.yaml, sha256: cabd9aafc503d65ea8a63b39152d74a010ac5207dd81a16c84554ad69cfcbd35 }
   - { path: findings/ecg/af.yaml, sha256: 911dc29dc0389537c9be1621ce40b1a4d1c0fb5cab5212d011ee78d916e03368 }
   - { path: findings/ecg/lvh.yaml, sha256: 6fb2f195b0817e0ba50124b397e477f5f33c9ec22070f34f8ef0ec150fa59d97 }
   - { path: findings/ecg/st_depression.yaml, sha256: 55d276033c2ffa6268679fe80c899c4abc52c0edf9df54637dd4676c2b1e62e4 }
   - { path: findings/ecg/st_elevation.yaml, sha256: c63a81ce4c54160b4b8cc461594f4709a2f8780a759f46a145895d0a1d5f3734 }
+  - { path: findings/hx/aed_failed.yaml, sha256: 16678097b13d0971faf5747e32b32da09c187787ebff7189f4575746f266df19 }
   - { path: findings/hx/alcohol.yaml, sha256: e06638e333dedf8b38991fc4b5d6e3d5701d6a11183203e88933b786225f4926 }
   - { path: findings/hx/allergy_nsaid.yaml, sha256: 227a628f61c9ed60fb84697ee986984146b9ed522c42704d370f53c4db8d72c4 }
   - { path: findings/hx/allergy_penicillin.yaml, sha256: 23771c6f0eda0c240088ebc5e9efafefc86b1d5ef93ec1db14e1343eb56f421c }
@@ -75,12 +80,18 @@ files:
   - { path: findings/hx/trigger_sting.yaml, sha256: be3909a3116e780d76119914a98aa15d36d4704f507ab68f8f454b7a059424a9 }
   - { path: findings/hx/vascular.yaml, sha256: 20f318f29ee0897aa169f2ce0c07a7f0d49fa6d5db6a90c05c3072803c819d63 }
   - { path: findings/img/ct_blood.yaml, sha256: a9f5174abf22b166426bdb5ce8c7d0a23e2100cde9538c925a28c020f972b9aa }
+  - { path: findings/img/ct_sah.yaml, sha256: 4571e46d378f0ccaee5fc0a39e82da3e61623ca0a660b5075a361d4ba3ed5f10 }
+  - { path: findings/img/cta_aortic_dissection.yaml, sha256: a51cf3a6fcbd054fa4671e3cbd49964035d829ebe7987882bdefa559c2afa050 }
   - { path: findings/img/cta_occlusion.yaml, sha256: 5fc211afdcbb819d1d24682b4047fcc66bfd233cfb0e82055b44b2ac4eb757c3 }
+  - { path: findings/img/cta_pe.yaml, sha256: 75a41a641d109db91cdf31e6e7aa7eafdaf2198df3b70edf9a7d28e754cf45b9 }
+  - { path: findings/img/cta_rv_overload.yaml, sha256: 3de06f7c824bf609ae7bbbc990a67170020e45f0468b977d0cce2d1ebc837d4b }
   - { path: findings/img/cxr_hyperinflation.yaml, sha256: 0f4e45b5aa75c9dbcf10c894989dc235c5b581aea6192fb7c24905ce528190f5 }
   - { path: findings/img/cxr_infiltrate.yaml, sha256: 23a5c4a76d240800575426123cddc14c4bcf6d79fe9806f7d7b3b54a6840c5d4 }
+  - { path: findings/img/cxr_wide_mediastinum.yaml, sha256: f12e4128cfabb09feadb3611451ffd21fcf827d80dd222bf59e07d4bf1da14eb }
   - { path: findings/img/egd_varices.yaml, sha256: a87a4cbc9160f7dd707f14424d43dc24f55bb3b7eb7328ffaaf1f590a71eba1e }
   - { path: findings/img/mri_ischemia.yaml, sha256: 41e4e954a44bb4d492ab93b1901bf61204ef74adc18c132e5833b7458b7bc752 }
   - { path: findings/img/us_cirrhosis.yaml, sha256: 68b4f57499ee101a711c884df3c59d9262983a26e1830bc21f08dfdec750fa29 }
+  - { path: findings/img/us_dvt_prox.yaml, sha256: da6643480ac34dabeb6c57bb8098339fc99332182206fbf3fa296ae44ef7dcba }
   - { path: findings/img/us_gallstones.yaml, sha256: a1c63df206cba2d7af240f1b9683f7a1aa68e1b65544dbf0579aeab90e8cd575 }
   - { path: findings/img/us_hydronephrosis.yaml, sha256: fe3ea59cadfe02643b3b23e4a777458d9c095b00da2c89a783dac4fc4f71ec7a }
   - { path: findings/img/xr_femoral_neck_displaced.yaml, sha256: 2b624e38cddedfda2faa52cb41bbeb1293f785f385a02a82f09767522610244e }
@@ -89,6 +100,8 @@ files:
   - { path: findings/lab/bilirubin_high.yaml, sha256: 0ead49594cde72c4c4c091889a6e9c853b7cbb0c2fdf2aaf7dc0b3c6ced420ef }
   - { path: findings/lab/creatinine_high.yaml, sha256: 673210dac3eb04d4ce129ea0500531bd13cf4dcf256e78dca1c890183bb5e212 }
   - { path: findings/lab/crp_high.yaml, sha256: 07356c91faa5753854a10f85a9527cd201b93e2785c1cd17944c949b4f392549 }
+  - { path: findings/lab/csf_blood.yaml, sha256: f9fd32710bdd5bc66017a586b9f2e37f54c96b7f04c0e015548556ef7965bce6 }
+  - { path: findings/lab/d_dimer_high.yaml, sha256: 5c6cba19680adf1a5332ebd7ca45582bf2e0bf00bb9843e79a0cc0234c57fcfb }
   - { path: findings/lab/flu_ag.yaml, sha256: 4f85f57294a7e3738c8b18ee72057ecb8f5335058a008aca3398bc9869dea18d }
   - { path: findings/lab/glucose_high.yaml, sha256: cb83a5a16d517fc069abfa35926dca0998d8401c810426a72b2a65799c100226 }
   - { path: findings/lab/glucose_low.yaml, sha256: 1be521583b46e167c914cd028625ee45aef2e52bd8dee5c9126ac3e9a0606f37 }
@@ -106,8 +119,11 @@ files:
   - { path: findings/lab/wbc_high.yaml, sha256: 73f31330a643039946aca259f92f37a434c8bb8f190ed1133b1b56a30c919ad7 }
   - { path: findings/sign/angioedema.yaml, sha256: a91c8aaea3cd4ffe2f6041168647a281c948b73bfe4c474b1871ac977906f175 }
   - { path: findings/sign/anisoreflexia.yaml, sha256: 3369668e00691d3efcb3cd76c91ee0e5338672b36b2ce89bf84406f7c245dfe1 }
+  - { path: findings/sign/bp_arm_difference.yaml, sha256: 242f76efd4de0a88b66d5681e34839c4d57900e5adef222f7a84e97658bce13b }
+  - { path: findings/sign/calf_swelling_3cm.yaml, sha256: 376b051ac584adfaea547aeaed80ac80b4a1ef4eaf63f88687695ec087763689 }
   - { path: findings/sign/crackles_local.yaml, sha256: b0a12ec88debaf331b31264d385a5cfcafdef946ff013de34dc0106240c09b34 }
   - { path: findings/sign/cva_tenderness.yaml, sha256: 604c8dd4995b872fbd5d63cdcfe82aad19538858b032bbbf707061984066089e }
+  - { path: findings/sign/deep_vein_tenderness.yaml, sha256: 2c0358569c4d7191ec2f610b907507e1e3f6819bf4fb89f64d1f037dc2f8e9fb }
   - { path: findings/sign/dysphagia.yaml, sha256: 9a36454972a8f1d8a1c5bebbd9a18d1e27d4461807aad093d3fcadb4472975b6 }
   - { path: findings/sign/face_flushing.yaml, sha256: cedcaea3ee8bcbdc32caf3f3d1e11b897d5d6ad753c6bf77a45c5a2f547846ac }
   - { path: findings/sign/facial_weakness.yaml, sha256: fea6c997ee9d68672f8fd9e4ad3ebe64033e9a5ad4dc37e250ead6f3aaf5e112 }
@@ -115,6 +131,7 @@ files:
   - { path: findings/sign/hemiparesis.yaml, sha256: 5cec6b1b268a28ba34729db7df7757cbf55519a390a7fa623e475b3ec7279402 }
   - { path: findings/sign/hip_tenderness.yaml, sha256: 9eecf1ef6e19226b33ee4abbe3fa1ab6cefdd65cd3f6e2ed1ca040f09c3b9570 }
   - { path: findings/sign/leg_shortened_rotated.yaml, sha256: 924c8076b47cfa93b15a5acca249bf6ba78fc6ef4b7e414dc01069c8af812924 }
+  - { path: findings/sign/neck_stiffness.yaml, sha256: e884325fb2d9b5b81618c646716e4187cbb7d7bac02ce01c7592d33169946b87 }
   - { path: findings/sign/nihss.yaml, sha256: 3192b4a664d683c31d09bade85d1384e5bbaba45bc3d231965019334144bbe59 }
   - { path: findings/sign/nihss_high.yaml, sha256: 71877d0d3f98a3f4c90dae2c0f1b02995e8464f60d4003163f0f314df8b46637 }
   - { path: findings/sign/no_weight_bearing.yaml, sha256: 439c4472d3cbc5c6ccc0b5b26f935397b0a0843285d38745e701cae0ef4bf798 }
@@ -164,10 +181,12 @@ files:
   - { path: findings/sym/headache.yaml, sha256: 34812cae99c006ec965d3fe0339b416179e466eb970f0be8a66f4de10fdef2d1 }
   - { path: findings/sym/heartburn.yaml, sha256: caf70cd704aafa6b6799c0300ce1524ef8f2ef1c423e4f068e62b0d159a24d17 }
   - { path: findings/sym/hematuria.yaml, sha256: 1c8990ec81a5ec46c20e8a79a3ae68600046c022f7b3dc29cff5f3ce069b9478 }
+  - { path: findings/sym/hemoptysis.yaml, sha256: f5d78d8cc3840d12e13e99a1b1cb12d18f1a1dcbb02723d470d55cbfc462c897 }
   - { path: findings/sym/hip_pain.yaml, sha256: 8a0add1a7b90372c8ab515189af6de929f92211f79c870ea9b73121b566cabe8 }
   - { path: findings/sym/hives.yaml, sha256: 73ead8cf6bac0e4594214b8dbd37a9a03516bcbc421a4dd61c3d8aa00d704157 }
   - { path: findings/sym/hunger.yaml, sha256: 3e0404a93004d04dcd2d991ff71d906462a39196ec5b647dbdcca19cb4efe12f }
   - { path: findings/sym/immediate_dysfunction.yaml, sha256: f249d68bbaa9f9ba6138cfb5422b181ec7da6e28879daeaf5bae19bf655bdce4 }
+  - { path: findings/sym/leg_pain.yaml, sha256: c4176c92a8eb2df00336ef6284f636eb6a1b2e57a917ea1f3b3391df4f6dcafb }
   - { path: findings/sym/loss_of_consciousness.yaml, sha256: 6741a970ede4315d66eaf7df3fddb1c526e75932f848c71d504f247e8f28b9d6 }
   - { path: findings/sym/myalgia.yaml, sha256: 4288c472d3cbf3b7aacb4ca9e576761f7d3753beed8aca3cd8deb1235bf8a984 }
   - { path: findings/sym/nausea.yaml, sha256: 88071b5369c9f3141bd97df7ff06a91f0199b84318aa6b388c3cdc5cb51b41f9 }
@@ -175,16 +194,21 @@ files:
   - { path: findings/sym/pain_movement.yaml, sha256: cd9abd7df7eb6f18e4fca1b42004a92656950c5b339f6b910947d392a19ce55d }
   - { path: findings/sym/pain_radiation.yaml, sha256: 5faeb6009e15710d4df0a674b833b3ad966e5ccbbd9d022cfc489533eadb4af5 }
   - { path: findings/sym/palpitations.yaml, sha256: 8d45d236fb31440fbaa4f57fc510e1c0db0dc6cd3a0776f569a05041ff9451c4 }
+  - { path: findings/sym/photophobia.yaml, sha256: 229845881768e37c0043a14e45a3284fffd1f1287eb73016d92f677ba42c10bd }
   - { path: findings/sym/pleuritic_pain.yaml, sha256: 63b46afa0ffda0094b65c4943ac10663e64bb1258d7252a1069cbc7b3710cd73 }
   - { path: findings/sym/purulent_sputum.yaml, sha256: 57d9345cbbfb125536155438550f94efd0edb9b61d69d43948b5500902b9622b }
   - { path: findings/sym/rhinorrhea.yaml, sha256: a2ab7d368d73aecd0937ec2b70976ce35ffdb977fc50c33255bdfdd95bbc4349 }
   - { path: findings/sym/sciatica.yaml, sha256: c380b29f03d040d5743c4c02ef26dc50ad40087cd9306f7ff5cf824d39574994 }
   - { path: findings/sym/seizure.yaml, sha256: f80425cb8bb872727e77d747d3e0a5cb912567976169996990672ddcbb94c9d0 }
   - { path: findings/sym/seizure_after_injury.yaml, sha256: 5a80f3ae35aff198debf1a254af76619bb314f73004896589fe15e441e087c05 }
+  - { path: findings/sym/seizure_ongoing.yaml, sha256: c0a1461b8939052ca68162e98b32cea19b0c974f60731637a8ad7321f905ad72 }
   - { path: findings/sym/sore_throat.yaml, sha256: 837924e262f6390c3f6b39d7ad63d9ce48b1d0ee984a17f6d010c5032f84880e }
   - { path: findings/sym/speech_trouble.yaml, sha256: 903546a36507c978d50df07f79f4f39aeb4613dcdecf0b2cab365153d25cff44 }
   - { path: findings/sym/strange_behavior.yaml, sha256: 39885ec1f7ecc11cf534cf6f721e09e1caa5a66031852699e8fd4bb3cc354734 }
   - { path: findings/sym/sweating.yaml, sha256: 7c6465426a38ced73eff193af7e93846851b770e9a1c63a17c10ab6daa30acff }
+  - { path: findings/sym/syncope.yaml, sha256: 97adaca9013df967cee8ae43b09f5055e8fd6a2c8b875da02e38d160d5a42abe }
+  - { path: findings/sym/tearing_pain.yaml, sha256: a3f0f183b55cb36ac522e2c9341edfcfdfed07e80d3382cb131a3c2ff6d96c35 }
+  - { path: findings/sym/thunderclap.yaml, sha256: d651e4b84fc76790185e56354138722b529d3ae57ec525e4a5716f29ed448b2c }
   - { path: findings/sym/tremor.yaml, sha256: 4c9403c667dd892b4fd8bfaab7fc77b5e91d86876f61e7a60126bc9ceaf6ae76 }
   - { path: findings/sym/vomiting.yaml, sha256: e8dea72d452d82030e2019e4c1ac9acf2fbee2b455bba6009f35316c3d59c421 }
   - { path: findings/sym/weakness_one_side.yaml, sha256: 5a7fdc61096d091bc38f050ac1dbaf60aa5ab9fae6734218617297af3777e942 }
@@ -227,6 +251,7 @@ files:
   - { path: risks/vascular.yaml, sha256: 4002208e1dd5ff8c926b7f59d4625359794e50af672dfdb3e3daa1f1c7f957a2 }
   - { path: rules/acs_invasive.yaml, sha256: 431f6367be1c7b3358c812f57935cde74a0a0f62a266e4a6a6d6447b5e8c1aee }
   - { path: rules/ct_head.yaml, sha256: aa5e5a5afea6f17d401cf010a948f7d1c5147789ce8dcb926be20569a5618134 }
+  - { path: rules/spesi.yaml, sha256: 0f5b757ee5680e7f17c9caa6b67aecb8497cf248df2ef43e525b9c85cb8522d3 }
   - { path: people/professions/accountant.yaml, sha256: df69ca1937b51a9a4ddde90306e494372c891c44d42ae07131b1111189c357c8 }
   - { path: people/professions/agronomist.yaml, sha256: c06c5d810f02b124f81c3675adb085ff6a6638152e1b83a3658166368b7de0a9 }
   - { path: people/professions/builder.yaml, sha256: 7e8cdb2c56f85e076e36de7b9ff6093f9025bed715b5f861eda1f3b94647793a }

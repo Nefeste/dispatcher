@@ -8,7 +8,7 @@ clinic: true
 start: 68400
 length: 7200
 season: autumn
-flow: 125
+flow: 115
 crews:
   - { id: crew.1, kind: crew.general, base: base.north }
   - { id: crew.2, kind: crew.general, base: base.north }
