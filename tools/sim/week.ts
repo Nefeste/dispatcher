@@ -167,7 +167,9 @@ export function weekVerdict(rows: readonly WeekRow[]): string[] {
   if (rb) out.push(`- «по правилам» с лучшими решениями: ${rb.deaths.toFixed(2)} — порог не больше 1: ${rb.deaths <= 1 ? 'да' : 'нет'}`);
   if (rb && nb) {
     const k = rb.deaths ? nb.deaths / rb.deaths : Infinity;
-    out.push(`- «без вопросов» с лучшими решениями: ${nb.deaths.toFixed(2)} — в ${Number.isFinite(k) ? k.toFixed(1) : '∞'} раза больше — порог хотя бы втрое: ${nb.deaths > 0 && k >= 3 ? 'да' : 'нет'}`);
+    // сравнение — по целым смертям за все недели: 1.14 / 0.38 в плавающей точке — 2.999…, хотя 114 — ровно втрое 38
+    const all = (r: WeekRow) => Math.round(r.deaths * r.weeks);
+    out.push(`- «без вопросов» с лучшими решениями: ${nb.deaths.toFixed(2)} — в ${Number.isFinite(k) ? k.toFixed(1) : '∞'} раза больше (${all(nb)} против ${all(rb)}) — порог хотя бы втрое: ${all(nb) > 0 && all(nb) >= 3 * all(rb) ? 'да' : 'нет'}`);
   }
   // решение на месте — не больше одного на три вызова (спецификация среза, §4; С4)
   const most = rows.reduce((a, r) => Math.max(a, r.onsite), 0);

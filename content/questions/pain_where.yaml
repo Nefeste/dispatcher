@@ -4,7 +4,7 @@ text: Где болит?
 label: Боль
 cost: 20
 tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
-opens: [sym.chest_pain_pressing, sym.chest_pain_exertion, sym.flank_pain, sym.back_pain, sym.hip_pain, sym.headache]
+opens: [sym.chest_pain_pressing, sym.chest_pain_exertion, sym.flank_pain, sym.back_pain, sym.hip_pain, sym.headache, sym.thunderclap, sym.tearing_pain]
 none:
   self: ["Ничего не болит"]
   other: ["Говорит, ничего не болит", "Не жалуется на боль"]
