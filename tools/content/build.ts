@@ -121,7 +121,7 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
       id, city: String(s.city ?? ''), start: Number(s.start), length: Number(s.length), season: s.season as ShiftSetup['season'],
       crews: (s.crews as ShiftSetup['crews']) ?? [], script: (s.script as ShiftSetup['script']) ?? [],
       flowPct: s.flow === undefined ? 100 : Number(s.flow), hospitals: (s.hospitals as string[] | undefined) ?? null,
-      week: (s.week as ShiftSetup['week'] | undefined) ?? null,
+      week: (s.week as ShiftSetup['week'] | undefined) ?? null, clinic: s.clinic === true,
     };
     if (!Number.isInteger(setup.flowPct) || setup.flowPct < 10 || setup.flowPct > 300) err(`${id}: flow must be a whole percent, 10…300`);
     if (setup.week) {

@@ -76,6 +76,8 @@ export interface ShiftSetup {
   flowPct: number;
   /** больницы смены — часть больниц города; null — все */
   hospitals: string[] | null;
+  /** неотложная помощь поликлиники принимает переданные вызовы — в свои часы (срез, С5; docs/08-game-design.md, §4) */
+  clinic: boolean;
   /** место в «Первой неделе» (срез, часть С1): номер, день и час словами, что нового; null — смена не из недели */
   week: { n: number; day: string; what: string } | null;
 }

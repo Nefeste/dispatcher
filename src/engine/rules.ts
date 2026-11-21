@@ -48,3 +48,7 @@ export const ADDRESS_SEARCH: readonly [number, number] = [5 * MIN, 12 * MIN];
 /** Второй пострадавший: бригада ко второму работает на месте столько; одна бригада задерживается на столько. */
 export const VICTIM_SCENE: readonly [number, number] = [15 * MIN, 25 * MIN];
 export const VICTIM_EXTRA: readonly [number, number] = [10 * MIN, 20 * MIN];
+// Неотложная помощь поликлиники (срез, С5; §4 и §9 геймдизайна): передать неотложный вызов — правило игры по образцу
+// региональной практики (docs/09-content.md, §4). Часы работы — секунды от полуночи; приезд — не позже 2 часов (543n).
+export const CLINIC_HOURS: readonly [number, number] = [8 * 3600, 20 * 3600];
+export const CLINIC_ARRIVE: readonly [number, number] = [40 * MIN, 120 * MIN];

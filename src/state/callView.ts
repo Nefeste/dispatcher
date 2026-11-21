@@ -4,7 +4,7 @@
 import { QUESTION_GROUPS, type FormKind, type QuestionGroup } from '../content/types';
 import { fnv1a } from '../engine/core/hash';
 import { AGAIN } from '../engine/rules';
-import { type CallRec, crewOf, crewOptions, type Shift, type ShiftCtx } from '../engine/shift';
+import { type CallRec, crewOf, crewOptions, type Shift, type ShiftCtx, clinicOpen } from '../engine/shift';
 import { type Heard, render } from '../engine/talk';
 
 export interface QuestionView {
@@ -51,6 +51,10 @@ export interface CallView {
   form: FormKind | 'none' | null;
   /** после решения — кого послать */
   options: CrewChoice[];
+  /** неотложный можно передать в поликлинику: она открыта (срез, С5) */
+  pass: boolean;
+  /** звонит врач поликлиники, которой передали вызов: с чем вернулся вызов; null — звонит сам звонящий */
+  clinic: 'emergency' | 'urgent' | null;
 }
 
 export const callNo = (id: string) => Number(id.split('.')[1]);
@@ -114,5 +118,8 @@ export function callView(ctx: ShiftCtx, s: Shift, id: string): CallView | null {
   return {
     id: call.id, no: callNo(call.id), who: call.truth.relation.caller, picture: pictureOf(call), self: kind.self, repeat, said, rows,
     seconds: Math.floor((s.t - (call.openedAt ?? s.t)) / 1000), groups, form: call.form, options,
+    pass: call.form === 'urgent' && clinicOpen(ctx, s) && !call.clinic,
+    // разговор открыт по звонку из поликлиники: вызов вернулся, и после её приезда звонящий не перезванивал
+    clinic: call.clinic?.back && (call.openedAt ?? 0) >= call.clinic.arrive && !sinceOpen.length ? call.clinic.back : null,
   };
 }

@@ -44,6 +44,9 @@ export function CallScreen({ onDone, onSent }: { onDone: () => void; onSent: () 
           onHold={() => {
             if (!command({ c: 'hold', call: view.id })) onDone();
           }}
+          onPass={() => {
+            if (!command({ c: 'pass', call: view.id })) onDone();
+          }}
         />
       ) : null}
       {size && hint ? <HintBar text={T.tutorial[hint]} top={callLayout(size.w, size.h).tabs.y - 70} /> : null}

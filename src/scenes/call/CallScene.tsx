@@ -41,11 +41,12 @@ export interface CallProps {
   onForm: (kind: 'emergency' | 'urgent' | 'none') => void;
   onSend: (crew: string) => void;
   onHold: () => void;
+  onPass: () => void;
 }
 
 const tw = (f: SkFont | null, s: string) => (f ? f.getTextWidth(s) : s.length * 7);
 
-export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, onHold }: CallProps) {
+export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, onHold, onPass }: CallProps) {
   const L = useMemo(() => callLayout(W, H), [W, H]);
   const [group, setGroup] = useState<QuestionGroup>('vital');
   const picture = useImage(view.picture ? (PICTURES[view.picture] ?? null) : null);
@@ -56,12 +57,14 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
   const title = useFont(Onest_500Medium, 30);
   const hasPicture = Boolean(view.picture && PICTURES[view.picture]);
   const bubbleMax = W - 24 - 28;
-  const lines = wrap(T.call.quote(view.said), bubbleMax, s => tw(big, s), 3);
+  // вызов вернулся из поликлиники: говорит её врач (срез, С5)
+  const said = view.clinic ? T.call.clinic[view.clinic] : view.said;
+  const lines = wrap(T.call.quote(said), bubbleMax, s => tw(big, s), 3);
   const bubbleW = Math.min(W - 24, Math.max(...lines.map(l => tw(big, l))) + 28);
   const bubbleH = lines.length * 20 + 16;
   const bubbleY = L.picture.h - bubbleH - 14;
-  const whoWord = `${view.who.charAt(0).toUpperCase()}${view.who.slice(1)}`;
-  const who = `${whoWord}${view.repeat ? ` · ${T.call.repeat}` : ''}`;
+  const whoWord = view.clinic ? T.call.clinicWho : `${view.who.charAt(0).toUpperCase()}${view.who.slice(1)}`;
+  const who = `${whoWord}${view.repeat && !view.clinic ? ` · ${T.call.repeat}` : ''}`;
   const timer = T.call.timer(view.seconds);
   // карточка: повод — всегда, дальше — последние ответы, сколько помещается
   const rows = view.rows.length <= L.rows ? view.rows : [view.rows[0], ...view.rows.slice(view.rows.length - (L.rows - 1))];
@@ -203,7 +206,10 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
               onPress: () => onSend(o.crew),
               testID: `call-crew-${i}`,
             }))}
-            actions={[{ label: T.crews.hold, onPress: onHold, testID: 'call-hold' }]}
+            actions={[
+              ...(view.pass ? [{ label: T.crews.pass, onPress: onPass, testID: 'call-pass' }] : []),
+              { label: T.crews.hold, onPress: onHold, testID: 'call-hold' },
+            ]}
           />
         </View>
       ) : null}

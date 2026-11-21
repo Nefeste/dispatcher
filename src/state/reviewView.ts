@@ -59,6 +59,8 @@ export interface CallDetail {
   changed: FormKind | 'none' | null;
   crew: number | null;
   hospital: string | null;
+  /** передали в поликлинику (срез, С5): помогла сама, вернула с угрозой или ради больницы; null — не передавали */
+  clinic: 'served' | 'emergency' | 'urgent' | null;
   /** что было на самом деле: болезнь, пол и возраст */
   condition: string;
   sex: 'm' | 'f';
@@ -148,6 +150,7 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
       row: rowOf(c), who: x.truth.relation.caller, self: ctx.db.phone.callers[x.truth.caller].self, lines, decided: c.decided, known: c.known, changed: c.changed,
       threats: threatsAt(x), cleared: clearedAt(x),
       crew: x.crew ? crewNo(x.crew) : null, hospital: x.hospital ? hospitalName(x.hospital) : null,
+      clinic: x.clinic ? (x.clinic.back ?? 'served') : null,
       condition: name, sex: x.truth.patient.sex, age: x.truth.patient.age,
       wait: c.outcome.wait === null ? null : Math.ceil(c.outcome.wait / 60_000), normMin: Math.round(c.outcome.norm / 60_000), window: c.outcome.window,
       mistakes: c.mistakes.map((_, i) => mistakeOf(c, i)), unlucky: c.unlucky,

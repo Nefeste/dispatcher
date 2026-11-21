@@ -15,7 +15,7 @@ import { edgeTimes, type Road, roadOf } from './road/graph';
 import { arrival, passed } from './road/pos';
 import { FAR, search } from './road/route';
 import {
-  ADDRESS_CHANCE, ADDRESS_NEAR, ADDRESS_SEARCH, AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, DECIDE, DOOR_CHANCE, DOOR_WAIT, HANDOVER, NORM_EMERGENCY,
+  ADDRESS_CHANCE, ADDRESS_NEAR, ADDRESS_SEARCH, AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, CLINIC_ARRIVE, CLINIC_HOURS, DECIDE, DOOR_CHANCE, DOOR_WAIT, HANDOVER, NORM_EMERGENCY,
   NORM_URGENT, REPEAT, REPORT_WAIT, SNAG_PHONE, VICTIM_CHANCE, VICTIM_EXTRA, VICTIM_SCENE,
 } from './rules';
 import { formByKnown, formByTruth, threatsHeard } from './form';
@@ -62,10 +62,21 @@ export interface Ring {
   again: boolean;
   /** звонят снова после отказа в выезде (срез, С3) */
   refused: boolean;
+  /** звонит врач поликлиники, которой передали вызов: нужна скорая (срез, С5) */
+  clinic: boolean;
   againAt: number;
 }
 
-export type CallState = 'ring' | 'talk' | 'wait' | 'sent' | 'scene' | 'ask' | 'report' | 'transport' | 'hospital' | 'done';
+export type CallState = 'ring' | 'talk' | 'wait' | 'clinic' | 'sent' | 'scene' | 'ask' | 'report' | 'transport' | 'hospital' | 'done';
+
+/** Вызов передали в неотложную помощь поликлиники (срез, С5): когда, когда её врач у больного и с чем вернулся вызов. */
+export interface Clinic {
+  at: number;
+  arrive: number;
+  /** `emergency` — угроза жизни, нужна скорая; `urgent` — нужна больница, пришлите бригаду; null — поликлиника справилась
+   *  (или ещё не приехала) */
+  back: 'emergency' | 'urgent' | null;
+}
 
 /** Бригада на месте попросила реанимационную (срез, С4; 388н, прил. 2, п. 17) — и что было дальше. */
 export interface SecondCrew {
@@ -190,6 +201,8 @@ export interface CallRec {
   /** когда бригада попросит про второго пострадавшего; null — не попросит */
   snagAt: number | null;
   snag: Snag | null;
+  /** передали в поликлинику (срез, С5); null — нет */
+  clinic: Clinic | null;
 }
 
 export type NoticeKind = 'ring' | 'scene' | 'ask' | SnagKind | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'repeat' | 'recall' | 'end';
@@ -258,10 +271,12 @@ export type Command =
   /** ответ на просьбу бригады на месте: послать реанимационную `crew` или «везите сами» (`crew` нет) */
   | { c: 'second'; call: string; crew?: string }
   /** ответ на просьбу не про медицину: перезвонить звонящему, послать ещё бригаду `crew`, «ждите» / «справитесь сами» */
-  | { c: 'snag'; call: string; act: 'phone' | 'send' | 'wait'; crew?: string };
+  | { c: 'snag'; call: string; act: 'phone' | 'send' | 'wait'; crew?: string }
+  /** неотложный вызов — в неотложную помощь поликлиники (срез, С5), в её часы */
+  | { c: 'pass'; call: string };
 
 /** Почему команду не приняли; слова — src/i18n (T.refusal). */
-export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus';
+export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus' | 'clinicClosed' | 'clinicBack';
 
 const lengthOf = (ctx: ShiftCtx) => ctx.setup.length * 1000;
 
@@ -316,12 +331,12 @@ function ring(ctx: ShiftCtx, s: Shift, scripted: ShiftSetup['script'][number] | 
     id, truth, node, state: 'ring', ringAt: s.t, answeredAt: null, openedAt: null, first: null, asked: [], heard: {}, age: null, onset: null, form: null, decidedAt: null, decisions: [],
     crew: null, sentAt: null, arrivedAt: null, reportAt: null, suggested: null, transport, hospital: null, transportAt: null, hospitalAt: null, doneAt: null,
     scene, repeatAt: null, repeats: 0, recalled: [], bypassed: [], died: false, callbackAt: null, askAt: null, second: null,
-    inAt: null, plan: null, snagAt: null, snag: null,
+    inAt: null, plan: null, snagAt: null, snag: null, clinic: null,
   });
   const call = s.calls[s.calls.length - 1];
   // просьба не про медицину — только у вызовов потока (учебный звонок учит своему) и не там, где попросят реанимационную
   if (!scripted && !needsResus(ctx, call)) call.plan = planOf(r.fork('snag').int(10_000));
-  s.rings.push({ id: `ring.${s.n}`, call: id, at: s.t, repeat: false, again: false, refused: false, againAt: s.t + repeatIn(s, `line:${s.n}`) });
+  s.rings.push({ id: `ring.${s.n}`, call: id, at: s.t, repeat: false, again: false, refused: false, clinic: false, againAt: s.t + repeatIn(s, `line:${s.n}`) });
   s.notices.push({ t: s.t, kind: 'ring', call: id });
 }
 
@@ -331,6 +346,28 @@ function planOf(u: number): SnagKind | null {
   if (u < ADDRESS_CHANCE + VICTIM_CHANCE) return 'victim';
   if (u < ADDRESS_CHANCE + VICTIM_CHANCE + DOOR_CHANCE) return 'door';
   return null;
+}
+
+/** Открыта ли неотложная помощь поликлиники сейчас: в смене с ней и в её часы (срез, С5). */
+export function clinicOpen(ctx: ShiftCtx, s: Shift): boolean {
+  if (!ctx.setup.clinic) return false;
+  const sec = (ctx.setup.start + Math.floor(s.t / 1000)) % 86_400;
+  return sec >= CLINIC_HOURS[0] && sec < CLINIC_HOURS[1];
+}
+
+/** С чем поликлиника вернёт вызов, когда её врач будет у больного: угроза жизни — нужна скорая; нужна больница —
+ *  бригада; иначе — справится сама (по правде: это решает врач на месте). */
+function clinicBack(ctx: ShiftCtx, c: CallRec): Clinic['back'] {
+  return formByTruth(ctx.db, c.truth) === 'emergency' ? 'emergency' : c.transport ? 'urgent' : null;
+}
+
+/** Поликлиника помогла сама: вызов закрыт её приездом. */
+function served(c: CallRec): void {
+  const at = c.clinic!.arrive;
+  c.state = 'done';
+  c.arrivedAt = at;
+  c.inAt = at;
+  c.doneAt = at;
 }
 
 /** Учебный случай: у больного есть признак основной болезни, который знает телефон; у экстренной — признак угрозы. */
@@ -573,6 +610,7 @@ function nextAt(ctx: ShiftCtx, s: Shift): number {
   for (const c of s.calls) if (c.snagAt !== null) t = Math.min(t, c.snagAt);
   for (const c of s.calls) if (c.snag?.answer === null) t = Math.min(t, c.snag.until, c.snag.kind === 'victim' ? FAR : c.snag.at + c.snag.wait);
   for (const c of s.calls) if (c.snag && c.snag.next !== null && c.snag.done === null) t = Math.min(t, c.snag.next);
+  for (const c of s.calls) if (c.state === 'clinic' && c.clinic) t = Math.min(t, c.clinic.arrive);
   for (const r of s.rings) if (!r.again) t = Math.min(t, r.againAt);
   return t;
 }
@@ -595,7 +633,7 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
     if (c.state !== 'wait' || c.repeatAt !== t) continue;
     c.repeatAt = null;
     c.repeats += 1;
-    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: false, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
+    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: false, clinic: false, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
     s.notices.push({ t, kind: 'repeat', call: c.id });
   }
   // бригада на месте просит реанимационную: ждёт ответа, работая на месте (388н, прил. 2, п. 17)
@@ -651,6 +689,26 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
     own(ctx, s, c, 'auto');
     s.notices.push({ t, kind: 'auto', call: c.id, crew: c.crew! });
   }
+  // врач поликлиники у больного: угроза жизни — звонит в скорую, вызов возвращается; нужна больница — просит бригаду;
+  // иначе — помог сам, вызов закрыт (срез, С5)
+  for (const c of s.calls) {
+    if (c.state !== 'clinic' || !c.clinic || c.clinic.arrive !== t) continue;
+    const back = clinicBack(ctx, c);
+    c.clinic.back = back;
+    if (!back) {
+      served(c);
+      continue;
+    }
+    // врач поликлиники видел больного: что у него есть из признаков угрозы — теперь известно и диспетчеру
+    if (back === 'emergency') {
+      for (const x of c.truth.patient.truth.findings) if (ctx.db.phone.findings[x.f]?.threat) c.heard[x.f] = 'yes';
+    }
+    c.repeats += 1;
+    c.state = 'wait';
+    c.form = null;
+    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: false, clinic: true, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
+    s.notices.push({ t, kind: 'repeat', call: c.id });
+  }
   // звонят снова после отказа в выезде: тот же вызов, решение можно поменять
   for (const c of s.calls) {
     if (c.callbackAt !== t) continue;
@@ -659,7 +717,7 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
     c.state = 'wait';
     // решать заново: прежний отказ остаётся в решениях — его видит разбор
     c.form = null;
-    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: true, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
+    s.rings.push({ id: `ring.${c.id.split('.')[1]}.${c.repeats}`, call: c.id, at: t, repeat: true, again: false, refused: true, clinic: false, againAt: t + repeatIn(s, `line:${c.id}:${c.repeats}`) });
     s.notices.push({ t, kind: 'repeat', call: c.id });
   }
   for (const r of s.rings) if (!r.again && r.againAt === t) r.again = true;
@@ -667,7 +725,13 @@ function fireAll(ctx: ShiftCtx, s: Shift): void {
 
 function checkOver(ctx: ShiftCtx, s: Shift): void {
   if (s.over || s.t < lengthOf(ctx) || s.open || s.rings.length || ctx.setup.script[s.script]) return;
-  if (s.calls.every(c => c.state === 'done' && c.callbackAt === null)) {
+  // в поликлинике и вернуться не должен — смена его не ждёт: вызов закрыт приездом её врача (срез, С5)
+  const left = (c: CallRec) => !(c.state === 'done' && c.callbackAt === null) && !(c.state === 'clinic' && !clinicBack(ctx, c));
+  if (!s.calls.some(left)) {
+    for (const c of s.calls) if (c.state === 'clinic') {
+      c.clinic!.back = null;
+      served(c);
+    }
     s.over = true;
     s.notices.push({ t: s.t, kind: 'end' });
   }
@@ -801,7 +865,9 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
       open.form = cmd.form;
       open.decidedAt = s.t;
       const heard = new Map(Object.entries(open.heard));
-      open.decisions.push({ t: s.t, form: cmd.form, known: formByKnown(ctx.db, heard), threats: threatsHeard(ctx.db, heard) });
+      // врач поликлиники сказал «угроза жизни» — по известному вызов экстренный, что бы ни назвал звонящий (срез, С5)
+      const known = open.clinic?.back === 'emergency' ? 'emergency' : formByKnown(ctx.db, heard);
+      open.decisions.push({ t: s.t, form: cmd.form, known, threats: threatsHeard(ctx.db, heard) });
       runTo(ctx, s, s.t + DECIDE);
       if (cmd.form === 'none') {
         open.state = 'done';
@@ -917,6 +983,20 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
       // экстренные, которые ждали бригаду, пока её послали ко второму (388н, п. 12) — разбор это назовёт
       g.bypassed = s.calls.filter(c => c.state === 'wait' && c.form === 'emergency').map(c => c.id);
       call.state = 'scene';
+      return null;
+    }
+    case 'pass': {
+      const call = callOf(s, cmd.call);
+      if (!call || open !== call) return 'notOpen';
+      if (call.form !== 'urgent') return 'noForm';
+      if (!clinicOpen(ctx, s)) return 'clinicClosed';
+      // поликлиника уже была и вернула вызов — второй раз не передают
+      if (call.clinic) return 'clinicBack';
+      call.state = 'clinic';
+      call.clinic = { at: s.t, arrive: s.t + rngOf(s, `clinic:${call.id}:${call.repeats}`).range(CLINIC_ARRIVE[0], CLINIC_ARRIVE[1]), back: null };
+      call.repeatAt = null;
+      s.rings = s.rings.filter(r => r.call !== call.id);
+      close(s);
       return null;
     }
     case 'hospital': {
