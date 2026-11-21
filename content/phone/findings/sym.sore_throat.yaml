@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: often, bystander: never }
 says:
   present:
-    self: ["Горло болит"]
-    other: ["Горло болит"]
+    self: ["Горло болит", "Глотать больно", "Горло дерёт"]
+    other: ["Горло болит", "Говорит, глотать больно", "Жалуется на горло"]
 estimate: true
 sources: ["anamnez"]
 review: draft

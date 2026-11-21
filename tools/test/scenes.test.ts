@@ -2,6 +2,7 @@
 // разговора помещается на экраны телефонов, касания не наезжают друг на друга, вопросы и решение — в нижней половине,
 // текст ложится на экранчики в перспективе кадра.
 import { describe, expect, test } from 'bun:test';
+import { DB } from '../../src/content/generated/db';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -38,6 +39,23 @@ describe('паспорта кадров', () => {
     for (const c of Object.values(p.callers as Record<string, { file: string; sha256: string; avatar: string }>)) {
       expect([c.file, sha(c.file)]).toEqual([c.file, c.sha256]);
       expect(Object.keys(src.files)).toContain(`Assets/Avatars/${c.avatar}`);
+    }
+    // срез, С7: шесть человек, каждый — дома и на улице; сцена «Разговор» знает каждую картинку
+    const ids = Object.keys(p.callers).sort();
+    expect(ids.filter(k => !k.endsWith('-street'))).toEqual(['daughter', 'grandma', 'grandpa', 'man', 'teen', 'young']);
+    for (const k of ids.filter(x => !x.endsWith('-street'))) expect(ids).toContain(`${k}-street`);
+    const scene = readFileSync(join(root, 'src/scenes/call/CallScene.tsx'), 'utf8');
+    for (const k of ids) expect(scene).toContain(`assets/scenes/caller-${k}.jpg`);
+  });
+
+  test('звонящий по возрасту больного (срез, С7): у пожилых супругов — пожилые, подросток — только за родителя средних лет', () => {
+    for (const k of Object.values(DB.phone.callers)) {
+      for (const r of k.relations) {
+        const pics = typeof r.picture === 'string' ? [r.picture] : Object.values(r.picture ?? {});
+        if (pics.some(x => x === 'grandma' || x === 'grandpa') && (r.caller === 'жена' || r.caller === 'муж' || r.caller === 'сам')) expect(r.age![0]).toBeGreaterThanOrEqual(65);
+        if (pics.includes('teen')) expect([r.caller, r.age![0] >= 30, r.age![1] <= 50]).toEqual(['сын', true, true]);
+        if (pics.includes('young') && (r.caller === 'жена' || r.caller === 'сам')) expect(r.age![1]).toBeLessThan(40);
+      }
     }
   });
 });

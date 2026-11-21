@@ -7,7 +7,7 @@
 import { useSyncExternalStore } from 'react';
 import { DB } from '../content/generated/db';
 import { MED } from '../content/generated/med';
-import { type Command, type Lineup, type Logged, NO_LINEUP, type Notice, newShift, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
+import { type Command, type Lineup, type Logged, NO_LINEUP, type Notice, newShift, nextEvent, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
 import { loadMap } from '../map/load';
 import type { IntroNote } from './stationView';
 import { KEYS, readRaw, writeRaw } from './storage';
@@ -276,14 +276,26 @@ export function tick(realMs: number): void {
   if (!x || x.speed === 0 || x.s.open || x.s.over) return;
   const rev = x.s.rev;
   const minute = Math.floor(x.s.t / 60_000);
-  advanceShift(x.ctx, x.s, Math.round(realMs * SPEED_X1 * x.speed * pace));
+  // с автопаузой — от события к событию: мир встаёт ровно на звонке, просьбе или докладе, а не после целого кадра (на
+  // ×4 кадр — до 24 игровых секунд; у сценария в браузере, часы которого ускорены, — минуты, и просьба успевала решиться
+  // сама, не встав)
+  let left = Math.round(realMs * SPEED_X1 * x.speed * pace);
+  while (left > 0 && (x.speed as number) !== 0 && !x.s.open && !x.s.over) {
+    const step = x.autopause ? Math.min(left, Math.max(1, nextEvent(x.ctx, x.s) - x.s.t)) : left;
+    advanceShift(x.ctx, x.s, step);
+    left -= step;
+    const fresh = x.s.notices.slice(x.looked);
+    x.looked = x.s.notices.length;
+    if (fresh.length) look(x, fresh);
+  }
   const changed = Math.floor(x.s.t / 60_000) !== minute;
   if (changed && Date.now() - lastSave > 5000) void save();
   // доклад ждёт ответа (автопауза выключена): его отсчёт в секундах — на экране, перерисовать раз в четверть секунды
   const now = Date.now();
   const countdown = now - lastCountdown >= COUNTDOWN_MS && x.s.calls.some(c => c.state === 'report' || c.state === 'ask');
   if (countdown) lastCountdown = now;
-  after(x, changed || countdown ? -1 : rev);
+  // извещения этого кадра уже прочитаны в шагах выше — будить экран, если смена менялась
+  if (x.s.rev !== rev || changed || countdown) emit();
 }
 
 /** Отсчёт доклада на экране — не чаще раза в `COUNTDOWN_MS` настоящего времени. */

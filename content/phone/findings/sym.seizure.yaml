@@ -2,7 +2,7 @@ tell: { self: never, relative: usually, neighbour: usually, bystander: usually }
 says:
   present:
     self: []
-    other: ["Были судороги, трясло {всего|всю}", "Судороги были, минуту-две"]
+    other: ["Были судороги, трясло {всего|всю}", "Судороги были, минуту-две", "Трясло {его|её}, руки-ноги дёргались"]
 threat: "388n, п. 11 «а»"
 estimate: true
 sources: ["anamnez", "388n, п. 11 «а»"]

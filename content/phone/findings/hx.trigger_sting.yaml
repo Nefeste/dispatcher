@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: often, bystander: sometimes }
 says:
   present:
-    self: ["Оса ужалила, минут десять назад"]
-    other: ["Оса {его|её} ужалила, недавно"]
+    self: ["Оса ужалила, минут десять назад", "Ужалила меня оса, недавно", "Оса укусила, и началось"]
+    other: ["Оса {его|её} ужалила, недавно", "{Его|Её} оса ужалила, минут десять назад", "Оса укусила, и началось"]
 estimate: true
 sources: ["anamnez"]
 review: draft

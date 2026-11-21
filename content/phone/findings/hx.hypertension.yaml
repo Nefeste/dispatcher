@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: rarely, bystander: never }
 says:
   present:
-    self: ["Давление у меня, таблетки пью"]
-    other: ["Давление у {него|неё}, таблетки пьёт"]
+    self: ["Давление у меня, таблетки пью", "Гипертония у меня", "С давлением давно, лечусь"]
+    other: ["Давление у {него|неё}, таблетки пьёт", "Гипертони{к|чка} {он|она}", "С давлением у {него|неё} давно, лечится"]
 estimate: true
 sources: ["anamnez"]
 review: draft

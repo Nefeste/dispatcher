@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: rarely, bystander: never }
 says:
   present:
-    self: ["Сахарный диабет у меня"]
-    other: ["Диабет у {него|неё}, сахарный"]
+    self: ["Сахарный диабет у меня", "Диабетик я", "Сахар у меня, диабет"]
+    other: ["Диабет у {него|неё}, сахарный", "{Он|Она} диабетик", "Сахарный диабет у {него|неё}, давно"]
 estimate: true
 sources: ["anamnez"]
 review: draft

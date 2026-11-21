@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: usually, bystander: usually }
 says:
   present:
-    self: ["Губы опухли, язык как чужой"]
-    other: ["Губы распухли, лицо отекает"]
+    self: ["Губы опухли, язык как чужой", "Лицо отекает, губы раздуло", "Язык распух, губы толстые"]
+    other: ["Губы распухли, лицо отекает", "Лицо отекло, губы раздуло", "Опухает лицо, губы, глаза заплывают"]
 threat: "388n, п. 11 «б»"
 estimate: true
 sources: ["anamnez", "388n, п. 11 «б»"]

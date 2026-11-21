@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: rarely, bystander: never }
 says:
   present:
-    self: ["Инсулин колю"]
-    other: ["Инсулин колет"]
+    self: ["Инсулин колю", "На инсулине я", "Сахар инсулином колю"]
+    other: ["Инсулин колет", "На инсулине {он|она}", "Колет себе инсулин"]
 estimate: true
 sources: ["anamnez"]
 review: draft

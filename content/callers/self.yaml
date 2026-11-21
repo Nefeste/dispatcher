@@ -5,15 +5,17 @@ self: true
 at: [home, street]
 weight: 30
 relations:
-  - { caller: сам, as: m, patient: { m: сам, f: сама }, picture: { m: man, f: daughter } }
+  - { caller: сам, as: m, patient: { m: сам, f: сама }, age: [18, 39], picture: { m: man, f: young } }
+  - { caller: сам, as: m, patient: { m: сам, f: сама }, age: [40, 64], picture: { m: man, f: daughter } }
+  - { caller: сам, as: m, patient: { m: сам, f: сама }, age: [65, 120], picture: { m: grandpa, f: grandma } }
 # не отвечает, путается, судороги, речь нарушена — сам не позвонит
 cannot: [sign.gcs_low, sym.confusion, sign.postictal, sym.seizure, sym.speech_trouble, sym.strange_behavior]
-unsure: ["Не знаю, не замечал{|а}", "Не могу сказать"]
+unsure: ["Не знаю, не замечал{|а}", "Не могу сказать", "Не знаю"]
 # повторный звонок — бригады всё нет
-again: ["Это опять я. Хуже мне, когда приедут?"]
+again: ["Это опять я. Хуже мне, когда приедут?", "Я вызывал{|а}, никого нет. Мне не лучше", "Снова я. Жду-жду, никого"]
 # звонят снова после отказа в выезде, когда повод был (срез, С3; docs/08-game-design.md, §7)
-refused: ["Я уже звонил{^|а}, вы не приехали. Мне хуже, приезжайте"]
-nothing: ["Да больше ничего, всё сказал{|а}"]
+refused: ["Я уже звонил{^|а}, вы не приехали. Мне хуже, приезжайте", "Звонил{|а} уже, сказали — не приедете. А мне хуже", "Мне хуже стало, я звонил{|а}, вы отказали"]
+nothing: ["Да больше ничего, всё сказал{|а}", "Больше ничего", "Всё, вроде больше нет"]
 estimate: true
 sources: ["pp1931", "mos-103"]
 review: draft
