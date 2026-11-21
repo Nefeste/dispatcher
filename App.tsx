@@ -7,6 +7,8 @@ import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AboutScreen } from './src/screens/AboutScreen';
+import { ReportScreen } from './src/screens/ReportScreen';
+import { installCrashHandlers } from './src/state/crashlog';
 import { CallScreen } from './src/screens/CallScreen';
 import { CallReviewScreen } from './src/screens/CallReviewScreen';
 import { LoadingScreen } from './src/screens/LoadingScreen';
@@ -37,9 +39,11 @@ import { setTextSize } from './src/ui/textScale';
 import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
-type Screen = 'title' | 'week' | 'weekEnd' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'station' | 'desk' | 'bench' | 'settings' | 'about';
+type Screen = 'title' | 'week' | 'weekEnd' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'station' | 'desk' | 'bench' | 'settings' | 'about' | 'report';
 
 keepSplash();
+// журнал сбоев (путь к 1.0, В1): ловушки — до первого экрана
+installCrashHandlers();
 setCue(cue);
 // сценарий в браузере ускоряет часы смены: ?pace=50, задаёт зерно смены: ?seed=7, и «Замер» — короткий: ?bench=quick
 // (только веб-сборка; на телефоне адресной строки нет)
@@ -63,6 +67,8 @@ export default function App() {
   const systemMotion = useRef(false);
   // что показать в настройках: снимок на момент открытия
   const [settingsOpen, setSettingsOpen] = useState<{ s: Settings; system: boolean } | null>(null);
+  // откуда открыли «Сообщить об ошибке» — туда же «Назад», и это строка отчёта
+  const [reportFrom, setReportFrom] = useState<'settings' | 'about'>('about');
 
   useEffect(() => {
     let alive = true;
@@ -116,11 +122,11 @@ export default function App() {
       if (screen === 'title') return false;
       // разговор кончается решением (§3): «Назад» его не закрывает
       if (screen === 'call') return true;
-      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : screen === 'station' || screen === 'weekEnd' ? 'week' : 'title');
+      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : screen === 'station' || screen === 'weekEnd' ? 'week' : screen === 'report' ? reportFrom : 'title');
       return true;
     });
     return () => sub.remove();
-  }, [screen]);
+  }, [screen, reportFrom]);
 
   // сцены тёмные: полоса состояния телефона над ними — тоже (ADR 0009)
   const scene = screen !== 'about';
@@ -220,9 +226,10 @@ export default function App() {
               {screen === 'callReview' && reviewed ? <CallReviewScreen id={reviewed} onBack={() => setScreen('end')} /> : null}
               {screen === 'desk' ? <DeskScreen onBack={() => setScreen('title')} /> : null}
               {screen === 'bench' ? <BenchScreen quick={quickBench} onBack={() => setScreen('title')} /> : null}
-              {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} /> : null}
+              {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} onReport={() => { setReportFrom('about'); setScreen('report'); }} /> : null}
+              {screen === 'report' ? <ReportScreen from={reportFrom} onBack={() => setScreen(reportFrom === 'settings' ? 'settings' : 'about')} /> : null}
               {screen === 'settings' && settingsOpen ? (
-                <SettingsScreen settings={settingsOpen.s} system={settingsOpen.system} onChange={x => { settings.current = x; }} onBack={() => setScreen('title')} />
+                <SettingsScreen settings={settingsOpen.s} system={settingsOpen.system} onChange={x => { settings.current = x; }} onReport={() => { setReportFrom('settings'); setScreen('report'); }} onBack={() => setScreen('title')} />
               ) : null}
             </>
           ) : null}

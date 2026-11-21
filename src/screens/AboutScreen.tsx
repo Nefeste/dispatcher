@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { T } from '../i18n';
 import { Button, Txt } from '../ui/kit';
 
-export function AboutScreen({ onBack }: { onBack: () => void }) {
+export function AboutScreen({ onBack, onReport }: { onBack: () => void; onReport: () => void }) {
   return (
     <ScrollView contentContainerStyle={styles.root}>
       <Txt title>{T.about.title}</Txt>
@@ -19,6 +19,7 @@ export function AboutScreen({ onBack }: { onBack: () => void }) {
       {T.about.sources.map(x => <Txt dim key={x} style={styles.source}>{`· ${x}`}</Txt>)}
       <Txt dim>{T.about.studio}</Txt>
       <Txt dim testID="about-version">{T.about.version}</Txt>
+      <Button label={T.about.report} kind="ghost" onPress={onReport} testID="about-report" />
       <Button label={T.common.back} kind="ghost" onPress={onBack} testID="about-back" />
     </ScrollView>
   );

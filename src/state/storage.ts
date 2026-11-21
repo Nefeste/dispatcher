@@ -13,6 +13,8 @@ export const KEYS = {
   station: 'dispatcher.station.v1',
   /** журнал недели: итоги и пути бригад каждой смены, принятой станцией, — для итога и снимка недели (срез, часть С8) */
   week: 'dispatcher.week.v1',
+  /** журнал сбоев: последние 30 ошибок — только в отчёт, который игрок отправляет сам (путь к 1.0, В1) */
+  crashlog: 'dispatcher.crashlog.v1',
 } as const;
 
 export async function readRaw(key: string): Promise<string | null> {

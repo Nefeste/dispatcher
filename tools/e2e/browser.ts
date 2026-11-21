@@ -343,7 +343,30 @@ try {
   await see(page, 'about-version', 'Версия');
   await snap(page, 'about');
 
+  // «Сообщить об ошибке» (путь к 1.0, В1): отчёт виден целиком до отправки — версия, экран, слова игрока и журнал сбоев;
+  // запись журнала кладём в хранилище сами (ошибка в консоли — провал сценария)
+  await page.evaluate(([key]) => localStorage.setItem(key, JSON.stringify([{ at: Date.UTC(2026, 10, 21, 8, 0), kind: 'error', message: 'PultScreen\nError: проба сценария' }])), [KEYS.crashlog]);
+  await page.getByTestId('about-report').click();
+  await see(page, 'report-text', 'Версия: ');
+  await see(page, 'report-text', 'Экран: about');
+  await see(page, 'report-text', 'Error: проба сценария');
+  await page.getByTestId('report-what').fill('Карта погасла после третьего вызова');
+  await see(page, 'report-text', 'Что случилось Карта погасла после третьего вызова');
+  await snap(page, 'report');
+  await page.getByTestId('report-back').click();
+  await see(page, 'about-version', 'Версия');
+  await page.evaluate(([key]) => localStorage.removeItem(key), [KEYS.crashlog]);
+
   await page.getByTestId('about-back').click();
+  await see(page, 'title-name');
+  // из настроек — туда же и обратно в настройки
+  await page.getByTestId('title-settings').click();
+  await page.getByTestId('settings-report').click();
+  await see(page, 'report-text', 'Экран: settings');
+  await see(page, 'report-text', 'ошибок не записано');
+  await page.getByTestId('report-back').click();
+  await see(page, 'settings-sound', 'Звук');
+  await page.getByTestId('settings-back').click();
   await see(page, 'title-name');
 
   // «Замер» (§8): карта сама двигается и приближается, смена идёт на пульте, поиски пути; итог — текстом, с загрузкой
