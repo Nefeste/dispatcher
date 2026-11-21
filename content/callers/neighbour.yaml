@@ -5,6 +5,7 @@ at: [home]
 weight: 10
 relations:
   - { caller: соседка, as: f, patient: { m: сосед, f: соседка }, picture: daughter }
+  - { caller: соседка, as: f, patient: { m: сосед, f: соседка }, picture: grandma }
   - { caller: сосед, as: m, patient: { m: сосед, f: соседка }, picture: man }
 cannot: []
 unsure: ["Не знаю, я сосед{^|ка}, заш{^ёл|ла} только", "Откуда мне знать", "Не знаю"]

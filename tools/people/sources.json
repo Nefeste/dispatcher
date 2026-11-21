@@ -7,9 +7,25 @@
   "Assets/Avatars/Adults/Female_Adult_02/Textures/f002_body_color.tga": "94577d184374270beef531394253c864483b9b9cb2c58e30ecd9364e8baa9f29",
   "Assets/Avatars/Adults/Female_Adult_02/Textures/f002_head_color.tga": "a258f150c9a185d0335b74bd16acb8f4c18eabf469e2e2ea97066e20aa475a66",
   "Assets/Avatars/Adults/Female_Adult_02/Textures/f002_opacity_color.tga": "6f6bde560371ac39cd65f8f1f26e0e7db8b8c7d6224c4139844a21593c962d45",
+  "Assets/Avatars/Adults/Female_Adult_05/Export/Female_Adult_05.fbx": "fffbb46af5f0f0323abad47f04f6067ec6f8757a345d5e53804601bbb77feca4",
+  "Assets/Avatars/Adults/Female_Adult_05/Textures/f005_body_color.tga": "e15c1c5c0a7fca62be865c426c69ecad703da904d2456d040bbba73cedae8e81",
+  "Assets/Avatars/Adults/Female_Adult_05/Textures/f005_head_color.tga": "4e3be559aab4a52d5b55c65447daa8922e633cac049361386a185753d072f1e6",
+  "Assets/Avatars/Adults/Female_Adult_05/Textures/f005_opacity_color.tga": "8573246d70931d4a2b0fc330024c2b3df4f450de368b4eedd21bb3276855d456",
   "Assets/Avatars/Adults/Male_Adult_01/Export/Male_Adult_01.fbx": "8d1edb51b4dc3427ae2456f4407fc105532c145dd019e53cd42bab31cc948a29",
   "Assets/Avatars/Adults/Male_Adult_01/Textures/m002_body_color.tga": "6a048a6b2140a1f5293798ca286be64fd0de6d79572e1273ff5765bd578f463f",
   "Assets/Avatars/Adults/Male_Adult_01/Textures/m002_head_color.tga": "f5b64e4894930d438f7c419c3c9d0bba1f95fa4de9af078b762ea55bfca1ab85",
-  "Assets/Avatars/Adults/Male_Adult_01/Textures/m002_opacity_color.tga": "53818d3f45519451edd2bc60d6e59cd4057ecd381827463c5503da0439d0a5cf"
+  "Assets/Avatars/Adults/Male_Adult_01/Textures/m002_opacity_color.tga": "53818d3f45519451edd2bc60d6e59cd4057ecd381827463c5503da0439d0a5cf",
+  "Assets/Avatars/Adults/Male_Adult_03/Export/Male_Adult_03.fbx": "7064a9f50c95975c6d64ab0c5f5504364bad4ac987750728d0b5f1788fd59dcf",
+  "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_body_color.tga": "13686c52f5a8552a7263545f22d79aeef7269112f8b48fc1e7864a13de0b045b",
+  "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_head_color.tga": "96130ef4c94702d8ee6004ce7d1c48f4b5fb6383ad70410f7316ff4031b031e4",
+  "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_opacity_color.tga": "7b7255ae4042577edbf3dff253b2a32231db6fe281cd8781306d9e26fcf9d03a",
+  "Assets/Avatars/Children/Male_Child_01/Export/Male_Child_01.fbx": "ec3b257289dbd4ddeccc1921c25350ad31ed2489a1cb6e88f61c3ccf88d64359",
+  "Assets/Avatars/Children/Male_Child_01/Textures/cm001_body_color.tga": "30af27bae0b425b2ab06f41fffd5c8aef0beca45e94ebb5c6f0c6e73ca808041",
+  "Assets/Avatars/Children/Male_Child_01/Textures/cm001_head_color.tga": "8bba0067268dd0b6e17a46a5b2c8090fc149e06776ac29caa89a22f497180580",
+  "Assets/Avatars/Professions/Business_Female_02/Export/Business_Female_02.fbx": "0819b017327f4293d522fea3f2dba94d1d8b2d408ec9253fb89f530523e24671",
+  "Assets/Avatars/Professions/Business_Female_02/Textures/f015_body_color.tga": "60b84f3ba5315a76d324569e4ebee6d6bd7a461344158e5b0ef782d667db8285",
+  "Assets/Avatars/Professions/Business_Female_02/Textures/f015_glasses_opacity_color.tga": "f9ece0a65d4771eaf9b6db864bb5898519f84fc23345ad0fa05b9dadb47d3555",
+  "Assets/Avatars/Professions/Business_Female_02/Textures/f015_head_color.tga": "0df4e3f107cb1b06576894617121e53642e5b2d480b88c2a321ba2c4632a1014",
+  "Assets/Avatars/Professions/Business_Female_02/Textures/f015_opacity_color.tga": "15cff3cd49521da8679ee0087c8aa2b8414c2b3a0cc9ec775c5225ef1dec6b81"
  }
 }

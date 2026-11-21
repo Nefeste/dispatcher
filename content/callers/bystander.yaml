@@ -7,6 +7,8 @@ weight: 15
 relations:
   - { caller: прохожий, as: m, patient: { m: мужчина, f: женщина }, picture: man }
   - { caller: прохожая, as: f, patient: { m: мужчина, f: женщина }, picture: daughter }
+  - { caller: прохожая, as: f, patient: { m: мужчина, f: женщина }, picture: young }
+  - { caller: прохожий, as: m, patient: { m: мужчина, f: женщина }, picture: grandpa }
 cannot: []
 unsure: ["Не знаю, я просто мимо ш{^ёл|ла}", "Откуда я знаю, я {его|её} первый раз вижу", "Не знаю"]
 # повторный звонок — бригады всё нет
