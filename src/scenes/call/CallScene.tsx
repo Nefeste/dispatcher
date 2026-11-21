@@ -6,15 +6,16 @@
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
-import { Canvas, Group, Image, LinearGradient, Rect, RoundedRect, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
+import { Canvas, Group, Image, LinearGradient, Rect, rect, RoundedRect, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { QuestionGroup } from '../../content/types';
 import { T } from '../../i18n';
+import { useTextScale } from '../../ui/textScale';
 import type { CallView } from '../../state/callView';
 import { ProgramPanel } from '../panel';
 import { FORM, SCENE, UI } from '../palette';
-import { callLayout, fit, wrap } from './layout';
+import { pictureRect, callLayout, fit, wrap } from './layout';
 
 /** Картинки звонящих (assets/scenes/callers.json) — по имени из записи звонящего. */
 const PICTURES: Record<string, number> = {
@@ -47,21 +48,24 @@ export interface CallProps {
 const tw = (f: SkFont | null, s: string) => (f ? f.getTextWidth(s) : s.length * 7);
 
 export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, onHold, onPass }: CallProps) {
-  const L = useMemo(() => callLayout(W, H), [W, H]);
+  // размер текста (§12 геймдизайна; срез, С8б): шрифты — по ступени, касания и строки карточки — выше
+  const s = useTextScale();
+  const L = useMemo(() => callLayout(W, H, s), [W, H, s]);
+  const pic = pictureRect(L.picture);
   const [group, setGroup] = useState<QuestionGroup>('vital');
   const picture = useImage(view.picture ? (PICTURES[view.picture] ?? null) : null);
-  const big = useFont(Onest_500Medium, 16);
-  const mid = useFont(Onest_500Medium, 13);
-  const small = useFont(Onest_400Regular, 12);
-  const bold = useFont(Onest_600SemiBold, 14);
-  const title = useFont(Onest_500Medium, 30);
+  const big = useFont(Onest_500Medium, 16 * s);
+  const mid = useFont(Onest_500Medium, 13 * s);
+  const small = useFont(Onest_400Regular, 12 * s);
+  const bold = useFont(Onest_600SemiBold, 14 * s);
+  const title = useFont(Onest_500Medium, 30 * s);
   const hasPicture = Boolean(view.picture && PICTURES[view.picture]);
   const bubbleMax = W - 24 - 28;
   // вызов вернулся из поликлиники: говорит её врач (срез, С5)
   const said = view.clinic ? T.call.clinic[view.clinic] : view.said;
-  const lines = wrap(T.call.quote(said), bubbleMax, s => tw(big, s), 3);
+  const lines = wrap(T.call.quote(said), bubbleMax, x => tw(big, x), 3);
   const bubbleW = Math.min(W - 24, Math.max(...lines.map(l => tw(big, l))) + 28);
-  const bubbleH = lines.length * 20 + 16;
+  const bubbleH = lines.length * 20 * s + 16;
   const bubbleY = L.picture.h - bubbleH - 14;
   const whoWord = view.clinic ? T.call.clinicWho : `${view.who.charAt(0).toUpperCase()}${view.who.slice(1)}`;
   const who = `${whoWord}${view.repeat && !view.clinic ? ` · ${T.call.repeat}` : ''}`;
@@ -85,7 +89,12 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
         <Canvas style={StyleSheet.absoluteFill}>
           <Rect x={0} y={0} width={W} height={H} color={SCENE.hallTop} />
           {/* звонящий: картинка по ширине, лицо — в верхней трети; кого ещё не нарисовали — тёмная сцена */}
-          {hasPicture && picture ? <Image image={picture} x={L.picture.x} y={L.picture.y} width={L.picture.w} height={L.picture.h} fit="cover" /> : null}
+          {/* картинка — от верха кадра, лишнее срезается снизу: голова звонящего видна и в низком окне */}
+          {hasPicture && picture ? (
+            <Group clip={rect(L.picture.x, L.picture.y, L.picture.w, L.picture.h)}>
+              <Image image={picture} x={pic.x} y={pic.y} width={pic.w} height={pic.h} fit="fill" />
+            </Group>
+          ) : null}
           {!hasPicture ? (
             <Group>
               <Rect x={0} y={0} width={W} height={L.picture.h}>
@@ -100,21 +109,21 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
           {/* что сказал звонящий */}
           {small ? <SkText x={16} y={bubbleY - 8} text={who} font={small} color={view.repeat ? UI.amber : UI.dim} /> : null}
           <RoundedRect x={12} y={bubbleY} width={bubbleW} height={bubbleH} r={16} color={UI.text} opacity={0.96} />
-          {big ? lines.map((l, i) => <SkText key={i} x={26} y={bubbleY + 22 + i * 20} text={l} font={big} color={UI.bg} />) : null}
+          {big ? lines.map((l, i) => <SkText key={i} x={26} y={bubbleY + 8 + 14 * s + i * 20 * s} text={l} font={big} color={UI.bg} />) : null}
 
           {/* монитор с опросником */}
           <RoundedRect x={L.monitor.x} y={L.monitor.y} width={L.monitor.w} height={L.monitor.h} r={12} color={SCENE.bezel} />
           <Rect x={L.screen.x} y={L.screen.y} width={L.screen.w} height={L.screen.h} color={UI.bg} />
-          <Rect x={L.screen.x} y={L.screen.y} width={L.screen.w} height={30} color={UI.panel} />
-          {mid ? <SkText x={L.screen.x + 12} y={L.screen.y + 20} text={T.call.headNo(view.no)} font={mid} color={UI.text} /> : null}
-          {mid ? <SkText x={L.screen.x + L.screen.w - 12 - tw(mid, timer)} y={L.screen.y + 20} text={timer} font={mid} color={UI.amber} /> : null}
+          <Rect x={L.screen.x} y={L.screen.y} width={L.screen.w} height={30 * s} color={UI.panel} />
+          {mid ? <SkText x={L.screen.x + 12} y={L.screen.y + 20 * s} text={T.call.headNo(view.no)} font={mid} color={UI.text} /> : null}
+          {mid ? <SkText x={L.screen.x + L.screen.w - 12 - tw(mid, timer)} y={L.screen.y + 20 * s} text={timer} font={mid} color={UI.amber} /> : null}
           {rows.map((r, i) => {
-            const y = L.fields.y + 15 + i * L.fieldStep;
+            const y = L.fields.y + 15 * s + i * L.fieldStep;
             const label = r.label || T.call.reason;
             return (
               <Group key={`${label}${i}`}>
-                {small ? <SkText x={L.screen.x + 12} y={y} text={fit(label, 82, s => tw(small, s))} font={small} color={UI.dim} /> : null}
-                {mid ? <SkText x={L.screen.x + 100} y={y} text={fit(r.value, L.screen.w - 112, s => tw(mid, s))} font={mid} color={r.heard === 'unsure' ? UI.dim : UI.text} /> : null}
+                {small ? <SkText x={L.screen.x + 12} y={y} text={fit(label, 82 * s, x => tw(small, x))} font={small} color={UI.dim} /> : null}
+                {mid ? <SkText x={L.screen.x + 12 + 88 * s} y={y} text={fit(r.value, L.screen.w - 24 - 88 * s, x => tw(mid, x))} font={mid} color={r.heard === 'unsure' ? UI.dim : UI.text} /> : null}
                 <Rect x={L.screen.x + 12} y={y + 6} width={L.screen.w - 24} height={1} color={UI.line} />
               </Group>
             );
@@ -128,7 +137,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
                 return (
                   <Group key={g.id}>
                     <RoundedRect x={r.x} y={L.tabs.y + 8} width={r.w} height={L.tabs.h - 16} r={14} color={on ? UI.line : UI.panel} />
-                    {small ? <SkText x={r.x + r.w / 2 - tw(small, tabNames[i]) / 2} y={L.tabs.y + L.tabs.h / 2 + 4} text={tabNames[i]} font={small} color={on ? UI.text : UI.dim} /> : null}
+                    {small ? <SkText x={r.x + r.w / 2 - tw(small, tabNames[i]) / 2} y={L.tabs.y + L.tabs.h / 2 + 4 * s} text={tabNames[i]} font={small} color={on ? UI.text : UI.dim} /> : null}
                   </Group>
                 );
               })}
@@ -137,12 +146,12 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
                 const r = L.questions[i];
                 if (!r) return null;
                 const cost = T.call.cost(q.cost);
-                const textLines = wrap(q.text, r.w - 20 - tw(small, cost), s => tw(small, s), 2);
+                const textLines = wrap(q.text, r.w - 20 - tw(small, cost), x => tw(small, x), 2);
                 return (
                   <Group key={q.id} opacity={q.asked ? 0.55 : 1}>
                     <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={UI.panel} />
                     <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={UI.line} style="stroke" strokeWidth={1} />
-                    {small ? textLines.map((l, j) => <SkText key={j} x={r.x + 10} y={r.y + r.h / 2 + (j - (textLines.length - 1) / 2) * 15 + 4} text={l} font={small} color={UI.text} />) : null}
+                    {small ? textLines.map((l, j) => <SkText key={j} x={r.x + 10} y={r.y + r.h / 2 + (j - (textLines.length - 1) / 2) * 15 * s + 4 * s} text={l} font={small} color={UI.text} />) : null}
                     {small ? <SkText x={r.x + r.w - 8 - tw(small, cost)} y={r.y + r.h - 8} text={cost} font={small} color={UI.amber} /> : null}
                   </Group>
                 );
@@ -158,7 +167,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
               <Group key={kind}>
                 <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={color} opacity={kind === 'none' ? 0.35 : decided && !chosen ? 0.5 : 1} />
                 {chosen ? <RoundedRect x={r.x - 2} y={r.y - 2} width={r.w + 4} height={r.h + 4} r={12} color={UI.text} style="stroke" strokeWidth={2} /> : null}
-                {bold ? <SkText x={r.x + r.w / 2 - tw(bold, `${letter}  ${name}`) / 2} y={r.y + r.h / 2 + 5} text={`${letter}  ${name}`} font={bold} color={kind === 'none' ? UI.text : UI.bg} /> : null}
+                {bold ? <SkText x={r.x + r.w / 2 - tw(bold, `${letter}  ${name}`) / 2} y={r.y + r.h / 2 + 5 * s} text={`${letter}  ${name}`} font={bold} color={kind === 'none' ? UI.text : UI.bg} /> : null}
               </Group>
             );
           })}

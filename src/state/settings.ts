@@ -14,16 +14,19 @@ export interface Settings {
   /** «Мягкий исход» (срез, С3; решение владельца #25): третья ступень исхода — «помощь опоздала, состояние тяжёлое»
    *  вместо слов о смерти; выключен по умолчанию, последствия на станции от него не меняются */
   softOutcome: boolean;
+  /** размер текста — ступень 0–2 (§12 геймдизайна; срез, С8б): обычный, крупнее, крупный */
+  textSize: 0 | 1 | 2;
 }
 
-export const DEFAULT_SETTINGS: Settings = { autopause: true, sound: true, haptics: true, softOutcome: false };
+export const DEFAULT_SETTINGS: Settings = { autopause: true, sound: true, haptics: true, softOutcome: false, textSize: 0 };
 
 /** Сохранённая строка → настройки; мусор и пусто — по умолчанию. */
 export function parseSettings(raw: string | null): Settings {
   try {
     const v = raw ? (JSON.parse(raw) as unknown) : {};
     const s = v && typeof v === 'object' ? (v as Partial<Settings>) : {};
-    const out: Settings = { autopause: s.autopause !== false, sound: s.sound !== false, haptics: s.haptics !== false, softOutcome: s.softOutcome === true };
+    const textSize = s.textSize === 1 || s.textSize === 2 ? s.textSize : 0;
+    const out: Settings = { autopause: s.autopause !== false, sound: s.sound !== false, haptics: s.haptics !== false, softOutcome: s.softOutcome === true, textSize };
     if (typeof s.lessMotion === 'boolean') out.lessMotion = s.lessMotion;
     return out;
   } catch {

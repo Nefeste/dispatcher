@@ -15,3 +15,8 @@ conditions:
   - cond.bp_uncontrolled
   - cond.renal_colic
   - cond.low_back_pain
+  # срез, С5б (решение владельца #38, вариант 3): новые для недели состояния из того, что в «Анамнезе» уже есть
+  - cond.sah
+  - cond.status_epilepticus
+  - cond.pe
+  - cond.aortic_dissection

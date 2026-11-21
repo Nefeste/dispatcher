@@ -12,14 +12,20 @@ import { decideAndSave, readStation } from '../state/station';
 import { type Choice, type StationView, stationView } from '../state/stationView';
 import { Dialog, type DialogSpec } from '../ui/dialog';
 import { Button, Txt } from '../ui/kit';
+import { useTextScale } from '../ui/textScale';
 import { SCENE, UI } from '../scenes/palette';
 
 /** Нижняя полоса с подсказкой и кнопками, точки экрана. */
-const FOOT = 116;
-const HEAD = 64;
+const FOOT_MIN = 116;
+const HEAD_MIN = 64;
 
-export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: (shiftId: string) => void }) {
+export function StationScreen({ onWeek, onNext, onWeekEnd }: { onWeek: () => void; onNext: (shiftId: string) => void; onWeekEnd: () => void }) {
   const { width, height } = useWindowDimensions();
+  // шапка и низ с кнопками — выше с крупным текстом (§12 геймдизайна; срез, С8б); надписи на предметах сцены — нет:
+  // их текст целиком — в окне по касанию предмета, а оно растёт
+  const k = useTextScale();
+  const FOOT = Math.round(FOOT_MIN * k);
+  const HEAD = Math.round(HEAD_MIN * k);
   const [view, setView] = useState<StationView | null>(null);
   const [open, setOpen] = useState<StationItem | null>(null);
   const [dialog, setDialog] = useState<DialogSpec | null>(null);
@@ -124,6 +130,8 @@ export function StationScreen({ onWeek, onNext }: { onWeek: () => void; onNext: 
           <View style={styles.button}><Button label={S.toWeek} kind="onDark" onPress={onWeek} testID="station-week" /></View>
           {view.next ? (
             <View style={styles.button}><Button label={S.next(view.next.n)} onPress={() => onNext(view.next!.id)} testID="station-next" /></View>
+          ) : view.complete ? (
+            <View style={styles.button}><Button label={T.week.end} onPress={onWeekEnd} testID="station-weekend" /></View>
           ) : null}
         </View>
       </View>
