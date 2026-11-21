@@ -9,6 +9,7 @@ import { DB } from '../content/generated/db';
 import { MED } from '../content/generated/med';
 import { type Command, type Lineup, type Logged, NO_LINEUP, type Notice, newShift, nextEvent, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
 import { loadMap } from '../map/load';
+import { dbFor, setupOf } from './free';
 import type { IntroNote } from './stationView';
 import { KEYS, readRaw, writeRaw } from './storage';
 
@@ -57,14 +58,15 @@ export interface Session {
 const ctxCache = new Map<string, ShiftCtx>();
 const mapCache = new Map<string, ShiftCtx['map']>();
 function mapOf(shiftId: string): ShiftCtx['map'] {
-  const id = DB.cities[DB.shifts[shiftId].city].map;
+  const id = DB.cities[setupOf(shiftId)!.city].map;
   let m = mapCache.get(id);
   if (!m) mapCache.set(id, (m = loadMap(id)));
   return m;
 }
 function ctxOf(shiftId: string): ShiftCtx {
   let c = ctxCache.get(shiftId);
-  if (!c) ctxCache.set(shiftId, (c = shiftCtx(DB, MED, shiftId, mapOf(shiftId))));
+  // «свободная» смена — запись из выбора игрока (src/state/free.ts)
+  if (!c) ctxCache.set(shiftId, (c = shiftCtx(dbFor(shiftId), MED, shiftId, mapOf(shiftId))));
   return c;
 }
 /** Смена прототипа — для «Замера». */
@@ -173,7 +175,7 @@ function lineupFrom(x: unknown): Lineup {
 function parseSave(raw: string): Save | null {
   try {
     const x = JSON.parse(raw) as Save;
-    return x.v === SAVE_V && Boolean(DB.shifts[x.setup]) && Number.isInteger(x.seed) && Array.isArray(x.log) ? x : null;
+    return x.v === SAVE_V && Boolean(setupOf(x.setup)) && Number.isInteger(x.seed) && Array.isArray(x.log) ? x : null;
   } catch {
     return null;
   }

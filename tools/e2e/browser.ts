@@ -114,6 +114,8 @@ try {
   // выбор смены «Первой недели» (срез, часть С1): открыта только первая
   await see(page, 'week', 'Понедельник, утро');
   await see(page, 'week-2', 'Откроется после смены 1');
+  // «Свободная смена» (срез, С8в) — закрыта, пока не пройдена неделя
+  await see(page, 'week-free', 'Откроется, когда пройдена вся неделя');
   await snap(page, 'week');
   await page.getByTestId('week-1').click();
   await see(page, 'insert');
@@ -399,7 +401,27 @@ try {
   await see(page, 'week-7', 'Лучший итог');
   if (await visible('week-end-open')) throw new Error('после «Неделя заново» над сменами всё ещё «Итог недели»');
   await snap(page, 'week-again');
-  await page.getByTestId('week-back').click();
+  // «Свободная смена» (срез, С8в): у всех смен недели есть итог — открыта; час на выбор — пульт с этого часа
+  await page.getByTestId('week-free').scrollIntoViewIfNeeded();
+  await see(page, 'free-hour', 'Начало: 19:00');
+  await page.getByTestId('free-hour-more').click();
+  await see(page, 'free-hour', 'Начало: 20:00');
+  await page.getByTestId('free-general-less').click();
+  await see(page, 'free-general', 'Общепрофильных бригад: 4');
+  await snap(page, 'week-free');
+  await page.getByTestId('free-go').click();
+  await see(page, 'insert');
+  await page.getByTestId('insert').click();
+  await see(page, 'pult');
+  if (await visible('intro-go')) await page.getByTestId('intro-go').click();
+  // часы рисует Skia — время смены в подписи для чтения с экрана
+  {
+    const label = (await page.getByTestId('pult-clock').getAttribute('aria-label')) ?? '';
+    if (!/Часы смены: 20:0/.test(label)) throw new Error(`свободная смена с 20:00, а часы: «${label}»`);
+    checks++;
+  }
+  await snap(page, 'free-pult');
+  await page.getByTestId('map-back').click();
   await see(page, 'title-name');
 
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);
