@@ -26,7 +26,7 @@ export function Dialog({ spec, onClose }: { spec: DialogSpec | null; onClose: ()
   const run = (a: DialogAction) => { close(); a.onPress?.(); };
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} />
+      <Pressable style={styles.backdrop} onPress={close} accessibilityRole="button" accessibilityLabel={spec.cancel ?? T.common.cancel} />
       <View style={styles.center} pointerEvents="box-none">
         <View style={[styles.box, { marginBottom: insets.bottom }]}>
           <Txt title style={styles.title}>{spec.title}</Txt>

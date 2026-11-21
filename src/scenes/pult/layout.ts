@@ -36,7 +36,8 @@ function scaleQuad(q: readonly (readonly number[])[], k: number, dy: number): Qu
   return q.map(p => [p[0] * k, dy + p[1] * k] as const);
 }
 
-export function pultLayout(width: number, height: number): PultLayout {
+/** `s` — множитель размера текста (src/ui/textScale.ts): строка программы и полоса вызовов растут, карта — меньше. */
+export function pultLayout(width: number, height: number, s = 1): PultLayout {
   const k = width / PULT.w;
   const dh = PULT.h * k;
   const desk = { x: 0, y: height - dh, w: width, h: dh };
@@ -45,8 +46,8 @@ export function pultLayout(width: number, height: number): PultLayout {
   const bottom = desk.y + dh * MONITOR_FOOT;
   const monitor = { x: -24, y: top, w: width + 48, h: bottom - top };
   const screen = { x: 0, y: top + BEZEL.top, w: width, h: bottom - top - BEZEL.top - BEZEL.bottom };
-  const bar = { x: 0, y: screen.y, w: width, h: BAR };
-  const waiting = { x: 0, y: screen.y + screen.h - WAITING, w: width, h: WAITING };
+  const bar = { x: 0, y: screen.y, w: width, h: Math.round(BAR * s) };
+  const waiting = { x: 0, y: screen.y + screen.h - Math.round(WAITING * s), w: width, h: Math.round(WAITING * s) };
   const map = { x: 0, y: bar.y + bar.h, w: width, h: waiting.y - bar.y - bar.h };
   const p = PULT.phone;
   return {

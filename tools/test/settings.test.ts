@@ -8,11 +8,14 @@ describe('настройки', () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings('{не json')).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings('42')).toEqual(DEFAULT_SETTINGS);
-    expect(DEFAULT_SETTINGS).toEqual({ autopause: true, sound: true, haptics: true, softOutcome: false });
+    expect(DEFAULT_SETTINGS).toEqual({ autopause: true, sound: true, haptics: true, softOutcome: false, textSize: 0 });
   });
 
   test('сохранённый выбор читается как был', () => {
-    expect(parseSettings(JSON.stringify({ autopause: false, sound: false, haptics: false, lessMotion: true, softOutcome: true }))).toEqual({ autopause: false, sound: false, haptics: false, lessMotion: true, softOutcome: true });
+    expect(parseSettings(JSON.stringify({ autopause: false, sound: false, haptics: false, lessMotion: true, softOutcome: true, textSize: 2 }))).toEqual({ autopause: false, sound: false, haptics: false, lessMotion: true, softOutcome: true, textSize: 2 });
+    // размер текста (срез, С8б): нет или не ступень — обычный; сохранённые до 0.23.0 настройки читаются
+    expect(parseSettings(JSON.stringify({ textSize: 5 })).textSize).toBe(0);
+    expect(parseSettings(JSON.stringify({ textSize: 1 })).textSize).toBe(1);
     // сохранено до «Мягкого исхода» (0.13.0) — выключен
     expect(parseSettings(JSON.stringify({ autopause: true, sound: true, haptics: true })).softOutcome).toBe(false);
   });

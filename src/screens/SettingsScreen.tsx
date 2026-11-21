@@ -1,6 +1,6 @@
 // Настройки (docs/08-game-design.md, §10): автопауза на звонке, звук, отклик телефона, «Меньше движения» (ADR устава
-// 0023, правило 6: не выбрано — как в системе телефона), «Мягкий исход» (срез, С3). Пишутся сразу; размер текста — с
-// выпуском.
+// 0023, правило 6: не выбрано — как в системе телефона), «Мягкий исход» (срез, С3), размер текста в трёх ступенях
+// (§12; срез, С8б). Пишутся сразу.
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { setFeedback } from '../audio/feedback';
@@ -10,6 +10,7 @@ import { lessMotionOf, type Settings } from '../state/settings';
 import { saveSettings } from '../state/storage';
 import { Button, Txt } from '../ui/kit';
 import { setLessMotion } from '../ui/motion';
+import { setTextSize } from '../ui/textScale';
 import { C, R, S } from '../ui/theme';
 
 type Key = 'autopause' | 'sound' | 'haptics' | 'lessMotion' | 'softOutcome';
@@ -26,6 +27,13 @@ export function SettingsScreen({ settings, system, onChange, onBack }: { setting
     setLessMotion(lessMotionOf(next, system));
     setAutopause(next.autopause);
     setSoftOutcome(next.softOutcome);
+  };
+  const nextSize = () => {
+    const next: Settings = { ...s, textSize: ((s.textSize + 1) % 3) as Settings['textSize'] };
+    setS(next);
+    onChange(next);
+    void saveSettings(next);
+    setTextSize(next.textSize);
   };
   return (
     <ScrollView contentContainerStyle={styles.root} testID="settings">
@@ -46,6 +54,19 @@ export function SettingsScreen({ settings, system, onChange, onBack }: { setting
           <Txt style={value(k) ? styles.on : styles.off}>{value(k) ? T.settings.on : T.settings.off}</Txt>
         </Pressable>
       ))}
+      {/* размер текста — три ступени, касание — следующая (§12 геймдизайна; срез, С8б) */}
+      <Pressable
+        onPress={nextSize}
+        accessibilityRole="button"
+        accessibilityLabel={`${T.settings.textSize.name}: ${T.settings.textSize.steps[s.textSize]}`}
+        testID="settings-textSize"
+        style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+        <View style={styles.text}>
+          <Txt style={styles.name}>{T.settings.textSize.name}</Txt>
+          <Txt dim style={styles.hint}>{T.settings.textSize.hint}</Txt>
+        </View>
+        <Txt style={styles.on}>{T.settings.textSize.steps[s.textSize]}</Txt>
+      </Pressable>
       <Button label={T.common.back} kind="ghost" onPress={onBack} testID="settings-back" />
     </ScrollView>
   );

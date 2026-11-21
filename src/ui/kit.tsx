@@ -3,6 +3,7 @@ import React from 'react';
 import { Pressable, type StyleProp, StyleSheet, Text, type TextStyle, View, type ViewStyle } from 'react-native';
 import { C, R, S } from './theme';
 import { FONTS } from './fonts';
+import { useTextScale } from './textScale';
 
 /**
  * Начертание — отдельный файл шрифта: жирность из стиля превращается в семейство Onest нужной
@@ -16,11 +17,23 @@ function face(style: TextStyle | undefined, title: boolean): TextStyle {
   return { fontFamily: FONTS.body };
 }
 
+/** Размер и высота строки — по ступени размера текста (src/ui/textScale.ts). */
+function scaled(style: TextStyle, k: number): TextStyle {
+  if (k === 1) return {};
+  const out: TextStyle = {};
+  if (typeof style.fontSize === 'number') out.fontSize = Math.round(style.fontSize * k);
+  if (typeof style.lineHeight === 'number') out.lineHeight = Math.round(style.lineHeight * k);
+  return out;
+}
+
 export function Txt({ children, style, dim, title, testID }: { children: React.ReactNode; style?: TextStyle; dim?: boolean; title?: boolean; testID?: string }) {
-  return <Text testID={testID} style={[styles.text, dim && styles.dim, title && styles.title, style, face(style, !!title)]}>{children}</Text>;
+  const k = useTextScale();
+  const flat = StyleSheet.flatten([styles.text, dim && styles.dim, title && styles.title, style]) as TextStyle;
+  return <Text testID={testID} style={[flat, scaled(flat, k), face(style, !!title)]}>{children}</Text>;
 }
 
 export function Button({ label, onPress, kind = 'primary', disabled, testID }: { label: string; onPress: () => void; kind?: 'primary' | 'ghost' | 'onDark'; disabled?: boolean; testID?: string }) {
+  const k = useTextScale();
   return (
     <Pressable
       testID={testID}
@@ -28,7 +41,7 @@ export function Button({ label, onPress, kind = 'primary', disabled, testID }: {
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [styles.button, kind === 'ghost' && styles.ghost, kind === 'onDark' && styles.onDark, disabled && styles.disabled, pressed && styles.pressed]}>
-      <Text style={[styles.buttonText, kind === 'ghost' && styles.ghostText, kind === 'onDark' && styles.onDarkText]}>{label}</Text>
+      <Text style={[styles.buttonText, kind === 'ghost' && styles.ghostText, kind === 'onDark' && styles.onDarkText, scaled(styles.buttonText, k)]}>{label}</Text>
     </Pressable>
   );
 }

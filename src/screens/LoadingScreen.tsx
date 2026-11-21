@@ -4,6 +4,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
+import { textScale } from '../ui/textScale';
 import { SCENE, UI } from '../scenes/palette';
 import { pultLayout } from '../scenes/pult/layout';
 import { LOAD_STEPS, type LoadStep, prepare } from '../state/session';
@@ -27,7 +28,7 @@ export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: 
       cachedLampPaths(map);
       const z = size.current;
       if (!z) return;
-      const box = pultLayout(z.w, z.h).map;
+      const box = pultLayout(z.w, z.h, textScale()).map;
       cachedMapImage(map, fitOf(map, box.w, box.h));
     };
     void prepare(shiftId, (s, i) => { if (alive) setStep({ s, i }); }, build).then(() => { if (alive) onReady(); });

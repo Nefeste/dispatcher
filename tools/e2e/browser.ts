@@ -424,6 +424,31 @@ try {
   await page.getByTestId('map-back').click();
   await see(page, 'title-name');
 
+  // размер текста — три ступени (срез, С8б; критерий 8): снимок каждого экрана на каждой ступени — заглавный, выбор
+  // смены, пульт (свободная смена продолжается), настройки; вернуть обычный
+  for (const step of ['крупнее', 'крупный', 'обычный']) {
+    await page.getByTestId('title-settings').click();
+    await page.getByTestId('settings-textSize').click();
+    await see(page, 'settings-textSize', step);
+    if (step === 'обычный') { await page.getByTestId('settings-back').click(); break; }
+    await snap(page, `text-${step}-settings`);
+    await page.getByTestId('settings-back').click();
+    await see(page, 'title-name');
+    await snap(page, `text-${step}-title`);
+    await page.getByTestId('title-start').click();
+    await see(page, 'week-free');
+    await snap(page, `text-${step}-week`);
+    await page.getByTestId('week-back').click();
+    await page.getByTestId('title-resume').click();
+    await see(page, 'pult');
+    if (await visible('intro-go')) await page.getByTestId('intro-go').click();
+    await page.waitForTimeout(600);
+    await snap(page, `text-${step}-pult`);
+    await page.getByTestId('map-back').click();
+    await see(page, 'title-name');
+  }
+  await see(page, 'title-name');
+
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);
   console.log(`сценарий пройден: ${checks} проверок, ${shot} снимков в ${OUT}`);
 } finally {

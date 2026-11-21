@@ -10,6 +10,7 @@ import { PULT } from '../../src/art/pult.gen';
 import { STATION_ART } from '../../src/art/station.gen';
 import { callLayout } from '../../src/scenes/call/layout';
 import { ITEMS, stationLayout } from '../../src/scenes/station/layout';
+import { TEXT_SCALES } from '../../src/ui/textScale';
 import { applyMatrix, pultLayout, quadMatrix, type Rect } from '../../src/scenes/pult/layout';
 
 const root = join(import.meta.dir, '../..');
@@ -137,6 +138,19 @@ describe('пульт', () => {
     });
   }
 
+  // размер текста (§12 геймдизайна; срез, С8б): крупнее — строка программы и полоса вызовов выше, карта ниже, но есть
+  for (const [w, h] of PHONES) for (const s of TEXT_SCALES.slice(1)) {
+    test(`${w} × ${h}, текст ×${s}: строка программы и вызовы выше, карта остаётся не меньше трети экрана`, () => {
+      const L = pultLayout(w, h, s), N = pultLayout(w, h);
+      for (const r of [L.bar, L.map, L.waiting]) expect(inside(r, w, h)).toBe(true);
+      expect(L.bar.h).toBeGreaterThan(N.bar.h);
+      expect(L.waiting.h).toBeGreaterThan(N.waiting.h);
+      expect(L.map.h).toBeGreaterThan(h * 0.33);
+      expect(L.bar.y + L.bar.h).toBeLessThanOrEqual(L.map.y + 0.5);
+      expect(L.map.y + L.map.h).toBeLessThanOrEqual(L.waiting.y + 0.5);
+    });
+  }
+
   test('матрица экранчика переводит углы прямоугольника в углы четырёхугольника', () => {
     for (const quad of [PULT.phone.lcd, PULT.radio.lcd, [[0, 0], [10, 0], [10, 5], [0, 5]] as const]) {
       const m = quadMatrix(200, 56, quad);
@@ -162,6 +176,21 @@ describe('разговор', () => {
       }
       for (let i = 0; i < taps.length; i++) for (let j = i + 1; j < taps.length; j++) expect(overlap(taps[i], taps[j])).toBe(false);
       expect(L.picture.h).toBeGreaterThan(h * 0.3);
+    });
+  }
+  // крупный текст: касания выше и не наезжают, решение — в нижней половине, в карточке — хотя бы повод и ответ
+  for (const [w, h] of PHONES) for (const s of TEXT_SCALES.slice(1)) {
+    test(`${w} × ${h}, текст ×${s}: касания выше, не наезжают, решение внизу, карточка не пустая`, () => {
+      const L = callLayout(w, h, s);
+      const taps = [...L.questions, ...L.forms, L.tabs];
+      for (const r of taps) {
+        expect(inside(r, w, h)).toBe(true);
+        expect(r.h).toBeGreaterThanOrEqual(Math.round(44 * s));
+      }
+      for (let i = 0; i < taps.length; i++) for (let j = i + 1; j < taps.length; j++) expect(overlap(taps[i], taps[j])).toBe(false);
+      for (const r of L.forms) expect(r.y).toBeGreaterThan(h / 2);
+      expect(L.rows).toBeGreaterThanOrEqual(2);
+      expect(L.fieldStep).toBeGreaterThanOrEqual(Math.round(22 * s));
     });
   }
 });
