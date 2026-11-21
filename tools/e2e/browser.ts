@@ -414,7 +414,12 @@ try {
   await page.getByTestId('insert').click();
   await see(page, 'pult');
   if (await visible('intro-go')) await page.getByTestId('intro-go').click();
-  await see(page, 'pult-clock', '20:0');
+  // часы рисует Skia — время смены в подписи для чтения с экрана
+  {
+    const label = (await page.getByTestId('pult-clock').getAttribute('aria-label')) ?? '';
+    if (!/Часы смены: 20:0/.test(label)) throw new Error(`свободная смена с 20:00, а часы: «${label}»`);
+    checks++;
+  }
   await snap(page, 'free-pult');
   await page.getByTestId('map-back').click();
   await see(page, 'title-name');
