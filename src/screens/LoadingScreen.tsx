@@ -9,7 +9,7 @@ import { pultLayout } from '../scenes/pult/layout';
 import { LOAD_STEPS, type LoadStep, prepare } from '../state/session';
 import { FONTS } from '../ui/fonts';
 import { Txt } from '../ui/kit';
-import { cachedMapImage, cachedMapPaths } from '../ui/map/paths';
+import { cachedLampPaths, cachedMapImage, cachedMapPaths } from '../ui/map/paths';
 import { fitOf } from '../ui/map/scale';
 
 export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: () => void }) {
@@ -23,6 +23,8 @@ export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: 
     let alive = true;
     const build = (map: Parameters<typeof cachedMapPaths>[0]) => {
       cachedMapPaths(map);
+      // фонари — заранее, чтобы первый ночной кадр пульта их не строил (срез, С6)
+      cachedLampPaths(map);
       const z = size.current;
       if (!z) return;
       const box = pultLayout(z.w, z.h).map;

@@ -2,7 +2,8 @@
 // Строятся через PathBuilder: методы изменения SkPath в Skia 2.6.2 устарели.
 import { drawAsImageFromPicture, FillType, PaintStyle, type SkImage, type SkPath, type SkPathBuilder, Skia, StrokeCap, StrokeJoin } from '@shopify/react-native-skia';
 import { type MapData, type Polylines, ROAD_CLASSES } from '../../map/format';
-import { CASING_PX, MAP, ROAD_PX } from './palette';
+import { lampPoints } from '../../map/lamps';
+import { CASING_PX, LAMP, MAP, ROAD_PX } from './palette';
 import { imageSize, imageWidth } from './scale';
 
 export interface MapPaths {
@@ -40,6 +41,28 @@ function addLines(p: SkPathBuilder, l: Polylines, from: number, to: number, clos
     for (let k = a + 1; k < b; k++) p.lineTo(l.pts[k * 2], l.pts[k * 2 + 1]);
     if (close) p.close();
   }
+}
+
+/** Фонари ночной карты (срез, С6): середины и ореолы — два пути кругов; один раз на файл карты. */
+export interface LampPaths {
+  core: SkPath;
+  glow: SkPath;
+}
+
+const lampCache = new WeakMap<MapData, LampPaths>();
+export function cachedLampPaths(m: MapData): LampPaths {
+  let p = lampCache.get(m);
+  if (!p) {
+    const pts = lampPoints(m);
+    const core = Skia.PathBuilder.Make();
+    const glow = Skia.PathBuilder.Make();
+    for (let i = 0; i < pts.length; i += 2) {
+      core.addCircle(pts[i], pts[i + 1], LAMP.core);
+      glow.addCircle(pts[i], pts[i + 1], LAMP.glow);
+    }
+    lampCache.set(m, (p = { core: core.detach(), glow: glow.detach() }));
+  }
+  return p;
 }
 
 /** Пути карты — один раз на файл карты: их строит загрузка, а окно карты берёт готовые. */

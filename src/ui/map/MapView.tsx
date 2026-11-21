@@ -21,7 +21,7 @@ import { T } from '../../i18n';
 import { FONTS } from '../fonts';
 import { C } from '../theme';
 import { CASING_PX, MAP, ROAD_PX } from './palette';
-import { cachedMapImage, cachedMapPaths, type MapPaths } from './paths';
+import { cachedLampPaths, cachedMapImage, cachedMapPaths, type MapPaths } from './paths';
 import { fitOf, roadWidth } from './scale';
 
 /** Во сколько раз можно приблизить от «район заполняет экран». */
@@ -102,7 +102,8 @@ const MapLayers = memo(function MapLayers({ map, paths, image, width, height, tr
 /** Касание карты: точка в единицах карты и приближение (точек экрана на единицу карты) — чтобы найти знак под пальцем. */
 export type MapTap = (x: number, y: number, zoom: number) => void;
 
-export function MapView({ map, width, height, testID, overlay, dusk = 0, autopilot, onTap }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number; autopilot?: Autopilot; onTap?: MapTap }) {
+export function MapView({ map, width, height, testID, overlay, dusk = 0, night = 0, autopilot, onTap }: { map: MapData; width: number; height: number; testID?: string; overlay?: MapOverlay; dusk?: number; night?: number; autopilot?: Autopilot; onTap?: MapTap }) {
+  const lamps = night > 0 ? cachedLampPaths(map) : null;
   const paths = useMemo(() => cachedMapPaths(map), [map]);
   // при открытии и при наибольшем отдалении карта заполняет экран целиком, без пустых полос
   const fit = fitOf(map, width, height);
@@ -197,7 +198,14 @@ export function MapView({ map, width, height, testID, overlay, dusk = 0, autopil
           <MapLayers map={map} paths={paths} image={image} width={width} height={height} transform={transform} zoom={zoom} fit={fit} motion={motion} />
           <Canvas style={{ position: 'absolute', left: 0, top: 0, width, height }} pointerEvents="none">
             {/* свет часа (спецификация, §6): к вечеру карта темнеет, знаки поверх — нет */}
-            {dusk > 0 ? <Rect x={0} y={0} width={width} height={height} color={MAP.night} opacity={dusk * MAP.nightMax} /> : null}
+            {dusk > 0 ? <Rect x={0} y={0} width={width} height={height} color={MAP.night} opacity={dusk * MAP.nightMax + night * MAP.deepNight} /> : null}
+            {/* ночь (срез, С6): фонари вдоль больших улиц — над затемнением, под знаками */}
+            {lamps ? (
+              <Group transform={transform} opacity={night}>
+                <Path path={lamps.glow} color={MAP.lampGlow} opacity={MAP.lampGlowAlpha} />
+                <Path path={lamps.core} color={MAP.lampCore} />
+              </Group>
+            ) : null}
             <Group transform={transform}>{overlay ? overlay(zoom) : null}</Group>
           </Canvas>
         </View>

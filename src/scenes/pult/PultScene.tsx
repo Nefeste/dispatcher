@@ -64,6 +64,8 @@ export interface PultProps {
   overlay?: MapOverlay;
   /** свет часа на карте, 0…1 */
   dusk?: number;
+  /** глубокая ночь, 0…1 (срез, С6): темнее и фонари */
+  night?: number;
   /** окно программы поверх карты: выбор бригады, доклад */
   panel?: React.ReactNode;
   onPhone: () => void;
@@ -95,7 +97,7 @@ function width(font: SkFont | null, s: string) {
 /** Высота строки OpenStreetMap внизу карты (src/ui/map/MapView.tsx) с запасом. */
 const OSM_LINE = 22;
 
-export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, dusk, overlay, panel, onPhone, onWaiting, onMapTap, onRadio, onClock, onSpeed }: PultProps) {
+export function PultScene({ width: W, height: H, map, clock, speed, line, waiting, radio, closing, dusk, night, overlay, panel, onPhone, onWaiting, onMapTap, onRadio, onClock, onSpeed }: PultProps) {
   const L = useMemo(() => pultLayout(W, H), [W, H]);
   const desk = useImage(DESK);
   const bar = useFont(Onest_500Medium, 15);
@@ -138,7 +140,7 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
       </View>
 
       <View style={[styles.abs, { left: L.map.x, top: L.map.y }]}>
-        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} dusk={dusk} onTap={onMapTap} />
+        <MapView map={map} width={L.map.w} height={L.map.h} testID="map-view" overlay={overlay} dusk={dusk} night={night} onTap={onMapTap} />
       </View>
 
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
