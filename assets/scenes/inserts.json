@@ -91,12 +91,12 @@
   },
   "files": {
     "assets/scenes/insert-depart.jpg": {
-      "sha256": "eb67a47af3af76ac2de257c303e2c5dbfb51a5bcf546f2101a951afd9d1bc2b8",
-      "bytes": 25438
+      "sha256": "635f99ddec37b2240ae1f2a65614adc28b50c4730fdeae154030678e454fc36f",
+      "bytes": 56684
     },
     "assets/scenes/insert-depart.mp4": {
-      "sha256": "50ac02fa558ee21aac3a06f19965b8a7cc4c29b2bab78e8da9550d6390f5035e",
-      "bytes": 86523
+      "sha256": "2f68b0262e9cc499839c440348ba80307a7d326a8ae72ab4002d019dc15bd127",
+      "bytes": 237532
     },
     "assets/scenes/insert-door.jpg": {
       "sha256": "a004c152901ecc30029d4b5b92732f9bc524a42d76d97e1a46db162ffadb51f5",

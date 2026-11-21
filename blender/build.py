@@ -160,9 +160,6 @@ def monitor(name, w, h, x, y, z, yaw=0.0, pitch=0.0):
     back = rot((0, 0, -0.03), yaw, pitch)
     box(f'{name}_back', 'dark', w * 0.45, h * 0.5, 0.035, x + back[0], y - h * 0.25 + back[1], z + back[2], grid=0.12,
         yaw=yaw, pitch=pitch)
-    # нижняя планка рамки с огоньком питания
-    chin = rot((0, 0, 0.004), yaw, pitch)
-    box(f'{name}_chin', 'dark', w + 0.02, 0.014, 0.024, x + chin[0], y - h - 0.022 + chin[1], z + chin[2], grid=0.2, yaw=yaw, pitch=pitch)
     front = rot((0, 0, 0.0115), yaw, pitch)
     SCREENS.append({'name': name, 'x': x + front[0], 'y': y + front[1], 'z': z + front[2], 'w': w, 'h': h,
                     'yaw': yaw, 'pitch': pitch})
@@ -227,7 +224,7 @@ def neighbour(i, x, z, yaw):
 def desk():
     # столешница и боковины
     # сетка столешницы мелкая: затенению под предметами есть где лечь
-    box('desk_top', 'desk', 1.9, 0.03, 0.85, 0, DESK_TOP - 0.03, -0.08, grid=0.06)
+    box('desk_top', 'desk', 1.9, 0.03, 0.85, 0, DESK_TOP - 0.03, -0.08, grid=0.12)
     box('desk_edge', 'edge', 1.9, 0.03, 0.012, 0, DESK_TOP - 0.03, 0.35)
     for s in (-1, 1):
         box(f'desk_side{s}', 'edge', 0.03, DESK_TOP - 0.03, 0.8, s * 0.935, 0, -0.08)
