@@ -51,7 +51,7 @@ export function WeekEndScreen({ onWeek }: { onWeek: () => void }) {
       const shifts = view.rows.filter(r => r.played).map(r => ({ n: r.n, edges: same ? edgesOf(log.shifts.find(e => e.shift === r.id)!.paths, log.edges) : [] }));
       const lines = [
         ...view.rows.map(r => W.snapshotRow(r.n, r.day, r.played?.inNorm ?? 0, r.played?.emergency ?? 0)),
-        W.snapshotStation(T.station.ledger.amount(view.fund), view.crews.length),
+        W.snapshotStation(view.fund, view.crews.length),
       ];
       png = weekSnapshot(map, city, shifts, { title: W.snapshotTitle, shifts: W.snapshotShifts, lines, osm: T.map.osm }, { title, body, small });
     } catch {
@@ -84,7 +84,8 @@ export function WeekEndScreen({ onWeek }: { onWeek: () => void }) {
             {r.played ? W.played(r.played.inNorm, r.played.emergency) : T.week.locked(r.n - 1)}
             {r.played?.deaths ? ` · ${W.deaths(r.played.deaths, soft)}` : ''}
           </Txt>
-          {r.best ? <Txt dim style={styles.line}>{W.best(r.best.inNorm, r.best.emergency)}</Txt> : null}
+          {/* лучший итог — когда он не тот, что сыгран на этой станции */}
+          {r.best && (r.best.inNorm !== r.played?.inNorm || r.best.emergency !== r.played?.emergency) ? <Txt dim style={styles.line}>{W.best(r.best.inNorm, r.best.emergency)}</Txt> : null}
         </View>
       ))}
       <Txt style={styles.total} testID="week-end-total">{W.total(view.total.inNorm, view.total.emergency)}</Txt>

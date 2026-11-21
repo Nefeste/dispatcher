@@ -317,42 +317,6 @@ try {
   await page.getByTestId('station-week').click();
   await page.getByTestId('week-back').click();
 
-  // итог недели (срез, С8; §3, шаги 9–10): шесть смен сыграны — станция зовёт на седьмую; семь — итог недели, снимок
-  // недели, «Неделя заново»
-  const put = async (rows: Record<string, string>) => {
-    await page.evaluate(r => { for (const [k, v] of Object.entries(r)) localStorage.setItem(k, v); }, rows);
-    await page.reload();
-    await see(page, 'title-name');
-  };
-  await put(WEEK[5]);
-  await see(page, 'title-week', 'Продолжить неделю');
-  await page.getByTestId('title-week').click();
-  await see(page, 'station-next', 'Смена 7');
-  await put(WEEK[6]);
-  if (await visible('title-week')) throw new Error('неделя пройдена, а на заглавном экране «Продолжить неделю»');
-  await page.getByTestId('title-start').click();
-  await see(page, 'week-end-open', 'Итог недели');
-  await snap(page, 'week-done');
-  await page.getByTestId('week-end-open').click();
-  await see(page, 'week-end', 'Неделя пройдена');
-  await see(page, 'week-end-7', 'Суббота, ночь');
-  await see(page, 'week-end-total', 'За неделю');
-  await see(page, 'week-end-station', 'Фонд в конце недели');
-  await snap(page, 'week-end');
-  const weekShot = page.waitForEvent('download', { timeout: 15000 });
-  await page.getByTestId('week-end-snapshot').click();
-  await (await weekShot).saveAs(join(OUT, `${String(++shot).padStart(2, '0')}-week-snapshot.png`));
-  await see(page, 'week-end-snapshot-done', 'Снимок готов');
-  // «Неделя заново»: с подтверждением; станция с нуля, лучшие итоги — на месте
-  await page.getByTestId('week-end-again').click();
-  await page.getByRole('button', { name: 'Начать заново', exact: true }).click();
-  await see(page, 'week-1', 'Лучший итог');
-  await see(page, 'week-7', 'Лучший итог');
-  if (await visible('week-end-open')) throw new Error('после «Неделя заново» над сменами всё ещё «Итог недели»');
-  await snap(page, 'week-again');
-  await page.getByTestId('week-back').click();
-  await see(page, 'title-name');
-
   // рабочее место: модель из Blender на Three.js, экраны мониторов — Skia; палец поворачивает взгляд
   await page.getByTestId('title-desk').click();
   await see(page, 'desk-gl');
@@ -399,6 +363,43 @@ try {
   await snap(page, 'bench');
   checks++;
   await page.getByTestId('bench-back').click();
+  await see(page, 'title-name');
+
+  // итог недели (срез, С8; §3, шаги 9–10) — в конце: перезагрузка страницы стирает замеры загрузки смены в памяти,
+  // которые читает «Замер»: шесть смен сыграны — станция зовёт на седьмую; семь — итог недели, снимок
+  // недели, «Неделя заново»
+  const put = async (rows: Record<string, string>) => {
+    await page.evaluate(r => { for (const [k, v] of Object.entries(r)) localStorage.setItem(k, v); }, rows);
+    await page.reload();
+    await see(page, 'title-name');
+  };
+  await put(WEEK[5]);
+  await see(page, 'title-week', 'Продолжить неделю');
+  await page.getByTestId('title-week').click();
+  await see(page, 'station-next', 'Смена 7');
+  await put(WEEK[6]);
+  if (await visible('title-week')) throw new Error('неделя пройдена, а на заглавном экране «Продолжить неделю»');
+  await page.getByTestId('title-start').click();
+  await see(page, 'week-end-open', 'Итог недели');
+  await snap(page, 'week-done');
+  await page.getByTestId('week-end-open').click();
+  await see(page, 'week-end', 'Неделя пройдена');
+  await see(page, 'week-end-7', 'Суббота, ночь');
+  await see(page, 'week-end-total', 'За неделю');
+  await see(page, 'week-end-station', 'Фонд в конце недели');
+  await snap(page, 'week-end');
+  const weekShot = page.waitForEvent('download', { timeout: 15000 });
+  await page.getByTestId('week-end-snapshot').click();
+  await (await weekShot).saveAs(join(OUT, `${String(++shot).padStart(2, '0')}-week-snapshot.png`));
+  await see(page, 'week-end-snapshot-done', 'Снимок готов');
+  // «Неделя заново»: с подтверждением; станция с нуля, лучшие итоги — на месте
+  await page.getByTestId('week-end-again').click();
+  await page.getByRole('button', { name: 'Начать заново', exact: true }).click();
+  await see(page, 'week-1', 'Лучший итог');
+  await see(page, 'week-7', 'Лучший итог');
+  if (await visible('week-end-open')) throw new Error('после «Неделя заново» над сменами всё ещё «Итог недели»');
+  await snap(page, 'week-again');
+  await page.getByTestId('week-back').click();
   await see(page, 'title-name');
 
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);

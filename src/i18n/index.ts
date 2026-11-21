@@ -280,7 +280,7 @@ export const T = {
     snapshotTitle: 'Диспетчер 03 · первая неделя',
     snapshotShifts: 'Смены:',
     snapshotRow: (n: number, day: string, inNorm: number, all: number) => `${n}. ${day}: ${inNorm} из ${all} в норму`,
-    snapshotStation: (fund: string, crews: number) => `Станция: фонд ${fund}, своих бригад — ${crews}`,
+    snapshotStation: (fund: number, crews: number) => `Станция: фонд ${money(fund)}, своих бригад — ${crews}`,
     again: 'Неделя заново',
     againAsk: 'Начать неделю заново?',
     againText: 'Станция начнёт с нуля: фонд, свои бригады, реанимобили и укладки. Лучшие итоги смен останутся, смены — открыты.',

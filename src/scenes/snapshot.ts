@@ -169,7 +169,10 @@ export function weekSnapshot(m: MapData, city: Pick<City, 'bases' | 'hospitals'>
       b.moveTo(m.nodes.x[a], m.nodes.y[a]);
       edgeTo(b, m, e, true);
     }
-    canvas.drawPath(b.detach(), stroke(TRAIL[(sh.n - 1) % TRAIL.length], 6 / k));
+    // чуть прозрачнее: где смены ехали по одной улице, видны обе
+    const p = stroke(TRAIL[(sh.n - 1) % TRAIL.length], 6 / k);
+    p.setAlphaf(0.8);
+    canvas.drawPath(b.detach(), p);
   }
   places(canvas, m, city, k, fill);
   canvas.restore();
