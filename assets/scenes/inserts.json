@@ -53,6 +53,23 @@
       "still": 48,
       "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
       "codec": "H.264 (libx264, CRF 26)"
+    },
+    "stop": {
+      "script": "blender/insert.py",
+      "blender": "4.5.15",
+      "engine": "CYCLES",
+      "samples": 16,
+      "denoiser": "OPENIMAGEDENOISE",
+      "seed": 5,
+      "size": [
+        540,
+        960
+      ],
+      "fps": 24,
+      "frames": 72,
+      "still": 48,
+      "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "codec": "H.264 (libx264, CRF 26)"
     }
   },
   "files": {
@@ -79,6 +96,14 @@
     "assets/scenes/insert-start.mp4": {
       "sha256": "c842cc4943fbe4d6acfa55314dc57279844d61a33f683dfdfdd0d3bbb084de93",
       "bytes": 76803
+    },
+    "assets/scenes/insert-stop.jpg": {
+      "sha256": "351bc7d8e51410927dc7c3578285e6300d5e2f4fb3282085770efb2e4c99fda4",
+      "bytes": 35320
+    },
+    "assets/scenes/insert-stop.mp4": {
+      "sha256": "05ee8421a3d41c8754534d4b92b81221aa974baf417b1235e5eac35382ad00f9",
+      "bytes": 77806
     }
   }
 }
