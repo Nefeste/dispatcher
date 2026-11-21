@@ -12,6 +12,7 @@ export function AboutScreen({ onBack }: { onBack: () => void }) {
       <Txt>{T.about.what}</Txt>
       <Txt testID="about-not-training">{T.about.notTraining}</Txt>
       <Txt>{T.about.fictional}</Txt>
+      <Txt dim>{T.about.clinic}</Txt>
       <Txt dim testID="about-osm">{T.about.map}</Txt>
       <Txt dim>{T.about.medicine}</Txt>
       <Txt style={styles.head}>{T.about.sourcesHead}</Txt>

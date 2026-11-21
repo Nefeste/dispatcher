@@ -32,6 +32,7 @@ export function CallReviewScreen({ id, onBack }: { id: string; onBack: () => voi
       {d.decided ? <Txt>{T.review.decision(T.review.formWord[d.decided], d.known ? T.review.formWord[d.known] : '—')}</Txt> : null}
       {d.decided ? <Txt dim testID="call-review-known-why">{T.review.knownWhy(d.threats, d.cleared)}</Txt> : null}
       {d.changed ? <Txt>{T.review.changed(T.review.formWord[d.changed])}</Txt> : null}
+      {d.clinic ? <Txt dim>{T.review.clinic[d.clinic]}</Txt> : null}
       {d.crew !== null ? <Txt dim>{T.review.crew(d.crew)}</Txt> : null}
       {d.hospital ? <Txt dim>{T.review.hospital(d.hospital)}</Txt> : null}
 

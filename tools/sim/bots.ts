@@ -4,7 +4,7 @@
 import { free } from '../../src/engine/crews';
 import { formByKnown } from '../../src/engine/form';
 import { FAR } from '../../src/engine/road/route';
-import { advance, apply, asking, callOf, type Command, crewOptions, type Lineup, type Logged, newShift, nextEvent, type Shift, type ShiftCtx } from '../../src/engine/shift';
+import { advance, apply, asking, callOf, clinicOpen, type Command, crewOptions, type Lineup, type Logged, newShift, nextEvent, type Shift, type ShiftCtx } from '../../src/engine/shift';
 
 export interface Bot {
   name: string;
@@ -18,6 +18,8 @@ export interface Bot {
   reserve: number;
   /** какую больницу выбирает по докладу: предложенную или последнюю в списке (для тестов разбора) */
   hospital?: 'suggested' | 'last';
+  /** передаёт неотложные в поликлинику в её часы (срез, С5); false — никогда */
+  clinic?: boolean;
 }
 
 /** Вопросы «по правилам»: сознание, дыхание, лицо и руки, боль, кожа — то, что открывает угрозу жизни; и как пройти к
@@ -48,11 +50,15 @@ export function botMove(ctx: ShiftCtx, s: Shift, bot: Bot): Command | null {
     if (call.form === null) {
       const next = list.find(q => !call.asked.some(a => a.q === q));
       if (next) return { c: 'ask', q: next };
-      const form = bot.form === 'known' ? formByKnown(ctx.db, new Map(Object.entries(call.heard))) : bot.form;
+      // поликлиника вернула вызов с угрозой жизни — экстренный (срез, С5)
+      const known = call.clinic?.back === 'emergency' ? 'emergency' : formByKnown(ctx.db, new Map(Object.entries(call.heard)));
+      const form = bot.form === 'known' ? known : bot.form;
       return { c: 'form', form };
     }
     const opts = crewOptions(ctx, s, call.id);
     if (call.form === 'emergency') return opts[0] ? { c: 'send', call: call.id, crew: opts[0].crew } : { c: 'hold', call: call.id };
+    // неотложный в часы поликлиники — туда (срез, С5): бригады остаются экстренным
+    if (bot.clinic !== false && clinicOpen(ctx, s) && !call.clinic) return { c: 'pass', call: call.id };
     const emergencyWaits = s.calls.some(c => c.state === 'wait' && c.form === 'emergency');
     const ok = !bot.ordered || (!emergencyWaits && freeCount(s) > reserve);
     const opt = opts.find(o => !o.redirect && (!bot.ordered || general(s, o.crew)));
