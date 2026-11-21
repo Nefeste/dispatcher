@@ -9,10 +9,12 @@ import { hasSaved } from '../state/session';
 import { readStation } from '../state/station';
 import { stationView } from '../state/stationView';
 import { Button, Txt } from '../ui/kit';
-import { S } from '../ui/theme';
+import { R, S } from '../ui/theme';
+import { TitleScene } from '../scenes/title/TitleScene';
 
 export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onSettings, onAbout }: { onStart: () => void; onResume: () => void; onStation: () => void; onDesk: () => void; onBench: () => void; onSettings: () => void; onAbout: () => void }) {
   const [saved, setSaved] = useState(false);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   // неделя начата и не пройдена — «Продолжить неделю» ведёт на станцию, к следующей смене (спецификация среза, §3, шаг 1)
   const [going, setGoing] = useState(false);
   useEffect(() => {
@@ -27,7 +29,10 @@ export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onS
     return () => cancelAnimationFrame(id);
   }, []);
   return (
-    <View style={styles.root}>
+    <View style={styles.root} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {/* за стеклом — живая сцена: зал, монитор, стол, огонёк телефона (§10 геймдизайна; срез, С8б) */}
+      {size ? <TitleScene width={size.w} height={size.h} /> : null}
+      <View style={styles.glass}>
       <View style={styles.head}>
         <Txt title style={styles.name} testID="title-name">{T.title.name}</Txt>
         <Txt style={styles.lead}>{T.title.lead}</Txt>
@@ -45,6 +50,7 @@ export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onS
         <Button label={T.title.about} kind="ghost" onPress={onAbout} testID="title-about" />
       </View>
       <Txt dim style={styles.center} testID="title-not-training">{T.title.notTraining}</Txt>
+      </View>
     </View>
   );
 }
@@ -52,8 +58,10 @@ export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onS
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
-  root: { flex: 1, padding: 24, justifyContent: 'space-between' },
-  head: { marginTop: 72, gap: 12 },
+  root: { flex: 1 },
+  // стекло поверх сцены: бумага студии с прозрачностью — текст тёмный, сцена видна по краям
+  glass: { flex: 1, margin: 14, padding: 20, borderRadius: R.card, backgroundColor: 'rgba(247,247,242,0.9)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)', justifyContent: 'space-between' },
+  head: { marginTop: 40, gap: 12 },
   name: { fontSize: S.hero, lineHeight: 44 },
   lead: { fontSize: S.lead, lineHeight: 28 },
   actions: { gap: 12 },

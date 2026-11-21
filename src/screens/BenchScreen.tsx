@@ -9,6 +9,7 @@ import { useFrameCallback, useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import type { Shift, ShiftCtx } from '../engine/shift';
 import { T } from '../i18n';
+import { textScale } from '../ui/textScale';
 import { SCENE, UI } from '../scenes/palette';
 import { CrewLayer } from '../scenes/pult/CrewLayer';
 import { pultLayout } from '../scenes/pult/layout';
@@ -200,7 +201,7 @@ export function BenchScreen({ onBack, quick = false }: { onBack: () => void; qui
     const rows: Row[] = [];
     setShift(benchShift(ctx, BENCH_SHIFT.seed, BENCH_SHIFT.minute));
     // картинки района для карты в движении — заранее, как их строит загрузка смены: замер меряет кадры, а не постройку
-    const box = pultLayout(size.w, size.h).map;
+    const box = pultLayout(size.w, size.h, textScale()).map;
     cachedMapImage(ctx.map, fitOf(ctx.map, size.w, size.h));
     cachedMapImage(ctx.map, fitOf(ctx.map, box.w, box.h));
     for (let i = 0; i < SCENES.length && live.current; i++) {

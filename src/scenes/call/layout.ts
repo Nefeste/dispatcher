@@ -24,16 +24,25 @@ export interface CallLayout {
 /** Картинка звонящего — 1080 × 960 (blender/caller.py); на длинном экране обрезается по бокам («cover»). */
 const PICTURE_ASPECT = 960 / 1080;
 const GAP = 6;
-const TAP = 44;
-const HEAD = 34;
+const TAP_MIN = 44;
+const HEAD_MIN = 34;
 
-export function callLayout(width: number, height: number): CallLayout {
-  const ph = Math.max(height * 0.31, Math.min(width * PICTURE_ASPECT, height * 0.33));
+/** `s` — множитель размера текста (src/ui/textScale.ts): касания, шапка и шаг строк карточки растут вместе со шрифтом. */
+export function callLayout(width: number, height: number, s = 1): CallLayout {
+  const TAP = Math.round(TAP_MIN * s);
+  const HEAD = Math.round(HEAD_MIN * s);
+  // низ экрана монитора от картинки не зависит: решение, вопросы и вкладки считаются от него снизу вверх
+  const bottom = height - 14;
+  const formY = bottom - TAP - 10;
+  const fieldStep = Math.round(22 * s);
+  const tabsY = formY - GAP * 2 - (TAP * 4 + GAP * 3) - GAP - TAP;
+  // картинка звонящего — сколько осталось над карточкой; с крупным текстом в карточке должны остаться хотя бы повод и
+  // ответ — тогда картинка ниже, но не меньше пятой части экрана
+  const ph = Math.max(height * 0.2, Math.min(Math.max(height * 0.31, Math.min(width * PICTURE_ASPECT, height * 0.33)), tabsY - GAP - HEAD - 2 - 2 * fieldStep));
   const picture = { x: 0, y: 0, w: width, h: ph };
   const monitor = { x: 6, y: ph - 6, w: width - 12, h: height - ph };
   const screen = { x: monitor.x + 8, y: monitor.y + 8, w: monitor.w - 16, h: monitor.h - 16 };
   const inner = { x: screen.x + 12, w: screen.w - 24 };
-  const formY = screen.y + screen.h - TAP - 10;
   const forms: Rect[] = [];
   const fw = (inner.w - GAP * 2) / 3;
   for (let i = 0; i < 3; i++) forms.push({ x: inner.x + i * (fw + GAP), y: formY, w: fw, h: TAP });
@@ -42,7 +51,6 @@ export function callLayout(width: number, height: number): CallLayout {
   const questions: Rect[] = [];
   for (let i = 0; i < 8; i++) questions.push({ x: inner.x + (i % 2) * (qw + GAP), y: gridTop + Math.floor(i / 2) * (TAP + GAP), w: qw, h: TAP });
   const tabs = { x: inner.x, y: gridTop - GAP - TAP, w: inner.w, h: TAP };
-  const fieldStep = 22;
   const fields = { x: screen.x, y: screen.y + HEAD, w: screen.w, h: Math.max(fieldStep, tabs.y - GAP - screen.y - HEAD) };
   const rows = Math.max(1, Math.floor(fields.h / fieldStep));
   const choice = { x: screen.x, y: tabs.y, w: screen.w, h: formY - GAP - tabs.y };

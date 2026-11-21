@@ -9,6 +9,7 @@ import { callView } from '../state/callView';
 import { command, tick, useSession } from '../state/session';
 import { callHint } from '../state/tutorial';
 import { T } from '../i18n';
+import { textScale } from '../ui/textScale';
 import { HintBar } from '../scenes/hint';
 import { callLayout } from '../scenes/call/layout';
 
@@ -49,7 +50,7 @@ export function CallScreen({ onDone, onSent }: { onDone: () => void; onSent: () 
           }}
         />
       ) : null}
-      {size && hint ? <HintBar text={T.tutorial[hint]} top={callLayout(size.w, size.h).tabs.y - 70} /> : null}
+      {size && hint ? <HintBar text={T.tutorial[hint]} top={callLayout(size.w, size.h, textScale()).tabs.y - 70} /> : null}
     </View>
   );
 }

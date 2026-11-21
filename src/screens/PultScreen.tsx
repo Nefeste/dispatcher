@@ -6,6 +6,7 @@ import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-nativ
 import { useSharedValue } from 'react-native-reanimated';
 import { crewOptions, type Shift, type ShiftCtx } from '../engine/shift';
 import { T } from '../i18n';
+import { textScale } from '../ui/textScale';
 import { CrewLayer } from '../scenes/pult/CrewLayer';
 import { PultScene } from '../scenes/pult/PultScene';
 import { ProgramPanel } from '../scenes/panel';
@@ -229,7 +230,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           onSpeed={nextSpeed}
         />
       ) : null}
-      {size && !x.intro && hint ? <HintBar text={T.tutorial[hint]} top={pultLayout(size.w, size.h).map.y + 8} /> : null}
+      {size && !x.intro && hint ? <HintBar text={T.tutorial[hint]} top={pultLayout(size.w, size.h, textScale()).map.y + 8} /> : null}
       <Pressable style={styles.back} onPress={onBack} accessibilityRole="button" testID="map-back">
         <Txt style={styles.backText}>{T.common.back}</Txt>
       </Pressable>

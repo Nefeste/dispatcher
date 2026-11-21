@@ -33,6 +33,7 @@ import { DEFAULT_SETTINGS, lessMotionOf, type Settings } from './src/state/setti
 import { loadSettings } from './src/state/storage';
 import { FONT_FILES } from './src/ui/fonts';
 import { setLessMotion } from './src/ui/motion';
+import { setTextSize } from './src/ui/textScale';
 import { SCENE } from './src/scenes/palette';
 import { C } from './src/ui/theme';
 
@@ -70,6 +71,7 @@ export default function App() {
       settings.current = s;
       systemMotion.current = system;
       setLessMotion(lessMotionOf(s, system));
+      setTextSize(s.textSize);
       setFeedback(s);
       setSoftOutcome(s.softOutcome);
       preloadSounds();
@@ -121,7 +123,7 @@ export default function App() {
   }, [screen]);
 
   // сцены тёмные: полоса состояния телефона над ними — тоже (ADR 0009)
-  const scene = screen !== 'title' && screen !== 'about';
+  const scene = screen !== 'about';
   return (
     <GestureHandlerRootView style={styles.root}>
     <SafeAreaProvider>
