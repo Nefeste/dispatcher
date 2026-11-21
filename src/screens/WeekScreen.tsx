@@ -4,15 +4,20 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
 import { type Best, readBest } from '../state/progress';
+import { readStation } from '../state/station';
+import { stationView } from '../state/stationView';
 import { weekRows } from '../state/week';
 import { Button, Txt } from '../ui/kit';
 import { C, R, S } from '../ui/theme';
 
-export function WeekScreen({ onPick, onBack }: { onPick: (shiftId: string) => void; onBack: () => void }) {
+export function WeekScreen({ onPick, onBack, onWeekEnd }: { onPick: (shiftId: string) => void; onBack: () => void; onWeekEnd: () => void }) {
   const [best, setBest] = useState<Record<string, Best> | null>(null);
+  // неделя этой станции пройдена — итог недели над сменами (срез, С8)
+  const [complete, setComplete] = useState(false);
   useEffect(() => {
     let alive = true;
     void readBest().then(b => { if (alive) setBest(b); });
+    void readStation().then(st => { if (alive) setComplete(stationView(st).complete); });
     return () => { alive = false; };
   }, []);
   const rows = best ? weekRows(best) : [];
@@ -20,6 +25,7 @@ export function WeekScreen({ onPick, onBack }: { onPick: (shiftId: string) => vo
     <ScrollView contentContainerStyle={styles.root} testID="week">
       <Txt title style={styles.title}>{T.week.title}</Txt>
       <Txt dim>{T.week.lead}</Txt>
+      {complete ? <Button label={T.week.end} onPress={onWeekEnd} testID="week-end-open" /> : null}
       {rows.map(r => (
         <Pressable
           key={r.id}

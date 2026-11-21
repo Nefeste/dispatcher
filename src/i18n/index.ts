@@ -42,6 +42,8 @@ export const T = {
     notTraining: `Это игра. Если нужна помощь —${nb}звоните 103 или 112.`,
     start: 'Первая неделя',
     resume: 'Продолжить смену',
+    /** неделя начата и не пройдена — на станцию, к следующей смене (срез, С8) */
+    continueWeek: 'Продолжить неделю',
     shift: 'Семь смен: от учебного утра до длинной ночи',
     desk: 'Рабочее место',
     bench: 'Замер',
@@ -252,6 +254,38 @@ export const T = {
     label: (n: number, day: string, open: boolean) => (open ? `Смена ${n}, ${day}. Начать` : `Смена ${n}, ${day}: закрыта`),
     toWeek: 'К неделе',
     toStation: 'К станции',
+    /** неделя пройдена: строка над сменами (срез, С8) */
+    end: 'Итог недели',
+    endLabel: 'Неделя пройдена. Итог недели',
+  },
+  /** Итог недели (спецификация среза, §3, шаг 9; §5): семь смен, что стало со станцией, снимок недели, «Неделя заново». */
+  weekEnd: {
+    title: 'Неделя пройдена',
+    lead: 'Семь смен этой станции: экстренные с доездом до 20 минут. Лучший итог смены — за все её прохождения.',
+    row: (n: number, day: string, from: string, to: string) => `${n}. ${day} · ${from}–${to}`,
+    played: (inNorm: number, all: number) => (all ? `${inNorm} из ${all} экстренных в норму` : 'экстренных не было'),
+    deaths: (k: number, soft: boolean) => (soft ? `помощь опоздала — ${k}` : `умерли до приезда — ${k}`),
+    best: (inNorm: number, all: number) => `лучший итог — ${inNorm} из ${all}`,
+    total: (inNorm: number, all: number) => `За неделю: ${inNorm} из ${all} экстренных вызовов с доездом в норму.`,
+    totalDeaths: (k: number, soft: boolean) => (soft ? `Помощь опоздала, состояние тяжёлое — ${k} ${plural(k, 'больной', 'больных', 'больных')}.` : `Умерли до приезда бригады — ${k} ${plural(k, 'больной', 'больных', 'больных')}.`),
+    stationHead: 'Что стало со станцией',
+    fund: (rub: number) => `Фонд в конце недели — ${money(rub)}.`,
+    money: (earned: number, spent: number, fined: number) => `Заработано сменами и премиями — ${money(earned)}, ушло на решения — ${money(spent)}${fined ? `, вычтено за жалобы и проверки — ${money(fined)}` : ''}.`,
+    crews: (list: string) => (list ? `Бригады станции сверх табеля: ${list}.` : 'Новых бригад станция не выводила.'),
+    crew: (no: number, base: string) => `${no} на «${base}»`,
+    trained: (nos: number[]) => (nos.length ? `Обучены до реанимационных: ${nos.map(n => `бригада ${n}`).join(', ')}.` : ''),
+    letters: (thanks: number, complaints: number, inquiries: number) =>
+      `Благодарностей — ${thanks}, жалоб — ${complaints}${inquiries ? `, служебных проверок — ${inquiries}` : ''}.`,
+    snapshot: 'Снимок недели',
+    snapshotTitle: 'Диспетчер 03 · первая неделя',
+    snapshotShifts: 'Смены:',
+    snapshotRow: (n: number, day: string, inNorm: number, all: number) => `${n}. ${day}: ${inNorm} из ${all} в норму`,
+    snapshotStation: (fund: string, crews: number) => `Станция: фонд ${fund}, своих бригад — ${crews}`,
+    again: 'Неделя заново',
+    againAsk: 'Начать неделю заново?',
+    againText: 'Станция начнёт с нуля: фонд, свои бригады, реанимобили и укладки. Лучшие итоги смен останутся, смены — открыты.',
+    againYes: 'Начать заново',
+    toWeek: 'К неделе',
   },
   /** Станция между сменами (срез, часть С2; docs/08-game-design.md, §15): письмо, табель, журнал фонда, укладки */
   station: {

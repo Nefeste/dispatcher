@@ -11,6 +11,8 @@ export const KEYS = {
   progress: 'dispatcher.progress.v1',
   /** станция недели: фонд, свои бригады, укладки, журнал фонда, письмо (срез, часть С2) */
   station: 'dispatcher.station.v1',
+  /** журнал недели: итоги и пути бригад каждой смены, принятой станцией, — для итога и снимка недели (срез, часть С8) */
+  week: 'dispatcher.week.v1',
 } as const;
 
 export async function readRaw(key: string): Promise<string | null> {
