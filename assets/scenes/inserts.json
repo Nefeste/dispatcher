@@ -1,6 +1,6 @@
 {
   "id": "inserts",
-  "name": "Видеовставки: «начало смены» — двор подстанции вечером, камера подходит к машине у гаража; «бригада выезжает» — машина скорой выезжает из гаража",
+  "name": "Видеовставки: «начало смены» — двор подстанции вечером, камера подходит к машине у гаража; «бригада выезжает» — машина скорой выезжает из гаража; на месте вызова — «у подъезда», «на остановке», «в квартире»",
   "licence": "своя работа студии «Горница»; шрифт надписи — Onest (SIL OFL 1.1, assets/fonts/Onest-OFL.txt)",
   "made": {
     "depart": {
@@ -36,6 +36,23 @@
       "still": 72,
       "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
       "codec": "H.264 (libx264, CRF 26)"
+    },
+    "door": {
+      "script": "blender/insert.py",
+      "blender": "4.5.15",
+      "engine": "CYCLES",
+      "samples": 16,
+      "denoiser": "OPENIMAGEDENOISE",
+      "seed": 5,
+      "size": [
+        540,
+        960
+      ],
+      "fps": 24,
+      "frames": 72,
+      "still": 48,
+      "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "codec": "H.264 (libx264, CRF 26)"
     }
   },
   "files": {
@@ -46,6 +63,14 @@
     "assets/scenes/insert-depart.mp4": {
       "sha256": "50ac02fa558ee21aac3a06f19965b8a7cc4c29b2bab78e8da9550d6390f5035e",
       "bytes": 86523
+    },
+    "assets/scenes/insert-door.jpg": {
+      "sha256": "8d0906e1f4e5bccb6cd9923ed78ef5266ab62e8cb3a63073b0147726187d9d26",
+      "bytes": 31639
+    },
+    "assets/scenes/insert-door.mp4": {
+      "sha256": "eb6906b7e5732ee2a56703ca0dfe768ad1c69ebb0d5a553a9d41455113266dd3",
+      "bytes": 91502
     },
     "assets/scenes/insert-start.jpg": {
       "sha256": "98f14456396abd92d304bedb0081000d9711801fab6c2943752bade9e4eabe93",
