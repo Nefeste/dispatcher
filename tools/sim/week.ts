@@ -67,6 +67,10 @@ export interface WeekRow {
   /** просьб бригад о реанимационной за неделю и сколько из них — с приехавшей реанимационной (срез, С4) */
   asks: number;
   asksSent: number;
+  /** просьб бригад на месте не про медицину за неделю (С4, вторая половина) и доля всех просьб на месте среди вызовов, куда
+   *  бригада приехала: порог — не больше одной на три вызова (спецификация среза, §4) */
+  snags: number;
+  onsite: number;
 }
 
 const ctxs = new Map<string, ShiftCtx>();
@@ -77,9 +81,9 @@ const ctxOf = (id: string) => {
 };
 
 /** Одна неделя бота с правилом станции: зёрна смен — от номера недели. */
-export function runWeek(w: number, bot: string, policy: Policy): { st: Station; emergency: number; inNorm: number; decisions: number; deaths: number; asks: number; asksSent: number } {
+export function runWeek(w: number, bot: string, policy: Policy): { st: Station; emergency: number; inNorm: number; decisions: number; deaths: number; asks: number; asksSent: number; snags: number; arrived: number } {
   let st = newStation();
-  let emergency = 0, inNorm = 0, decisions = 0, deaths = 0, asks = 0, asksSent = 0;
+  let emergency = 0, inNorm = 0, decisions = 0, deaths = 0, asks = 0, asksSent = 0, snags = 0, arrived = 0;
   WEEK.forEach((sh, i) => {
     const ctx = ctxOf(sh.id);
     const { s } = play(ctx, w * 100 + i + 1, BOTS[bot], lineupOf(st));
@@ -89,6 +93,8 @@ export function runWeek(w: number, bot: string, policy: Policy): { st: Station; 
     deaths += rep.deaths;
     asks += s.calls.filter(c => c.second).length;
     asksSent += s.calls.filter(c => c.second?.came != null).length;
+    snags += s.calls.filter(c => c.snag).length;
+    arrived += s.calls.filter(c => c.arrivedAt !== null).length;
     st = afterShift(st, rep);
     for (const d of policyMoves(st, WEEK[i + 1]?.id ?? null, policy)) {
       const y = decide(st, d);
@@ -98,14 +104,15 @@ export function runWeek(w: number, bot: string, policy: Policy): { st: Station; 
       }
     }
   });
-  return { st, emergency, inNorm, decisions, deaths, asks, asksSent };
+  return { st, emergency, inNorm, decisions, deaths, asks, asksSent, snags, arrived };
 }
 
 export function weekRuns(weeks: number, bots: readonly string[]): WeekRow[] {
   const rows: WeekRow[] = [];
   for (const bot of bots) {
     for (const policy of ['none', 'best'] as const) {
-      const r: WeekRow = { bot, policy, weeks, emergency: 0, inNorm: 0, fund: 0, extra: 0, decisions: 0, thanks: 0, complaints: 0, deaths: 0, inquiries: 0, asks: 0, asksSent: 0 };
+      const r: WeekRow = { bot, policy, weeks, emergency: 0, inNorm: 0, fund: 0, extra: 0, decisions: 0, thanks: 0, complaints: 0, deaths: 0, inquiries: 0, asks: 0, asksSent: 0, snags: 0, onsite: 0 };
+      let arrived = 0;
       for (let w = 1; w <= weeks; w++) {
         const x = runWeek(w, bot, policy);
         r.emergency += x.emergency;
@@ -118,9 +125,13 @@ export function weekRuns(weeks: number, bots: readonly string[]): WeekRow[] {
         r.deaths += x.deaths;
         r.asks += x.asks;
         r.asksSent += x.asksSent;
+        r.snags += x.snags;
+        r.onsite += x.snags + x.asks;
+        arrived += x.arrived;
         r.inquiries += x.st.journal.filter(e => e.kind === 'inquiry').length;
       }
-      for (const k of ['fund', 'extra', 'decisions', 'thanks', 'complaints', 'deaths', 'inquiries', 'asks', 'asksSent'] as const) r[k] /= weeks;
+      r.onsite = arrived ? r.onsite / arrived : 0;
+      for (const k of ['fund', 'extra', 'decisions', 'thanks', 'complaints', 'deaths', 'inquiries', 'asks', 'asksSent', 'snags'] as const) r[k] /= weeks;
       rows.push(r);
     }
   }
@@ -131,8 +142,11 @@ const share = (r: { emergency: number; inNorm: number }) => (r.emergency ? (100 
 
 export function weekRunsReport(rows: readonly WeekRow[]): string {
   const name = (r: WeekRow) => `${BOTS[r.bot].name}, ${r.policy === 'none' ? 'без решений станции' : 'лучшие решения'}`;
-  const out = ['| Диспетчер и станция | Экстренных в норму за неделю | Смертей до приезда | Проверок | Просьб о реанимационной (приехала) | Решений | Бригад станции | Благодарностей | Жалоб | Фонд в конце |', '|---|---|---|---|---|---|---|---|---|---|'];
-  for (const r of rows) out.push(`| ${name(r)} | ${share(r).toFixed(1)} % (${r.inNorm} из ${r.emergency}) | ${r.deaths.toFixed(2)} | ${r.inquiries.toFixed(2)} | ${r.asks.toFixed(2)} (${r.asksSent.toFixed(2)}) | ${r.decisions.toFixed(1)} | ${r.extra.toFixed(1)} | ${r.thanks.toFixed(1)} | ${r.complaints.toFixed(1)} | ${r.fund.toFixed(0)} тыс. |`);
+  const out = [
+    '| Диспетчер и станция | Экстренных в норму за неделю | Смертей до приезда | Проверок | Просьб о реанимационной (приехала) | Других просьб на месте | Просьб на вызов | Решений | Бригад станции | Благодарностей | Жалоб | Фонд в конце |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|',
+  ];
+  for (const r of rows) out.push(`| ${name(r)} | ${share(r).toFixed(1)} % (${r.inNorm} из ${r.emergency}) | ${r.deaths.toFixed(2)} | ${r.inquiries.toFixed(2)} | ${r.asks.toFixed(2)} (${r.asksSent.toFixed(2)}) | ${r.snags.toFixed(1)} | ${(100 * r.onsite).toFixed(1)} % | ${r.decisions.toFixed(1)} | ${r.extra.toFixed(1)} | ${r.thanks.toFixed(1)} | ${r.complaints.toFixed(1)} | ${r.fund.toFixed(0)} тыс. |`);
   return out.join('\n');
 }
 
@@ -155,6 +169,9 @@ export function weekVerdict(rows: readonly WeekRow[]): string[] {
     const k = rb.deaths ? nb.deaths / rb.deaths : Infinity;
     out.push(`- «без вопросов» с лучшими решениями: ${nb.deaths.toFixed(2)} — в ${Number.isFinite(k) ? k.toFixed(1) : '∞'} раза больше — порог хотя бы втрое: ${nb.deaths > 0 && k >= 3 ? 'да' : 'нет'}`);
   }
+  // решение на месте — не больше одного на три вызова (спецификация среза, §4; С4)
+  const most = rows.reduce((a, r) => Math.max(a, r.onsite), 0);
+  if (rows.length) out.push(`- просьб бригад на месте — до ${(100 * most).toFixed(1)} % вызовов, куда приехала бригада — порог не больше одной на три (33.3 %): ${most <= 1 / 3 ? 'да' : 'нет'}`);
   const nn = get('noQuestions', 'none');
   if (rn && nn) out.push(`- без решений станции: «без вопросов» ${nn.deaths.toFixed(2)}, «по правилам» ${rn.deaths.toFixed(2)} — в ${rn.deaths ? (nn.deaths / rn.deaths).toFixed(1) : '∞'} раза (для сведения)`);
   return out;

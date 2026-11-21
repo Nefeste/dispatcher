@@ -4,7 +4,7 @@
 import { free } from '../../src/engine/crews';
 import { formByKnown } from '../../src/engine/form';
 import { FAR } from '../../src/engine/road/route';
-import { advance, apply, callOf, type Command, crewOptions, type Lineup, type Logged, newShift, nextEvent, type Shift, type ShiftCtx } from '../../src/engine/shift';
+import { advance, apply, asking, callOf, type Command, crewOptions, type Lineup, type Logged, newShift, nextEvent, type Shift, type ShiftCtx } from '../../src/engine/shift';
 
 export interface Bot {
   name: string;
@@ -20,8 +20,9 @@ export interface Bot {
   hospital?: 'suggested' | 'last';
 }
 
-/** Вопросы «по правилам»: сознание, дыхание, лицо и руки, боль, кожа — то, что открывает угрозу жизни. */
-export const RULE_QUESTIONS = ['q.conscious', 'q.breathing', 'q.face', 'q.pain_where', 'q.skin'] as const;
+/** Вопросы «по правилам»: сознание, дыхание, лицо и руки, боль, кожа — то, что открывает угрозу жизни; и как пройти к
+ *  больному — подъезд, этаж, код (mos-103; срез, С4: не спросили — бригада может встать у закрытого подъезда). */
+export const RULE_QUESTIONS = ['q.conscious', 'q.breathing', 'q.face', 'q.pain_where', 'q.skin', 'q.access'] as const;
 
 export const BOTS: Record<string, Bot> = {
   rules: { name: 'по правилам', questions: RULE_QUESTIONS, form: 'known', ordered: true, reserve: 1 },
@@ -58,11 +59,20 @@ export function botMove(ctx: ShiftCtx, s: Shift, bot: Bot): Command | null {
     return ok && opt ? { c: 'send', call: call.id, crew: opt.crew } : { c: 'hold', call: call.id };
   }
   if (s.rings.length) return { c: 'answer' };
-  // бригада на месте просит реанимационную (срез, С4): ближайшую свободную, нет — пусть везут сами
-  const ask = s.calls.find(c => c.state === 'ask');
+  // бригада на месте просит (срез, С4): реанимационную — ближайшую свободную, нет — пусть везут сами; у подъезда и не по
+  // адресу — перезвонить звонящему; второй пострадавший — свободную общепрофильную, если экстренные не ждут и есть запас
+  const ask = s.calls.find(c => asking(c) !== null);
   if (ask) {
-    const resus = crewOptions(ctx, s, ask.id).find(o => !o.redirect && s.crews.find(c => c.id === o.crew)?.kind === 'crew.resus');
-    return resus ? { c: 'second', call: ask.id, crew: resus.crew } : { c: 'second', call: ask.id };
+    const kind = asking(ask)!;
+    const opts = crewOptions(ctx, s, ask.id).filter(o => !o.redirect);
+    if (kind === 'resus') {
+      const resus = opts.find(o => s.crews.find(c => c.id === o.crew)?.kind === 'crew.resus');
+      return resus ? { c: 'second', call: ask.id, crew: resus.crew } : { c: 'second', call: ask.id };
+    }
+    if (kind !== 'victim') return { c: 'snag', call: ask.id, act: 'phone' };
+    const emergencyWaits = s.calls.some(c => c.state === 'wait' && c.form === 'emergency');
+    const opt = opts.find(o => general(s, o.crew));
+    return opt && !emergencyWaits && freeCount(s) > reserve ? { c: 'snag', call: ask.id, act: 'send', crew: opt.crew } : { c: 'snag', call: ask.id, act: 'wait' };
   }
   const report = s.calls.find(c => c.state === 'report');
   if (report) {

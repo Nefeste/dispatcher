@@ -14,10 +14,19 @@ import { BOTS, play } from '../sim/bots';
 const ctx = shiftCtx(DB, MED, 'shift.proto', loadMap(DB.cities['city.proto'].map));
 
 test('у каждого вида ошибки — «почему»', () => {
-  for (const kind of ['noDispatch', 'underTriage', 'missedQuestion', 'order', 'hospital', 'crew'] as const) {
+  for (const kind of ['noDispatch', 'underTriage', 'missedQuestion', 'order', 'hospital', 'crew', 'noSecond', 'door', 'address', 'alone', 'taken'] as const) {
     expect(T.review.why[kind]().length).toBeGreaterThan(20);
   }
   expect(T.review.why.overTriage([]).length).toBeGreaterThan(20);
+});
+
+test('ошибки решений на месте (срез, С4) — строкой с минутами: у подъезда, адрес, одна бригада; ко второму — номера ждавших', () => {
+  const v = (m: Parameters<typeof mistakeText>[0]['m'], extra: Partial<Parameters<typeof mistakeText>[0]> = {}) => ({ m, cost: 7, ...extra });
+  expect(mistakeText(v({ kind: 'door', waited: false }))).toContain('«Подъезд, этаж, код?» не спросили');
+  expect(mistakeText(v({ kind: 'door', waited: true }))).toContain('код не узнали');
+  for (const kind of ['door', 'address', 'alone'] as const) expect(mistakeText(v(kind === 'door' ? { kind, waited: true } : { kind }))).toContain('7\u00a0мин');
+  expect(mistakeText(v({ kind: 'taken', bypassed: ['call.3'] }, { bypassed: [3] }))).toContain('№ 3');
+  for (const kind of ['door', 'address', 'alone', 'taken'] as const) expect(mistakeWhy(v(kind === 'door' ? { kind, waited: false } : kind === 'taken' ? { kind, bypassed: [] } : { kind })).length).toBeGreaterThan(20);
 });
 
 test('экстренная без угрозы: первые слова, ответы на вопросы об угрозе и «по услышанному»', () => {

@@ -53,7 +53,8 @@ try {
   page.on('pageerror', e => errors.push(String(e)));
   // часы смены — в 20 раз быстрее ×1: смена проходится за минуты (src/state/session.ts, setPace)
   // «Замер» — короткий (bench=quick): сцены по секунде, десять поисков
-  await page.goto(`http://localhost:${server.port}/?pace=20&bench=quick`);
+  // зерно 2: первый звонок потока учебной смены — из дома, и подъезд закрыт (срез, С4): «как пройти» сценарий не спрашивает
+  await page.goto(`http://localhost:${server.port}/?pace=20&bench=quick&seed=2`);
 
   await see(page, 'title-name', 'Диспетчер 03');
   await see(page, 'title-not-training', 'Это игра. Если нужна помощь');
@@ -164,10 +165,34 @@ try {
   const visible = async (id: string) => (await page.getByTestId(id).count()) > 0 && page.getByTestId(id).first().isVisible();
   // экран живой: часы идут, строки пересобираются — касание, которое не успело, просто повторится на следующем шаге
   const tap = (id: string) => page.getByTestId(id).first().click({ timeout: 1500 }).then(() => true, () => false);
-  let calls = 1, reports = 0, held = 0, picked = 0, shotReport = false, shotWaiting = false, lastTile = 0;
+  let calls = 1, reports = 0, held = 0, picked = 0, shotReport = false, shotWaiting = false, lastTile = 0, snags = 0, onsite = 0;
   for (let i = 0; i < 3000; i++) {
     if (await visible('end')) break;
-    if (await visible('report')) {
+    const snag = (await visible('snag-door')) ? 'door' : (await visible('snag-address')) ? 'address' : (await visible('snag-victim')) ? 'victim' : null;
+    if (snag) {
+      // просьба бригады не про медицину (срез, С4): «пусть ждут» — и касание рации: бригада у подъезда, вставка на месте.
+      // Часы сценария ускорены в 20 раз: срок просьбы и подъезд пройдут за доли секунды — сперва пауза
+      if ((await speed()) !== 'пауза') await tap('pult-clock');
+      if (!snags && (await visible(`snag-${snag}`))) {
+        const text = await page.getByTestId(`snag-${snag}`).first().innerText({ timeout: 1500 }).catch(() => '');
+        if (!text.includes('Бригада')) throw new Error(`окно просьбы без бригады: ${text}`);
+        await snap(page, `snag-${snag}`);
+        checks++;
+      }
+      if (await tap('snag-wait')) snags++;
+      if (!onsite && snag !== 'victim' && (await tap('pult-radio'))) {
+        if (await page.getByTestId('insert').first().waitFor({ state: 'visible', timeout: 2500 }).then(() => true, () => false)) {
+          await page.waitForTimeout(1200);
+          await snap(page, 'insert-onsite');
+          await page.getByTestId('insert').first().click({ timeout: 1500 }).catch(() => {});
+          onsite++;
+          if (await page.getByTestId('crew-card').first().waitFor({ state: 'visible', timeout: 2500 }).then(() => true, () => false)) {
+            await snap(page, 'crew-card-onsite');
+            await tap('crew-card-close');
+          }
+        }
+      }
+    } else if (await visible('report')) {
       if (!shotReport) { await snap(page, 'report'); shotReport = true; }
       if (await tap('report-h-0')) reports++;
     } else if (await visible('call-crews')) {
@@ -194,7 +219,9 @@ try {
     } else await page.waitForTimeout(100);
   }
   await see(page, 'end-emergency', 'Экстренные с доездом до 20 минут');
-  console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта`);
+  console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта, ${snags} просьб на месте, ${onsite} вставок на месте`);
+  // зерно 2 — подъезд закрыт на первом звонке потока: просьба и вставка на месте должны быть
+  if (!snags || !onsite) throw new Error('не было просьбы бригады на месте или вставки на месте');
   // послать с пульта удаётся, только когда свободна бригада, — это не всегда; звонки и доклады — всегда
   // первая смена недели — учебная, поток вполовину (§8 геймдизайна): около девяти звонков
   if (calls < 7 || reports < 1) throw new Error('смена прошла не вся');

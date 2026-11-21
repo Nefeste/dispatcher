@@ -20,6 +20,9 @@ import { pultLayout } from '../scenes/pult/layout';
 import { FONTS } from '../ui/fonts';
 import { duskOf, nightOf } from '../ui/map/palette';
 import { Txt } from '../ui/kit';
+import { InsertView } from '../scenes/insert/InsertView';
+import { INSERTS } from './InsertScreen';
+import type { OnScene } from '../state/crewView';
 
 /** Где бригады сейчас — точки карты по очереди x, y: едущая — на пути, стоящая — в узле. */
 export function positions(ctx: ShiftCtx, s: Shift): number[] {
@@ -34,6 +37,9 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const [crewPick, setCrewPick] = useState<string | null>(null);
+  // вставка на месте вызова (срез, С4): касание бригады на месте — короткий ролик, потом её карточка
+  // сколько звонков было на линии, когда вставку открыли: новый звонок её закрывает, прежние ждут 3 секунды
+  const [scene, setScene] = useState<{ place: OnScene; line: number } | null>(null);
   const pos = useSharedValue<number[]>(x ? positions(x.ctx, x.s) : []);
   // «Замер»: первый кадр пульта — конец загрузки смены (после вставки «начало смены»)
   useEffect(() => {
@@ -67,7 +73,16 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
     const { width, height } = e.nativeEvent.layout;
     if (!size || size.w !== width || size.h !== height) setSize({ w: width, h: height });
   };
+  // новый звонок, просьба бригады или доклад — вставка уступает им сразу и не возвращается
+  if (scene && (view.ask || view.report || view.line > scene.line)) setScene(null);
   const picked = pick ? view.waiting.find(w => w.id === pick) : undefined;
+  // касание бригады на карте или рации, где она говорила последней, — её карточка; на месте вызова — сперва вставка
+  // (срез, С4), но не во время выбора: просьба бригады, доклад, ввод смены
+  const openCrew = (id: string | null) => {
+    setCrewPick(id);
+    const place = id && !view.ask && !view.report && !x.intro ? crewCard(ctx, s, id)?.place : null;
+    if (place) setScene({ place, line: view.line });
+  };
   const hint = pultHint(ctx, s);
   let panel: React.ReactNode = null;
   if (x.intro) {
@@ -81,7 +96,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
         actions={[{ label: T.intro.go, onPress: dismissIntro, testID: 'intro-go' }]}
       />
     );
-  } else if (view.ask) {
+  } else if (view.ask && view.ask.kind === 'resus') {
     // бригада на месте просит реанимационную (срез, С4): послать — одно касание; не ответили — везут сами
     const a = view.ask;
     panel = (
@@ -99,6 +114,30 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           testID: `ask-crew-${i}`,
         }))}
         actions={[{ label: T.ask.own, onPress: () => { command({ c: 'second', call: a.call }); }, testID: 'ask-own' }]}
+      />
+    );
+  } else if (view.ask) {
+    // просьба не про медицину (срез, С4, вторая половина): перезвонить звонящему, послать ещё бригаду или «сами»
+    const a = view.ask;
+    const kind = a.kind as Exclude<typeof a.kind, 'resus'>;
+    panel = (
+      <ProgramPanel
+        testID={`snag-${kind}`}
+        title={T.snag.title(a.crew, a.no, T.snag.head[kind])}
+        lead={T.snag.says[kind]}
+        note={T.snag.auto[kind](a.left)}
+        empty={kind === 'victim' ? T.snag.none : undefined}
+        rows={a.crews.map((c, i) => ({
+          key: c.id,
+          text: T.snag.row(c.no, c.kind, c.minutes),
+          label: T.snag.label(c.no, c.kind, c.minutes),
+          onPress: () => { command({ c: 'snag', call: a.call, act: 'send', crew: c.id }); },
+          testID: `snag-crew-${i}`,
+        }))}
+        actions={[
+          ...(kind === 'victim' ? [] : [{ label: T.snag.phone[kind], onPress: () => { command({ c: 'snag', call: a.call, act: 'phone' }); }, testID: 'snag-phone' }]),
+          { label: T.snag.wait[kind], onPress: () => { command({ c: 'snag', call: a.call, act: 'wait' }); }, testID: 'snag-wait' },
+        ]}
       />
     );
   } else if (view.report) {
@@ -184,8 +223,8 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           panel={panel}
           onPhone={() => { if (!command({ c: 'answer' })) onCall(); }}
           onWaiting={id => setPick(id)}
-          onMapTap={(mx, my, zoom) => setCrewPick(crewAt(ctx, s, mx, my, TAP_DP / zoom))}
-          onRadio={() => {}}
+          onMapTap={(mx, my, zoom) => openCrew(crewAt(ctx, s, mx, my, TAP_DP / zoom))}
+          onRadio={() => openCrew(view.radio?.id ?? null)}
           onClock={togglePause}
           onSpeed={nextSpeed}
         />
@@ -194,6 +233,12 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
       <Pressable style={styles.back} onPress={onBack} accessibilityRole="button" testID="map-back">
         <Txt style={styles.backText}>{T.common.back}</Txt>
       </Pressable>
+      {/* вставка на месте — поверх всего пульта, «Назад» тоже под ней: касание пропускает ролик */}
+      {scene ? (
+        <View style={StyleSheet.absoluteFill}>
+          <InsertView key={scene.place} video={INSERTS[scene.place].video} still={INSERTS[scene.place].still} seconds={INSERTS[scene.place].seconds} onDone={() => setScene(null)} />
+        </View>
+      ) : null}
     </View>
   );
 }

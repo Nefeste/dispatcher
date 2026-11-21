@@ -27,7 +27,7 @@ import { introNote } from './src/state/stationView';
 import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
 import { mark } from './src/state/marks';
 import { hideSplash, keepSplash } from './src/state/splash';
-import { closeShift, resumeShift, session, setCue, setPace, setSoftOutcome, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
+import { closeShift, resumeShift, session, setCue, setPace, setSeed, setSoftOutcome, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
 import { DEFAULT_SETTINGS, lessMotionOf, type Settings } from './src/state/settings';
 import { loadSettings } from './src/state/storage';
 import { FONT_FILES } from './src/ui/fonts';
@@ -39,10 +39,11 @@ type Screen = 'title' | 'week' | 'loading' | 'map' | 'call' | 'insert' | 'end' |
 
 keepSplash();
 setCue(cue);
-// сценарий в браузере ускоряет часы смены: ?pace=50, и «Замер» — короткий: ?bench=quick (только веб-сборка; на
-// телефоне адресной строки нет)
+// сценарий в браузере ускоряет часы смены: ?pace=50, задаёт зерно смены: ?seed=7, и «Замер» — короткий: ?bench=quick
+// (только веб-сборка; на телефоне адресной строки нет)
 const query = Platform.OS === 'web' && typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
 if (query) setPace(Number(query.get('pace') ?? 1));
+if (query?.get('seed')) setSeed(Number(query.get('seed')));
 const quickBench = query?.get('bench') === 'quick';
 
 export default function App() {

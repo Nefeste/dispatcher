@@ -1,10 +1,13 @@
-# Видеовставки (ADR 0009; docs/08-game-design.md, §9 и §11; docs/13-art.md, «Сцены»): вечер, двор подстанции.
+# Видеовставки (ADR 0009; docs/08-game-design.md, §5, §9 и §11; docs/13-art.md, «Сцены»): вечер, двор подстанции.
 # «Бригада выезжает» (depart, 5 с) — машина скорой выезжает из гаража и уходит из кадра; «начало смены» (start, 4 с,
-# часть П8) — машина стоит у ворот гаража, камера медленно подходит. Blender строит двор и машину своим кодом, Cycles
-# рендерит кадры, ffmpeg собирает ролик H.264; один кадр — картинка для «Меньше движения».
+# часть П8) — машина стоит у ворот гаража, камера медленно подходит. Вставки на месте вызова (срез, С4):
+# «у подъезда» (door) — машина у подъезда жилого дома, маячки на стене; «на остановке» (stop) — машина у остановки;
+# «в квартире» (flat) — прихожая, открытая дверь, укладка бригады у порога (3 с каждая). Людей во вставках нет: игра не показывает
+# помощь (ADR 0007). Blender строит всё своим кодом, Cycles рендерит кадры, ffmpeg собирает ролик H.264; один кадр —
+# картинка для «Меньше движения».
 #
-# Запуск: python blender/insert.py [--insert=depart|start] [--preview]
-# Пишет (<вид> — depart или start):
+# Запуск: python blender/insert.py [--insert=depart|start|door|stop|flat] [--preview]
+# Пишет (<вид> — depart, start, door, stop или flat):
 # - assets/scenes/insert-<вид>.mp4 — ролик 540 × 960, 24 кадра в секунду;
 # - assets/scenes/insert-<вид>.jpg — один кадр вместо ролика;
 # - assets/scenes/inserts.json — паспорт обеих вставок: версия Blender, рендер, кадры, ffmpeg, отпечатки файлов.
@@ -36,15 +39,18 @@ PREVIEW = '--preview' in sys.argv
 # какая вставка: depart — «бригада выезжает» (первый выезд), start — «начало смены» (часть П8): тот же двор, машина у
 # гаража, камера медленно подходит
 INSERT = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--insert=')), 'depart')
-if INSERT not in ('depart', 'start'):
-    sys.exit('--insert=depart или --insert=start')
+KINDS = ('depart', 'start', 'door', 'stop', 'flat')
+if INSERT not in KINDS:
+    sys.exit('--insert=' + '|'.join(KINDS))
 W, H = (540, 960) if not PREVIEW else (270, 480)
 FPS = 24
-SECONDS = 5 if INSERT == 'depart' else 4
+# на месте вызова — 3 с и 16 проходов: камера едва движется, шум снимает OIDN, рендер втрое короче
+ON_SCENE = INSERT in ('door', 'stop', 'flat')
+SECONDS = 5 if INSERT == 'depart' else 3 if ON_SCENE else 4
 FRAMES = FPS * SECONDS
-SAMPLES = 24 if not PREVIEW else 8
+SAMPLES = (16 if ON_SCENE else 24) if not PREVIEW else 8
 SEED = 5
-STILL = 84 if INSERT == 'depart' else 72  # кадр для «Меньше движения»: машина во дворе, видна полоса с надписью
+STILL = {'depart': 84, 'start': 72}.get(INSERT, 48)  # кадр для «Меньше движения»: машина во дворе, видна полоса с надписью
 FONT = os.path.join(ROOT, 'node_modules', '@expo-google-fonts', 'onest', '600SemiBold', 'Onest_600SemiBold.ttf')
 # маячки — мягкое мерцание 1,5 раза в секунду, без резких вспышек
 BEACON_HZ = 1.5
@@ -324,6 +330,211 @@ def park(car):
     car.location = (0, 4.2, 0)
     car.rotation_euler = (0, 0, math.radians(-90))
 
+# --- вставки на месте вызова (срез, С4) ---------------------------------------------------------------------------
+
+
+def dusk_world(top='#4a5f86', bottom='#121a2c', strength=0.6):
+    world = bpy.data.worlds.new('dusk')
+    world.use_nodes = True
+    nt = world.node_tree
+    bg = nt.nodes['Background']
+    sky = nt.nodes.new('ShaderNodeTexGradient')
+    coord = nt.nodes.new('ShaderNodeTexCoord')
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    mapping = nt.nodes.new('ShaderNodeMapping')
+    mapping.inputs['Rotation'].default_value = (0, math.radians(-90), 0)
+    nt.links.new(coord.outputs['Generated'], mapping.inputs['Vector'])
+    nt.links.new(mapping.outputs['Vector'], sky.inputs['Vector'])
+    nt.links.new(sky.outputs['Fac'], ramp.inputs['Fac'])
+    ramp.color_ramp.elements[0].color = lin(top)
+    ramp.color_ramp.elements[1].color = lin(bottom)
+    nt.links.new(ramp.outputs['Color'], bg.inputs['Color'])
+    bg.inputs['Strength'].default_value = strength
+    bpy.context.scene.world = world
+
+
+def street(y_curb=-1.6):
+    """Улица вечером: асфальт, бордюр, тротуар."""
+    block('road', mat('asphalt', lin('#34373a'), 0.85), (60, 30, 0.1), (0, y_curb - 15, -0.05))
+    block('curb', mat('trim', lin('#7a7d80'), 0.6), (60, 0.25, 0.16), (0, y_curb, 0.08))
+    block('walk', mat('walk', lin('#5b5d5c'), 0.85), (60, 20, 0.12), (0, y_curb + 10.1, 0.06))
+
+
+def lamp_post(name, loc, energy=1400):
+    pole = mat('pole', lin('#2a2d30'), 0.5, metal=0.6)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=6, location=(loc[0], loc[1], 3.0))
+    bpy.context.object.data.materials.append(pole)
+    bpy.ops.object.light_add(type='SPOT', location=(loc[0], loc[1] - 0.4, 5.9))
+    sp = bpy.context.object
+    sp.name = name
+    sp.data.energy = energy
+    sp.data.spot_size = math.radians(110)
+    sp.data.color = (1.0, 0.78, 0.5)
+
+
+def facade(y, x0, x1, floors, lit_every=4, name='facade'):
+    """Панельный дом: стена с рядами окон; часть окон горит — по счёту, без случайности."""
+    wall = mat('panel', lin('#a9a59b'), 0.85)
+    dark = mat('window_dark', lin('#1b222b'), 0.15, coat=0.5)
+    lit = mat('window_lit', (0, 0, 0, 1), emit=lin('#f1c98a'), strength=3.0)
+    w = x1 - x0
+    block(name, wall, (w, 0.4, floors * 2.8 + 0.6), ((x0 + x1) / 2, y + 0.2, (floors * 2.8 + 0.6) / 2))
+    cols = int(w / 2.2)
+    for r in range(floors):
+        for c in range(cols):
+            x = x0 + 1.1 + c * 2.2
+            z = 1.6 + r * 2.8
+            if r == 0 and abs(x) < 2.2:
+                continue
+            m = lit if (r * 5 + c * 3) % lit_every == 0 else dark
+            block(f'{name}_w{r}_{c}', m, (1.2, 0.05, 1.3), (x, y - 0.01, z))
+
+
+def entrance():
+    """«У подъезда»: панельный дом, подъезд с козырьком и фонарём, домофон, лавочка; машина скорой у бордюра."""
+    street()
+    facade(4.0, -14, 14, 5)
+    door = mat('door', lin('#3d4a52'), 0.45, metal=0.5)
+    concrete = mat('concrete', lin('#8d8b85'), 0.9)
+    block('door', door, (1.3, 0.12, 2.2), (0, 3.95, 1.36), bevel=0.02)
+    block('door_frame', mat('frame', lin('#2a3035'), 0.5), (1.6, 0.1, 2.45), (0, 3.98, 1.37))
+    block('steps', concrete, (2.6, 1.2, 0.26), (0, 3.3, 0.13))
+    block('canopy', concrete, (3.2, 1.6, 0.18), (0, 3.2, 2.85))
+    block('canopy_post_l', concrete, (0.16, 0.16, 2.6), (-1.45, 2.5, 1.4))
+    block('canopy_post_r', concrete, (0.16, 0.16, 2.6), (1.45, 2.5, 1.4))
+    # домофон — светится; лампа над дверью — тёплая
+    block('intercom', mat('intercom', lin('#1a1f24'), 0.3, emit=lin('#8fd0ff'), strength=1.5), (0.18, 0.05, 0.28), (0.95, 3.88, 1.35))
+    bpy.ops.object.light_add(type='POINT', location=(0, 3.4, 2.65))
+    bulb = bpy.context.object
+    bulb.data.energy = 120
+    bulb.data.color = (1.0, 0.82, 0.58)
+    bulb.data.shadow_soft_size = 0.15
+    block('bench', mat('bench', lin('#6b4a32'), 0.7), (1.8, 0.5, 0.08), (-3.4, 2.7, 0.48))
+    for x in (-4.1, -2.7):
+        block(f'bench_leg{x}', mat('pole', lin('#2a2d30'), 0.5, metal=0.6), (0.08, 0.4, 0.46), (x, 2.7, 0.23))
+    lamp_post('street_lamp', (6.5, -0.9))
+    dusk_world('#3d5079', '#0f1626', 0.5)
+
+
+def bus_stop():
+    """«На остановке»: навес остановки со стеклом и лавкой, фонари, деревья; машина скорой у остановки."""
+    street()
+    frame = mat('stop_frame', lin('#4b5a63'), 0.4, metal=0.7)
+    glass = mat('stop_glass', lin('#9fb6c2'), 0.05, coat=0.9)
+    glass.blend_method = 'BLEND' if hasattr(glass, 'blend_method') else None
+    bsdf = glass.node_tree.nodes['Principled BSDF']
+    bsdf.inputs['Transmission Weight'].default_value = 0.9
+    bsdf.inputs['Alpha'].default_value = 0.35
+    x0, x1, y0, y1 = 1.0, 6.0, 1.0, 2.6
+    for x in (x0, x1):
+        for y in (y0 + 0.2, y1):
+            block(f'post{x}{y}', frame, (0.1, 0.1, 2.5), (x, y, 1.25))
+    block('stop_roof', frame, (x1 - x0 + 0.5, y1 - y0 + 0.7, 0.12), ((x0 + x1) / 2, (y0 + y1) / 2 + 0.1, 2.56), bevel=0.03)
+    block('stop_back', glass, (x1 - x0, 0.03, 2.1), ((x0 + x1) / 2, y1, 1.25))
+    block('stop_side', glass, (0.03, y1 - y0 - 0.2, 2.1), (x1, (y0 + y1) / 2 + 0.1, 1.25))
+    block('stop_bench', mat('bench', lin('#6b4a32'), 0.7), (3.6, 0.45, 0.08), ((x0 + x1) / 2, y1 - 0.35, 0.5))
+    # табличка остановки — без названия и номеров маршрутов: место условное
+    sign = mat('stop_sign', lin('#e3c84a'), 0.4, emit=lin('#e3c84a'), strength=0.4)
+    block('stop_sign', sign, (0.9, 0.05, 0.5), (x0 - 0.6, y0 + 0.2, 2.6))
+    block('stop_sign_pole', frame, (0.07, 0.07, 2.4), (x0 - 0.6, y0 + 0.2, 1.2))
+    bpy.ops.object.light_add(type='AREA', location=((x0 + x1) / 2, (y0 + y1) / 2, 2.45))
+    roof_lamp = bpy.context.object
+    roof_lamp.data.size = 3.0
+    roof_lamp.data.energy = 220
+    roof_lamp.data.color = (0.9, 0.95, 1.0)
+    for i, x in enumerate((-9, 12)):
+        lamp_post(f'lamp{i}', (x, -0.9))
+    facade(12.0, -20, 24, 9, lit_every=5, name='far_house')
+    dusk_world('#3d5079', '#0f1626', 0.5)
+
+
+def flat():
+    """«В квартире»: прихожая вечером, входная дверь открыта на тёмную лестницу, у порога — укладка бригады (без
+    креста и надписей), из комнаты — тёплый свет."""
+    floor = mat('floor', lin('#7a5a3c'), 0.55)
+    wall = mat('wallpaper', lin('#c9bfa6'), 0.85)
+    trim = mat('trim', lin('#e9e4d8'), 0.6)
+    block('hall_floor', floor, (3.0, 7.0, 0.05), (0, 2.5, 0))
+    block('hall_ceiling', trim, (3.0, 7.0, 0.05), (0, 2.5, 2.7))
+    block('wall_left', wall, (0.1, 7.0, 2.7), (-1.5, 2.5, 1.35))
+    # правая стена с дверным проёмом в комнату; в комнате горит тёплый свет
+    block('wall_right_a', wall, (0.1, 3.2, 2.7), (1.5, 0.6, 1.35))
+    block('wall_right_b', wall, (0.1, 2.0, 2.7), (1.5, 5.0, 1.35))
+    block('wall_right_top', wall, (0.1, 1.8, 0.6), (1.5, 3.1, 2.4))
+    block('room_floor', floor, (3.0, 3.0, 0.05), (3.0, 3.1, 0))
+    block('room_back', mat('room_wall', lin('#d8c9a8'), 0.85), (0.1, 3.0, 2.7), (4.5, 3.1, 1.35))
+    block('room_side_a', mat('room_wall', lin('#d8c9a8'), 0.85), (3.0, 0.1, 2.7), (3.0, 1.6, 1.35))
+    block('room_side_b', mat('room_wall', lin('#d8c9a8'), 0.85), (3.0, 0.1, 2.7), (3.0, 4.6, 1.35))
+    bpy.ops.object.light_add(type='POINT', location=(3.0, 3.1, 2.2))
+    room = bpy.context.object
+    room.data.energy = 220
+    room.data.shadow_soft_size = 0.3
+    room.data.color = (1.0, 0.84, 0.6)
+    # дальняя стена — входная дверь открыта, за ней тёмная лестница
+    block('wall_far_l', wall, (1.0, 0.1, 2.7), (-1.0, 6.0, 1.35))
+    block('wall_far_r', wall, (1.0, 0.1, 2.7), (1.0, 6.0, 1.35))
+    block('wall_far_top', wall, (1.0, 0.1, 0.6), (0, 6.0, 2.4))
+    block('stairwell', mat('stairwell', lin('#20262b'), 0.9), (3.0, 0.1, 2.7), (0, 7.5, 1.35))
+    bpy.ops.object.light_add(type='POINT', location=(0.3, 7.0, 2.3))
+    stair = bpy.context.object
+    stair.data.energy = 25
+    stair.data.color = (0.75, 0.85, 1.0)
+    block('front_door', mat('door', lin('#5a4030'), 0.5), (0.08, 0.95, 2.05), (-0.45, 6.5, 1.03), rot=(0, 0, 0))
+    # вешалка с пальто, обувь
+    block('hanger', mat('pole', lin('#2a2d30'), 0.5, metal=0.6), (0.05, 1.2, 0.05), (-1.4, 3.6, 1.9))
+    coat = mat('coat', lin('#3c4a5e'), 0.9)
+    block('coat', coat, (0.25, 0.55, 1.0), (-1.3, 3.4, 1.35), bevel=0.08)
+    block('coat2', mat('coat2', lin('#7b3b32'), 0.9), (0.25, 0.45, 0.9), (-1.3, 4.0, 1.4), bevel=0.08)
+    for i in range(3):
+        block(f'shoe{i}', mat('shoe', lin('#1e1e1e'), 0.6), (0.3, 0.12, 0.1), (-1.15, 4.4 + i * 0.25, 0.06), bevel=0.03)
+    # укладка бригады у порога: оранжевый чемодан с ручкой, без креста и надписей
+    case = mat('kit', lin('#d9662a'), 0.45, coat=0.4)
+    block('kit', case, (0.55, 0.32, 0.4), (0.55, 4.9, 0.21), bevel=0.04)
+    block('kit_band', mat('kit_band', lin('#f1f0ec'), 0.5), (0.56, 0.33, 0.05), (0.55, 4.9, 0.3))
+    block('kit_handle', mat('pole', lin('#2a2d30'), 0.5, metal=0.6), (0.3, 0.04, 0.05), (0.55, 4.9, 0.45))
+    block('room_ceiling', trim, (3.0, 3.0, 0.05), (3.0, 3.1, 2.7))
+    bpy.ops.object.light_add(type='POINT', location=(0, 2.0, 2.55))
+    hall = bpy.context.object
+    hall.data.energy = 25
+    hall.data.color = (1.0, 0.9, 0.75)
+    dusk_world('#151a22', '#0b0e13', 0.2)
+
+
+def scene_camera(path, lens=26):
+    """Камера вставки на месте: медленно — от первой точки ко второй, без рывков."""
+    bpy.ops.object.camera_add()
+    cam = bpy.context.object
+    cam.data.lens = lens
+    bpy.context.scene.camera = cam
+    for f, loc, lk in ((1, *path[0]), (FRAMES, *path[1])):
+        cam.location = loc
+        cam.rotation_euler = (Vector(lk) - Vector(loc)).to_track_quat('-Z', 'Y').to_euler()
+        cam.keyframe_insert('location', frame=f)
+        cam.keyframe_insert('rotation_euler', frame=f)
+    for fc in cam.animation_data.action.fcurves:
+        for k in fc.keyframe_points:
+            k.interpolation = 'SINE'
+    return cam
+
+
+def on_scene():
+    """Вставка на месте вызова: место, машина (кроме квартиры), камера."""
+    if INSERT == 'door':
+        entrance()
+        car = ambulance()
+        car.location = (-3.4, -0.6, 0)
+        car.rotation_euler = (0, 0, math.radians(0))
+        scene_camera((((3.6, -4.6, 1.2), (-1.4, 2.0, 0.9)), ((2.9, -4.0, 1.25), (-1.7, 2.0, 0.9))), lens=20)
+    elif INSERT == 'stop':
+        bus_stop()
+        car = ambulance()
+        car.location = (-1.8, -0.5, 0)
+        car.rotation_euler = (0, 0, math.radians(0))
+        scene_camera((((7.0, -4.4, 1.2), (1.4, 1.8, 0.9)), ((6.2, -4.0, 1.25), (1.0, 1.8, 0.9))), lens=20)
+    else:
+        flat()
+        scene_camera((((-0.6, -0.6, 1.55), (0.7, 6.0, 1.05)), ((-0.5, 0.6, 1.5), (0.9, 6.0, 1.0))), lens=20)
+
 
 def setup(scene):
     scene.render.engine = 'CYCLES'
@@ -357,17 +568,20 @@ def sha(path):
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    yard()
-    car = ambulance()
-    if INSERT == 'start':
-        park(car)
+    if ON_SCENE:
+        on_scene()
     else:
-        drive(car)
-    camera()
+        yard()
+        car = ambulance()
+        if INSERT == 'start':
+            park(car)
+        else:
+            drive(car)
+        camera()
     setup(scene)
     out_dir = os.environ.get('INSERT_FRAMES', '/tmp/insert-frames')
     os.makedirs(out_dir, exist_ok=True)
-    frames = [40, STILL, 104] if PREVIEW else range(1, FRAMES + 1)
+    frames = ([40, STILL, 104] if INSERT in ('depart', 'start') else [1, STILL, FRAMES]) if PREVIEW else range(1, FRAMES + 1)
     for f in frames:
         scene.frame_set(f)
         scene.render.filepath = os.path.join(out_dir, f'f{f:04d}.png')
@@ -401,7 +615,7 @@ def main():
     files[f'assets/scenes/insert-{INSERT}.jpg'] = {'sha256': sha(jpg), 'bytes': os.path.getsize(jpg)}
     passport = {
         'id': 'inserts',
-        'name': 'Видеовставки: «начало смены» — двор подстанции вечером, камера подходит к машине у гаража; «бригада выезжает» — машина скорой выезжает из гаража',
+        'name': 'Видеовставки: «начало смены» — двор подстанции вечером, камера подходит к машине у гаража; «бригада выезжает» — машина скорой выезжает из гаража; на месте вызова — «у подъезда», «на остановке», «в квартире»',
         'licence': 'своя работа студии «Горница»; шрифт надписи — Onest (SIL OFL 1.1, assets/fonts/Onest-OFL.txt)',
         'made': {**old.get('made', {}), INSERT: made} if 'script' not in old.get('made', {}) else {'depart': old['made'], INSERT: made},
         'files': dict(sorted(files.items())),

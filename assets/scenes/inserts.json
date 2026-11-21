@@ -1,6 +1,6 @@
 {
   "id": "inserts",
-  "name": "Видеовставки: «начало смены» — двор подстанции вечером, камера подходит к машине у гаража; «бригада выезжает» — машина скорой выезжает из гаража",
+  "name": "Видеовставки: «начало смены» — двор подстанции вечером, камера подходит к машине у гаража; «бригада выезжает» — машина скорой выезжает из гаража; на месте вызова — «у подъезда», «на остановке», «в квартире»",
   "licence": "своя работа студии «Горница»; шрифт надписи — Onest (SIL OFL 1.1, assets/fonts/Onest-OFL.txt)",
   "made": {
     "depart": {
@@ -36,6 +36,57 @@
       "still": 72,
       "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
       "codec": "H.264 (libx264, CRF 26)"
+    },
+    "door": {
+      "script": "blender/insert.py",
+      "blender": "4.5.15",
+      "engine": "CYCLES",
+      "samples": 16,
+      "denoiser": "OPENIMAGEDENOISE",
+      "seed": 5,
+      "size": [
+        540,
+        960
+      ],
+      "fps": 24,
+      "frames": 72,
+      "still": 48,
+      "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "codec": "H.264 (libx264, CRF 26)"
+    },
+    "stop": {
+      "script": "blender/insert.py",
+      "blender": "4.5.15",
+      "engine": "CYCLES",
+      "samples": 16,
+      "denoiser": "OPENIMAGEDENOISE",
+      "seed": 5,
+      "size": [
+        540,
+        960
+      ],
+      "fps": 24,
+      "frames": 72,
+      "still": 48,
+      "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "codec": "H.264 (libx264, CRF 26)"
+    },
+    "flat": {
+      "script": "blender/insert.py",
+      "blender": "4.5.15",
+      "engine": "CYCLES",
+      "samples": 16,
+      "denoiser": "OPENIMAGEDENOISE",
+      "seed": 5,
+      "size": [
+        540,
+        960
+      ],
+      "fps": 24,
+      "frames": 72,
+      "still": 48,
+      "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "codec": "H.264 (libx264, CRF 26)"
     }
   },
   "files": {
@@ -47,6 +98,22 @@
       "sha256": "50ac02fa558ee21aac3a06f19965b8a7cc4c29b2bab78e8da9550d6390f5035e",
       "bytes": 86523
     },
+    "assets/scenes/insert-door.jpg": {
+      "sha256": "8d0906e1f4e5bccb6cd9923ed78ef5266ab62e8cb3a63073b0147726187d9d26",
+      "bytes": 31639
+    },
+    "assets/scenes/insert-door.mp4": {
+      "sha256": "eb6906b7e5732ee2a56703ca0dfe768ad1c69ebb0d5a553a9d41455113266dd3",
+      "bytes": 91502
+    },
+    "assets/scenes/insert-flat.jpg": {
+      "sha256": "ee26a0aef8cdb911f55c9e005f562a65c4ad39acde493d35b3dda59099a0337f",
+      "bytes": 20573
+    },
+    "assets/scenes/insert-flat.mp4": {
+      "sha256": "ba29cc5ebef9fdf894da3f3e8eb21c26068aa01d2a08e73dc5790d7eee3644ac",
+      "bytes": 61414
+    },
     "assets/scenes/insert-start.jpg": {
       "sha256": "98f14456396abd92d304bedb0081000d9711801fab6c2943752bade9e4eabe93",
       "bytes": 23388
@@ -54,6 +121,14 @@
     "assets/scenes/insert-start.mp4": {
       "sha256": "c842cc4943fbe4d6acfa55314dc57279844d61a33f683dfdfdd0d3bbb084de93",
       "bytes": 76803
+    },
+    "assets/scenes/insert-stop.jpg": {
+      "sha256": "351bc7d8e51410927dc7c3578285e6300d5e2f4fb3282085770efb2e4c99fda4",
+      "bytes": 35320
+    },
+    "assets/scenes/insert-stop.mp4": {
+      "sha256": "05ee8421a3d41c8754534d4b92b81221aa974baf417b1235e5eac35382ad00f9",
+      "bytes": 77806
     }
   }
 }

@@ -4,7 +4,7 @@
 import { MED } from '../content/generated/med';
 import type { FormKind, Profile } from '../content/types';
 import { FAR, search } from '../engine/road/route';
-import { crewOptions, type NoticeKind, type Shift, type ShiftCtx, timesAt } from '../engine/shift';
+import { asking, crewOptions, type NoticeKind, type Shift, type ShiftCtx, type SnagKind, timesAt } from '../engine/shift';
 import { callNo, crewNo } from './callView';
 
 export interface WaitingView {
@@ -18,8 +18,10 @@ export interface WaitingView {
 
 export interface RadioView {
   crew: number;
+  /** какая бригада говорила: касание рации — её карточка (и вставка, если она на месте) */
+  id: string;
   /** `died` — доклад: больной умер до приезда бригады (срез, С3); слова «Мягкого исхода» выбирает экран */
-  what: Extract<NoticeKind, 'scene' | 'ask' | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'recall'> | 'died';
+  what: Extract<NoticeKind, 'scene' | 'ask' | SnagKind | 'report' | 'auto' | 'free' | 'restock' | 'base' | 'recall'> | 'died';
   /** у доклада: везут или помощь на месте */
   transport: boolean;
 }
@@ -44,13 +46,15 @@ export interface ReportView {
   left: number;
 }
 
-/** Бригада на месте просит реанимационную (срез, С4): кого можно послать и сколько ещё ждёт ответа. */
+/** Бригада на месте просит (срез, С4): реанимационную — или решение не про медицину: не можем попасть в подъезд, адрес не
+ *  тот, второй пострадавший. Кого можно послать и сколько ещё ждёт ответа. */
 export interface AskView {
+  kind: 'resus' | SnagKind;
   call: string;
   no: number;
   crew: number;
-  /** реанимационные, которых можно послать, — по времени доезда */
-  crews: { id: string; no: number; minutes: number }[];
+  /** кого можно послать — по времени доезда: реанимационные; ко второму пострадавшему — свободные; у подъезда и адреса — никого */
+  crews: { id: string; no: number; minutes: number; kind: string }[];
   /** сколько ещё ждёт ответа, игровых секунд */
   left: number;
 }
@@ -70,7 +74,7 @@ export interface PultView {
   over: boolean;
 }
 
-const RADIO: readonly NoticeKind[] = ['scene', 'ask', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
+const RADIO: readonly NoticeKind[] = ['scene', 'ask', 'door', 'address', 'victim', 'report', 'auto', 'free', 'restock', 'base', 'recall'];
 
 export function pultView(ctx: ShiftCtx, s: Shift): PultView {
   const waiting = s.calls
@@ -82,7 +86,7 @@ export function pultView(ctx: ShiftCtx, s: Shift): PultView {
     const n = s.notices[i];
     if (!RADIO.includes(n.kind) || !n.crew) continue;
     const call = n.call ? s.calls.find(c => c.id === n.call) : undefined;
-    radio = { crew: crewNo(n.crew), what: n.kind === 'report' && call?.died ? 'died' : (n.kind as RadioView['what']), transport: Boolean(call?.transport) };
+    radio = { crew: crewNo(n.crew), id: n.crew, what: n.kind === 'report' && call?.died ? 'died' : (n.kind as RadioView['what']), transport: Boolean(call?.transport) };
     break;
   }
   const r = s.calls.find(c => c.state === 'report');
@@ -99,14 +103,17 @@ export function pultView(ctx: ShiftCtx, s: Shift): PultView {
       left: Math.max(0, Math.ceil((crew.until - s.t) / 1000)),
     };
   }
-  const a = s.calls.find(c => c.state === 'ask' && c.second);
-  const ask: AskView | null = a
+  const a = s.calls.find(c => asking(c) !== null);
+  const kind = a ? asking(a)! : null;
+  const ask: AskView | null = a && kind
     ? {
-        call: a.id, no: callNo(a.id), crew: crewNo(a.second!.by),
-        crews: crewOptions(ctx, s, a.id)
-          .filter(o => !o.redirect && s.crews.find(c => c.id === o.crew)?.kind === 'crew.resus')
-          .map(o => ({ id: o.crew, no: crewNo(o.crew), minutes: Math.ceil(o.eta / 60_000) })),
-        left: Math.max(0, Math.ceil((a.second!.until - s.t) / 1000)),
+        kind, call: a.id, no: callNo(a.id), crew: crewNo(kind === 'resus' ? a.second!.by : a.snag!.by),
+        crews: kind === 'resus' || kind === 'victim'
+          ? crewOptions(ctx, s, a.id)
+              .filter(o => !o.redirect && (kind === 'victim' || s.crews.find(c => c.id === o.crew)?.kind === 'crew.resus'))
+              .map(o => ({ id: o.crew, no: crewNo(o.crew), minutes: Math.ceil(o.eta / 60_000), kind: ctx.db.crews[s.crews.find(c => c.id === o.crew)!.kind].name }))
+          : [],
+        left: Math.max(0, Math.ceil(((kind === 'resus' ? a.second!.until : a.snag!.until) - s.t) / 1000)),
       }
     : null;
   return {
