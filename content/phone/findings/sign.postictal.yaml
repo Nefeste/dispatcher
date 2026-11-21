@@ -2,7 +2,7 @@ tell: { self: never, relative: usually, neighbour: often, bystander: often }
 says:
   present:
     self: []
-    other: ["После приступа лежит, не отвечает, как будто спит"]
+    other: ["После приступа лежит, не отвечает, как будто спит", "Судороги прошли, а {он|она} спит, не добудиться", "Лежит после приступа, {вялый|вялая}, не отвечает"]
 threat: "388n, п. 11 «а»"
 estimate: true
 sources: ["anamnez", "388n, п. 11 «а»"]

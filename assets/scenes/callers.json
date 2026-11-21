@@ -46,6 +46,62 @@
       "file": "assets/scenes/caller-man-street.jpg",
       "sha256": "796a2097b48f2404b8f587241359cf03247dea824428c5262f10427e273a79b7",
       "bytes": 67065
+    },
+    "grandma": {
+      "avatar": "Professions/Business_Female_02/Export/Business_Female_02.fbx",
+      "room": "kitchen",
+      "file": "assets/scenes/caller-grandma.jpg",
+      "sha256": "7448c0269eaaeda0a7a615998cfd05c148f645ef6bf9a41580e6ace4f8f69c0d",
+      "bytes": 74742
+    },
+    "grandpa": {
+      "avatar": "Adults/Male_Adult_03/Export/Male_Adult_03.fbx",
+      "room": "kitchen",
+      "file": "assets/scenes/caller-grandpa.jpg",
+      "sha256": "47c9b096c602dfda6feb8d7f01cd60ef8f07c74af0d3d88730425997ec2f3c59",
+      "bytes": 64685
+    },
+    "young": {
+      "avatar": "Adults/Female_Adult_05/Export/Female_Adult_05.fbx",
+      "room": "kitchen",
+      "file": "assets/scenes/caller-young.jpg",
+      "sha256": "d42b0e29ec1f2773073e736a27026f79646d85080030c5889eaa9d01b65fcec5",
+      "bytes": 82943
+    },
+    "teen": {
+      "avatar": "Children/Male_Child_01/Export/Male_Child_01.fbx",
+      "room": "kitchen",
+      "file": "assets/scenes/caller-teen.jpg",
+      "sha256": "7746feaec12e2a0c5b7b23a18641363d103842cfda905353f9d99080ba5f0438",
+      "bytes": 60742
+    },
+    "grandma-street": {
+      "avatar": "Professions/Business_Female_02/Export/Business_Female_02.fbx",
+      "room": "street",
+      "file": "assets/scenes/caller-grandma-street.jpg",
+      "sha256": "94201ea3950fd5008632faa8364923d28365eddacf83d4b19175c59bb9aa6d46",
+      "bytes": 68910
+    },
+    "grandpa-street": {
+      "avatar": "Adults/Male_Adult_03/Export/Male_Adult_03.fbx",
+      "room": "street",
+      "file": "assets/scenes/caller-grandpa-street.jpg",
+      "sha256": "d561bcc475fd63966aeb616bc6879face5949b438808a1cd0b0c3f8ece9bbbd0",
+      "bytes": 65056
+    },
+    "young-street": {
+      "avatar": "Adults/Female_Adult_05/Export/Female_Adult_05.fbx",
+      "room": "street",
+      "file": "assets/scenes/caller-young-street.jpg",
+      "sha256": "b81273075eeb537dc2a8808bca3d0666b2b397acbb4ba2ed83add51dc5065796",
+      "bytes": 82459
+    },
+    "teen-street": {
+      "avatar": "Children/Male_Child_01/Export/Male_Child_01.fbx",
+      "room": "street",
+      "file": "assets/scenes/caller-teen-street.jpg",
+      "sha256": "57d5fa934046a1377bd583579c17edc33c55c9fffc5b5ab4e1c0693c45c529aa",
+      "bytes": 63865
     }
   }
 }

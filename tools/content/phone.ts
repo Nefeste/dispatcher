@@ -11,6 +11,10 @@ import {
 } from '../../src/content/types';
 import { findBrand } from './brands';
 
+/** Вариантов слов у признака и у строк звонящего — не меньше (спецификация среза, С7: «у каждого признака и звонящего —
+ *  не меньше трёх вариантов слов»). */
+const WORDS = 3;
+
 const ROOT = join(import.meta.dir, '../..');
 
 /** Полосы частот «Анамнеза» (его tools/content/schema.ts, BANDS): доли 1/10 000. Своя — `sure`: свой возраст и адрес
@@ -84,6 +88,11 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
     if (!f.estimate) err(`${id}: tell shares are an estimate — set estimate: true`);
     if (f.tell['caller.self'] > 0 && !f.says.present.self.length) err(`${id}: self may know it but has no words`);
     if (CALLERS.slice(1).some(c => f.tell[`caller.${c}`] > 0) && !f.says.present.other.length) err(`${id}: others may know it but have no words`);
+    // звонящие разные (срез, С7): у каждого признака, о котором говорят, — не меньше трёх вариантов слов
+    for (const side of ['self', 'other'] as const) {
+      const n = f.says.present[side].length;
+      if (n && n < WORDS) err(`${id}: says.present.${side} needs at least ${WORDS} wordings, has ${n}`);
+    }
     findings[id] = f;
   }
 
@@ -199,6 +208,9 @@ export function buildPhone(dir: string, med: ContentDb, cities: City[], err: (s:
     for (const s of [...k.unsure, ...k.nothing, ...k.again, ...k.refused]) texts.push([`${id}: words`, s]);
     if (!k.again.length) err(`${id}: needs again words for a repeat call`);
     if (!k.refused.length) err(`${id}: needs refused words for a call after a refusal`);
+    for (const [what, xs] of [['unsure', k.unsure], ['nothing', k.nothing], ['again', k.again], ['refused', k.refused]] as const) {
+      if (xs.length < WORDS) err(`${id}: ${what} needs at least ${WORDS} wordings, has ${xs.length}`);
+    }
     if (!(CALLERS as readonly string[]).includes(basename(id.replace('caller.', '')))) err(`${id}: unknown caller kind`);
     if (!(k.weight > 0)) err(`${id}: weight must be positive`);
     if (!k.at.length || k.at.some(a => a !== 'home' && a !== 'street')) err(`${id}: at must list home and/or street`);

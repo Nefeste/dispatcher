@@ -57,11 +57,42 @@ CALLERS = {
         'look': 0.04,
         'lens': 52,
     },
+    # срез, С7: ещё четыре человека — пожилая женщина и пожилой мужчина (их пожилыми ведёт и «Больница», cast.ts),
+    # молодая женщина и подросток, который звонит за родителя
+    'grandma': {
+        'avatar': 'Professions/Business_Female_02/Export/Business_Female_02.fbx',
+        'room': 'kitchen',
+        'yaw': -32,
+        'grey': 1.7,
+    },
+    # пожилой мужчина и подросток: при −34…−46° предплечье закрывало рот — повёрнуты сильнее, запястье — дальше назад
+    'grandpa': {
+        'avatar': 'Adults/Male_Adult_03/Export/Male_Adult_03.fbx',
+        'grey': 1.7,
+        'room': 'kitchen',
+        'yaw': -58,
+        'wrist': '0.09,0.04',
+        'look': 0.04,
+        'lens': 52,
+    },
+    'young': {
+        'avatar': 'Adults/Female_Adult_05/Export/Female_Adult_05.fbx',
+        'room': 'kitchen',
+        'yaw': -30,
+    },
+    'teen': {
+        'avatar': 'Children/Male_Child_01/Export/Male_Child_01.fbx',
+        'room': 'kitchen',
+        'yaw': -58,
+        'wrist': '0.09,0.04',
+    },
 }
 # те же люди на вечерней улице — звонки не из дома (родственник, сам больной, прохожий; игра владельца 20.11.2026:
 # вместо картинки была тёмная сцена со словом, её приняли за незагрузку)
 CALLERS['daughter-street'] = {**CALLERS['daughter'], 'room': 'street'}
 CALLERS['man-street'] = {**CALLERS['man'], 'room': 'street'}
+for _id in ('grandma', 'grandpa', 'young', 'teen'):
+    CALLERS[f'{_id}-street'] = {**CALLERS[_id], 'room': 'street'}
 # --only имя,имя — нарисовать только этих; паспорт остальных остаётся как был
 ONLY = next((a.split('=', 1)[1].split(',') for a in ARGS if a.startswith('--only=')), None)
 
@@ -191,6 +222,10 @@ def person(spec):
     bpy.ops.import_scene.fbx(filepath=path, automatic_bone_orientation=True)
     arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
     body = next(o for o in bpy.data.objects if o.type == 'MESH' and o.parent == arm)
+    # у детей Rocketbox кости — «Bip02 …»: те же имена, что у взрослых (группы вершин переименуются вместе с костями)
+    for b in arm.data.bones:
+        if b.name.startswith('Bip02'):
+            b.name = 'Bip01' + b.name[5:]
     # текстуры — из папки Textures рядом с Export
     for img in bpy.data.images:
         if img.filepath and not os.path.exists(bpy.path.abspath(img.filepath)):
@@ -199,7 +234,26 @@ def person(spec):
             if os.path.exists(alt):
                 img.filepath = alt
     for m in body.data.materials:
-        m.blend_method = 'HASHED' if 'opacity' in m.name else 'OPAQUE'
+        m.blend_method = 'HASHED' if 'opacity' in m.name or 'glasses' in m.name else 'OPAQUE'
+        # очки (у пожилой женщины): прозрачность стёкол — из альфы своей текстуры, импорт FBX её не подключает, и стёкла
+        # выходят чёрной полосой
+        if 'glasses' in m.name and m.use_nodes:
+            nt = m.node_tree
+            bsdf = nt.nodes.get('Principled BSDF')
+            tex = next((n for n in nt.nodes if n.type == 'TEX_IMAGE' and n.image and 'opacity' in n.image.filepath), None)
+            if bsdf and tex:
+                nt.links.new(tex.outputs['Alpha'], bsdf.inputs['Alpha'])
+        # пожилые (срез, С7): волосы седые — цвет волос без насыщенности и светлее, как седину в «Больнице» (cast.ts)
+        if spec.get('grey') and 'opacity' in m.name and m.use_nodes:
+            nt = m.node_tree
+            bsdf = nt.nodes.get('Principled BSDF')
+            link = next((l for l in nt.links if bsdf and l.to_node == bsdf and l.to_socket.name == 'Base Color'), None)
+            if link:
+                hs = nt.nodes.new('ShaderNodeHueSaturation')
+                hs.inputs['Saturation'].default_value = 0.08
+                hs.inputs['Value'].default_value = spec['grey']
+                nt.links.new(link.from_socket, hs.inputs['Color'])
+                nt.links.new(hs.outputs['Color'], bsdf.inputs['Base Color'])
     arm.rotation_euler = (0, 0, math.radians(spec['yaw']))
     bpy.context.view_layer.update()
     return arm, body

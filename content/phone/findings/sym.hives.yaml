@@ -1,8 +1,8 @@
 tell: { self: always, relative: usually, neighbour: usually, bystander: usually }
 says:
   present:
-    self: ["Сыпь по телу, чешется"]
-    other: ["Сыпь по всему телу, чешется"]
+    self: ["Сыпь по телу, чешется", "Всё тело в волдырях, чешется", "Высыпало по всему телу"]
+    other: ["Сыпь по всему телу, чешется", "Пятна красные по телу, чешется", "{Весь|Вся} в сыпи, чешется"]
 estimate: true
 sources: ["anamnez"]
 review: draft

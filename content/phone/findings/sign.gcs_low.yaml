@@ -3,7 +3,7 @@ tell: { self: never, relative: usually, neighbour: often, bystander: sometimes }
 says:
   present:
     self: []
-    other: ["Глаза открывает, но не отвечает толком", "Еле отвечает, засыпает"]
+    other: ["Глаза открывает, но не отвечает толком", "Еле отвечает, засыпает", "Зову — еле откликается и опять засыпает"]
 threat: "388n, п. 11 «а»"
 estimate: true
 sources: ["anamnez", "388n, п. 11 «а»"]

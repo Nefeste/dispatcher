@@ -2,7 +2,7 @@ tell: { self: never, relative: usually, neighbour: often, bystander: sometimes }
 says:
   present:
     self: []
-    other: ["Путается, не понимает, где {он|она}", "Говорит невпопад"]
+    other: ["Путается, не понимает, где {он|она}", "Говорит невпопад", "Не соображает, какой день, где {он|она}"]
 threat: "388n, п. 11 «а»"
 estimate: true
 sources: ["anamnez", "388n, п. 11 «а»"]

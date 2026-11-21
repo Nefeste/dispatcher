@@ -22,6 +22,15 @@ const PICTURES: Record<string, number> = {
   man: require('../../../assets/scenes/caller-man.jpg'),
   'daughter-street': require('../../../assets/scenes/caller-daughter-street.jpg'),
   'man-street': require('../../../assets/scenes/caller-man-street.jpg'),
+  // срез, С7: пожилые, молодая женщина, подросток — дома и на улице
+  grandma: require('../../../assets/scenes/caller-grandma.jpg'),
+  grandpa: require('../../../assets/scenes/caller-grandpa.jpg'),
+  young: require('../../../assets/scenes/caller-young.jpg'),
+  teen: require('../../../assets/scenes/caller-teen.jpg'),
+  'grandma-street': require('../../../assets/scenes/caller-grandma-street.jpg'),
+  'grandpa-street': require('../../../assets/scenes/caller-grandpa-street.jpg'),
+  'young-street': require('../../../assets/scenes/caller-young-street.jpg'),
+  'teen-street': require('../../../assets/scenes/caller-teen-street.jpg'),
 };
 
 export interface CallProps {
