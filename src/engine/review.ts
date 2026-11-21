@@ -233,10 +233,11 @@ function snagMistakes(ctx: ShiftCtx, s: Shift, call: CallRec): { m: Mistake; cos
   if (!g || g.answer === null) return [];
   const mins = (ms: number) => Math.max(0, Math.ceil(ms / 60_000));
   const emergency = formAt(call, g.at) === 'emergency';
-  const alone = g.answer === 'wait' || g.answer === 'auto';
+  // не ответили, пока диспетчер говорил всё время просьбы, — не его ошибка: окна он не видел
+  const alone = g.answer === 'wait' || (g.answer === 'auto' && !g.busy);
   if (g.kind === 'door' && emergency) {
     // минута на звонок за кодом — тоже цена: «как пройти» можно было спросить в разговоре
-    return [{ m: { kind: 'door', waited: alone }, cost: mins((g.done ?? s.t) - g.at) }];
+    return [{ m: { kind: 'door', waited: g.answer !== 'phone' }, cost: mins((g.done ?? s.t) - g.at) }];
   }
   if (g.kind === 'address' && emergency && alone) return [{ m: { kind: 'address' }, cost: mins((g.done ?? s.t) - g.at - SNAG_PHONE) }];
   if (g.kind === 'victim' && emergency && alone && g.free) return [{ m: { kind: 'alone' }, cost: mins(g.wait) }];

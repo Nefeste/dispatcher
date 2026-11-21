@@ -170,19 +170,23 @@ try {
     if (await visible('end')) break;
     const snag = (await visible('snag-door')) ? 'door' : (await visible('snag-address')) ? 'address' : (await visible('snag-victim')) ? 'victim' : null;
     if (snag) {
-      // просьба бригады не про медицину (срез, С4): «пусть ждут» — и касание рации: бригада у подъезда, вставка на месте
-      if (!snags) {
-        await see(page, `snag-${snag}`, 'Бригада');
+      // просьба бригады не про медицину (срез, С4): «пусть ждут» — и касание рации: бригада у подъезда, вставка на месте.
+      // Часы сценария ускорены в 20 раз: срок просьбы и подъезд пройдут за доли секунды — сперва пауза
+      if ((await speed()) !== 'пауза') await tap('pult-clock');
+      if (!snags && (await visible(`snag-${snag}`))) {
+        const text = await page.getByTestId(`snag-${snag}`).first().innerText({ timeout: 1500 }).catch(() => '');
+        if (!text.includes('Бригада')) throw new Error(`окно просьбы без бригады: ${text}`);
         await snap(page, `snag-${snag}`);
+        checks++;
       }
       if (await tap('snag-wait')) snags++;
       if (!onsite && snag !== 'victim' && (await tap('pult-radio'))) {
-        if (await page.getByTestId('insert').first().isVisible({ timeout: 1500 }).catch(() => false)) {
+        if (await page.getByTestId('insert').first().waitFor({ state: 'visible', timeout: 2500 }).then(() => true, () => false)) {
           await page.waitForTimeout(1200);
           await snap(page, 'insert-onsite');
           await page.getByTestId('insert').first().click({ timeout: 1500 }).catch(() => {});
           onsite++;
-          if (await page.getByTestId('crew-card').first().isVisible({ timeout: 1500 }).catch(() => false)) {
+          if (await page.getByTestId('crew-card').first().waitFor({ state: 'visible', timeout: 2500 }).then(() => true, () => false)) {
             await snap(page, 'crew-card-onsite');
             await tap('crew-card-close');
           }

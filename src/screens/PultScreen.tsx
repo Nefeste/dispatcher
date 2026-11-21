@@ -38,7 +38,8 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
   const [pick, setPick] = useState<string | null>(null);
   const [crewPick, setCrewPick] = useState<string | null>(null);
   // вставка на месте вызова (срез, С4): касание бригады на месте — короткий ролик, потом её карточка
-  const [scene, setScene] = useState<OnScene | null>(null);
+  // сколько звонков было на линии, когда вставку открыли: новый звонок её закрывает, прежние ждут 3 секунды
+  const [scene, setScene] = useState<{ place: OnScene; line: number } | null>(null);
   const pos = useSharedValue<number[]>(x ? positions(x.ctx, x.s) : []);
   // «Замер»: первый кадр пульта — конец загрузки смены (после вставки «начало смены»)
   useEffect(() => {
@@ -72,15 +73,15 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
     const { width, height } = e.nativeEvent.layout;
     if (!size || size.w !== width || size.h !== height) setSize({ w: width, h: height });
   };
-  // звонок, просьба бригады или доклад — вставка уступает им сразу и не возвращается
-  if (scene && (view.ask || view.report || view.line)) setScene(null);
+  // новый звонок, просьба бригады или доклад — вставка уступает им сразу и не возвращается
+  if (scene && (view.ask || view.report || view.line > scene.line)) setScene(null);
   const picked = pick ? view.waiting.find(w => w.id === pick) : undefined;
   // касание бригады на карте или рации, где она говорила последней, — её карточка; на месте вызова — сперва вставка
   // (срез, С4), но не во время выбора: просьба бригады, доклад, ввод смены
   const openCrew = (id: string | null) => {
     setCrewPick(id);
-    const place = id && !view.ask && !view.report && !view.line && !x.intro ? crewCard(ctx, s, id)?.place : null;
-    if (place) setScene(place);
+    const place = id && !view.ask && !view.report && !x.intro ? crewCard(ctx, s, id)?.place : null;
+    if (place) setScene({ place, line: view.line });
   };
   const hint = pultHint(ctx, s);
   let panel: React.ReactNode = null;
@@ -229,14 +230,15 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
         />
       ) : null}
       {size && !x.intro && hint ? <HintBar text={T.tutorial[hint]} top={pultLayout(size.w, size.h).map.y + 8} /> : null}
-      {scene ? (
-        <View style={StyleSheet.absoluteFill}>
-          <InsertView key={scene} video={INSERTS[scene].video} still={INSERTS[scene].still} seconds={INSERTS[scene].seconds} onDone={() => setScene(null)} />
-        </View>
-      ) : null}
       <Pressable style={styles.back} onPress={onBack} accessibilityRole="button" testID="map-back">
         <Txt style={styles.backText}>{T.common.back}</Txt>
       </Pressable>
+      {/* вставка на месте — поверх всего пульта, «Назад» тоже под ней: касание пропускает ролик */}
+      {scene ? (
+        <View style={StyleSheet.absoluteFill}>
+          <InsertView key={scene.place} video={INSERTS[scene.place].video} still={INSERTS[scene.place].still} seconds={INSERTS[scene.place].seconds} onDone={() => setScene(null)} />
+        </View>
+      ) : null}
     </View>
   );
 }

@@ -107,13 +107,14 @@ describe('просьбы бригады на месте', () => {
         expect(c.inAt).toBe(c.arrivedAt);
         if (policy === 'phone') expect(g.answer).toBe('phone');
         else {
+          // не ответили: срок идёт с минуты, когда диспетчер свободен; адрес нашли сами — через своё время от просьбы
           expect(g.answer).toBe('auto');
-          expect(g.answeredAt).toBe(g.at + ASK_WAIT);
-          expect(g.done).toBe(g.at + g.wait);
+          expect(g.answeredAt).toBeLessThanOrEqual(g.at + g.wait);
+          expect(g.done).toBe(Math.max(g.answeredAt!, g.at + g.wait));
         }
       }
       const r = review(ctx, s);
-      for (const c of moved.filter(x => x.form === 'emergency')) expect(r.calls.find(x => x.id === c.id)!.mistakes.some(m => m.m.kind === 'address')).toBe(policy === 'none');
+      for (const c of moved.filter(x => x.form === 'emergency')) expect(r.calls.find(x => x.id === c.id)!.mistakes.some(m => m.m.kind === 'address')).toBe(policy === 'none' && !c.snag!.busy);
     }
   });
 
@@ -132,8 +133,8 @@ describe('просьбы бригады на месте', () => {
     const alone = playWith(ctx, 6, 'victim', 'wait');
     const one = alone.calls.filter(c => c.snag?.answer === 'wait');
     expect(one.length).toBeGreaterThan(0);
-    // одна бригада: доклад позже на `wait` и на то, сколько она ждала ответа (стоит, пока диспетчер решает)
-    for (const c of one) expect(c.reportAt! - c.inAt!).toBe(c.scene + c.snag!.wait + (c.snag!.answeredAt! - c.snag!.at));
+    // одна бригада: доклад позже ровно на `wait` — пока диспетчер решал, она работала, а не стояла
+    for (const c of one) expect(c.reportAt! - c.inAt!).toBe(c.scene + c.snag!.wait);
     const r = review(ctx, alone);
     for (const c of one) {
       const has = r.calls.find(x => x.id === c.id)!.mistakes.some(m => m.m.kind === 'alone');
@@ -163,6 +164,23 @@ describe('просьбы бригады на месте', () => {
       else advance(ctx, s, Math.max(1, Math.min(nextEvent(ctx, s), s.t + 60_000) - s.t));
     }
     expect(s.over).toBe(true);
+  });
+
+  test('пока диспетчер на звонке, срок просьбы не идёт: окно он увидит, когда закроет разговор; подъезд откроют и сами', () => {
+    const ctx = shiftCtx(DB, MED, week[1].id, map);
+    // диспетчер не отвечает на просьбы, а на звонки — отвечает: часть просьб приходит посреди разговора
+    const s = playWith(ctx, 9, 'door', 'none');
+    const doors = s.calls.filter(c => c.snag);
+    expect(doors.length).toBeGreaterThan(0);
+    for (const c of doors) {
+      const g = c.snag!;
+      expect(g.answer).toBe('auto');
+      // срок: две минуты с минуты, когда диспетчер свободен, — или раньше, если открыли сами
+      expect(g.answeredAt! - g.at).toBeLessThanOrEqual(g.wait);
+      expect(g.done).toBe(g.at + g.wait > g.answeredAt! ? g.at + g.wait : g.answeredAt);
+    }
+    // хотя бы одна пришла посреди разговора и прождала его конец
+    expect(doors.some(c => c.snag!.busy || c.snag!.answeredAt! - c.snag!.at > ASK_WAIT)).toBe(true);
   });
 
   test('ответ не на ту просьбу — отказ, смена не меняется', () => {
