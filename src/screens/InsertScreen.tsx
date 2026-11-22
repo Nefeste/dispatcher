@@ -7,9 +7,9 @@ import { InsertView } from '../scenes/insert/InsertView';
 
 export type InsertKind = 'start' | 'depart' | 'door' | 'flat' | 'stop';
 
-/** Звук вставки (docs/13-art.md, §5): выезд — мотор и далёкая сирена; у подъезда и на остановке — мотор на холостом
+/** Вставки: две смены (начало, первый выезд) и три на месте вызова — по касанию бригады на месте (срез, С4).
+ *  Звук вставки (docs/13-art.md, §5): выезд — мотор и далёкая сирена; у подъезда и на остановке — мотор на холостом
  *  ходу; в квартире — прибор из укладки. Только фон: людей и помощи во вставках нет (ADR 0007). */
-/** Вставки: две смены (начало, первый выезд) и три на месте вызова — по касанию бригады на месте (срез, С4). */
 export const INSERTS: Record<InsertKind, { video: number; still: number; seconds: number; sound?: Cue }> = {
   start: { video: require('../../assets/scenes/insert-start.mp4'), still: require('../../assets/scenes/insert-start.jpg'), seconds: 4 },
   depart: { video: require('../../assets/scenes/insert-depart.mp4'), still: require('../../assets/scenes/insert-depart.jpg'), seconds: 5, sound: 'depart' },
