@@ -6,7 +6,7 @@
 import { DB } from '../content/generated/db';
 import type { Db, ShiftSetup } from '../content/types';
 import type { Best } from './progress';
-import { weekShifts } from './week';
+import { firstWeek, weekPlayed, weekShifts } from './week';
 
 export interface FreeChoice {
   /** час начала, 0–23 */
@@ -72,7 +72,7 @@ export function dbFor(id: string, db: Db = DB): Db {
   return c ? { ...db, shifts: { ...db.shifts, [id]: freeSetup(c, db) } } : db;
 }
 
-/** Открыта ли «Свободная смена»: у каждой смены недели есть итог. */
+/** Открыта ли «Свободная смена»: у каждой смены первой недели есть итог. */
 export function freeOpen(best: Readonly<Record<string, Best>>, db: Db = DB): boolean {
-  return weekShifts(db).every(s => Boolean(best[s.id]));
+  return weekPlayed(best, firstWeek(db), db);
 }

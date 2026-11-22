@@ -248,11 +248,12 @@ export const T = {
   },
   /** Выбор смены «Первой недели» (docs/08-game-design.md, §8, §10; срез, часть С1) */
   week: {
-    title: 'Первая неделя',
     lead: 'Семь смен по порядку. Следующая открывается, когда пройдена предыдущая — с любым итогом.',
     head: (n: number, day: string, from: string, to: string) => `${n}. ${day} · ${from}–${to}`,
     best: (inNorm: number, all: number) => (all ? `Лучший итог: ${inNorm} из ${all} экстренных в норму` : 'Пройдена'),
     locked: (n: number) => `Откроется после смены ${n}`,
+    /** следующая неделя (путь к 1.0, В2а): откроется, когда у каждой смены предыдущей есть итог */
+    weekLocked: (prev: string) => `Откроется, когда у каждой смены недели «${prev}» будет итог`,
     label: (n: number, day: string, open: boolean) => (open ? `Смена ${n}, ${day}. Начать` : `Смена ${n}, ${day}: закрыта`),
     toWeek: 'К неделе',
     toStation: 'К станции',
@@ -295,7 +296,8 @@ export const T = {
     letters: (thanks: number, complaints: number, inquiries: number) =>
       `Благодарностей — ${thanks}, жалоб — ${complaints}${inquiries ? `, служебных проверок — ${inquiries}` : ''}.`,
     snapshot: 'Снимок недели',
-    snapshotTitle: 'Диспетчер 03 · первая неделя',
+    /** название недели — из записи (content/weeks/), с маленькой буквы */
+    snapshotTitle: (week: string) => `Диспетчер 03 · ${week.charAt(0).toLowerCase()}${week.slice(1)}`,
     snapshotShifts: 'Смены:',
     snapshotRow: (n: number, day: string, inNorm: number, all: number) => `${n}. ${day}: ${inNorm} из ${all} в норму`,
     snapshotStation: (fund: number, crews: number) => `Станция: фонд ${money(fund)}, своих бригад — ${crews}`,

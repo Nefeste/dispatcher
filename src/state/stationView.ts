@@ -6,7 +6,7 @@ import type { Db } from '../content/types';
 import { KIT, RESTOCK } from '../engine/rules';
 import { canDecide, consequenceOf, type Decision, type Entry, type Letter, priceOf, STATION, type Station, type StationRefusal } from '../engine/station';
 import { crewNo } from './callView';
-import { weekShifts } from './week';
+import { firstWeek, weekShifts } from './week';
 
 export interface RosterRow {
   no: number;
@@ -58,10 +58,13 @@ export interface StationView {
   journal: JournalRow[];
 }
 
-export function stationView(st: Station, db: Db = DB): StationView {
-  const week = weekShifts(db);
+/** Вид станции недели `of` (путь к 1.0, В2а); без недели — первой. */
+export function stationView(st: Station, db: Db = DB, of: string = firstWeek(db)): StationView {
+  const week = weekShifts(db, of);
   const nOf = (id: string) => db.shifts[id]?.week?.n ?? 0;
-  const last = st.done.length ? Math.max(...st.done.map(nOf)) : 0;
+  // пройденные смены этой недели: у каждой недели своя станция, чужих смен в ней не бывает — но считаем только свои
+  const mine = st.done.filter(id => db.shifts[id]?.week?.of === of);
+  const last = mine.length ? Math.max(...mine.map(nOf)) : 0;
   const nextShift = week.find(s => s.week!.n === last + 1) ?? null;
   const city = db.cities[(nextShift ?? week[0]).city];
   const baseName = (id: string) => city.bases.find(b => b.id === id)?.short ?? id;

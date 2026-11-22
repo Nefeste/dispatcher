@@ -8,6 +8,7 @@ import { ProgramPanel, type PanelRow } from '../scenes/panel';
 import type { StationItem } from '../scenes/station/layout';
 import { StationScene } from '../scenes/station/StationScene';
 import { softOutcome } from '../state/session';
+import { DB } from '../content/generated/db';
 import { decideAndSave, readStation } from '../state/station';
 import { type Choice, type StationView, stationView } from '../state/stationView';
 import { Dialog, type DialogSpec } from '../ui/dialog';
@@ -19,7 +20,7 @@ import { SCENE, UI } from '../scenes/palette';
 const FOOT_MIN = 116;
 const HEAD_MIN = 64;
 
-export function StationScreen({ onWeek, onNext, onWeekEnd }: { onWeek: () => void; onNext: (shiftId: string) => void; onWeekEnd: () => void }) {
+export function StationScreen({ week, onWeek, onNext, onWeekEnd }: { week: string; onWeek: () => void; onNext: (shiftId: string) => void; onWeekEnd: () => void }) {
   const { width, height } = useWindowDimensions();
   // шапка и низ с кнопками — выше с крупным текстом (§12 геймдизайна; срез, С8б); надписи на предметах сцены — нет:
   // их текст целиком — в окне по касанию предмета, а оно растёт
@@ -30,8 +31,8 @@ export function StationScreen({ onWeek, onNext, onWeekEnd }: { onWeek: () => voi
   const [open, setOpen] = useState<StationItem | null>(null);
   const [dialog, setDialog] = useState<DialogSpec | null>(null);
   const refresh = useCallback(() => {
-    void readStation().then(st => setView(stationView(st)));
-  }, []);
+    void readStation(week).then(st => setView(stationView(st, DB, week)));
+  }, [week]);
   useEffect(refresh, [refresh]);
   if (!view) return <View style={styles.root} testID="station-loading" />;
 
@@ -41,7 +42,7 @@ export function StationScreen({ onWeek, onNext, onWeekEnd }: { onWeek: () => voi
     setDialog({
       title,
       text: S.confirm.text(c.price, view.left - 1),
-      actions: [{ label: S.confirm.yes, onPress: () => void decideAndSave(c.d).then(refresh) }],
+      actions: [{ label: S.confirm.yes, onPress: () => void decideAndSave(c.d, week).then(refresh) }],
     });
   };
   const choiceRow = (c: Choice, text: string, sub: string, testID: string): PanelRow => ({

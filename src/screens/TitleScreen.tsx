@@ -6,21 +6,27 @@ import { StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
 import { mark } from '../state/marks';
 import { hasSaved } from '../state/session';
+import { DB } from '../content/generated/db';
 import { readStation } from '../state/station';
+import { weeksOf } from '../state/week';
 import { stationView } from '../state/stationView';
 import { Button, Txt } from '../ui/kit';
 import { R, S } from '../ui/theme';
 import { TitleScene } from '../scenes/title/TitleScene';
 
-export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onSettings, onAbout }: { onStart: () => void; onResume: () => void; onStation: () => void; onDesk: () => void; onBench: () => void; onSettings: () => void; onAbout: () => void }) {
+export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onSettings, onAbout }: { onStart: () => void; onResume: () => void; onStation: (week: string) => void; onDesk: () => void; onBench: () => void; onSettings: () => void; onAbout: () => void }) {
   const [saved, setSaved] = useState(false);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  // неделя начата и не пройдена — «Продолжить неделю» ведёт на станцию, к следующей смене (спецификация среза, §3, шаг 1)
-  const [going, setGoing] = useState(false);
+  // неделя начата и не пройдена — «Продолжить неделю» ведёт на станцию, к следующей смене (спецификация среза, §3, шаг 1);
+  // недель несколько (путь к 1.0, В2а) — последняя такая
+  const [going, setGoing] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     void hasSaved().then(x => { if (alive) setSaved(x); });
-    void readStation().then(st => { if (alive) setGoing(st.done.length > 0 && !stationView(st).complete); });
+    void Promise.all(weeksOf().map(async w => {
+      const st = await readStation(w.id);
+      return st.done.length > 0 && !stationView(st, DB, w.id).complete ? w.id : null;
+    })).then(xs => { if (alive) setGoing(xs.filter(Boolean).pop() ?? null); });
     return () => { alive = false; };
   }, []);
   // «Замер»: первый кадр заглавного экрана после запуска — конец холодного старта
@@ -39,7 +45,7 @@ export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onS
       </View>
       <View style={styles.actions}>
         {saved ? <Button label={T.title.resume} onPress={onResume} testID="title-resume" /> : null}
-        {going ? <Button label={T.title.continueWeek} kind={saved ? 'ghost' : 'primary'} onPress={onStation} testID="title-week" /> : null}
+        {going ? <Button label={T.title.continueWeek} kind={saved ? 'ghost' : 'primary'} onPress={() => onStation(going)} testID="title-week" /> : null}
         <Button label={T.title.start} kind={saved || going ? 'ghost' : 'primary'} onPress={onStart} testID="title-start" />
         <Txt dim style={styles.center}>{T.title.shift}</Txt>
         <View style={styles.row}>

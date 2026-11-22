@@ -1,0 +1,13 @@
+# «Первая неделя» (docs/08-game-design.md, §8; срез — docs/specs/2026-11-vertical-slice.md, часть С1): семь смен по
+# порядку в районе прототипа, своя станция. Неделя — запись (путь к 1.0, В2а, docs/specs/2026-11-v1.md): номер смены —
+# её место в списке; следующая неделя открывается, когда у каждой смены этой есть итог.
+order: 1
+title: "Первая неделя"
+shifts:
+  - shift.week-1
+  - shift.week-2
+  - shift.week-3
+  - shift.week-4
+  - shift.week-5
+  - shift.week-6
+  - shift.week-7
