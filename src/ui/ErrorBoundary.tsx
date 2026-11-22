@@ -6,6 +6,7 @@ import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { T } from '../i18n';
 import { logError } from '../state/crashlog';
+import { SCENE } from '../scenes/palette';
 import { Button, Txt } from './kit';
 
 interface Props { children: React.ReactNode; onHome: () => void; onReport: () => void }
@@ -32,7 +33,7 @@ export class ErrorBoundary extends React.Component<Props, { failed: boolean }> {
     if (!this.state.failed) return this.props.children;
     const W = T.crash;
     return (
-      <ScrollView contentContainerStyle={styles.root} testID="crash-screen">
+      <ScrollView style={styles.back} contentContainerStyle={styles.root} testID="crash-screen">
         <Txt title>{W.title}</Txt>
         <Txt>{W.text}</Txt>
         <Button label={T.about.report} onPress={this.props.onReport} testID="crash-report" />
@@ -43,5 +44,7 @@ export class ErrorBoundary extends React.Component<Props, { failed: boolean }> {
 }
 
 const styles = StyleSheet.create({
+  // без картинки зала и без движения: экран сбоя не должен упасть сам
+  back: { flex: 1, backgroundColor: SCENE.hallTop },
   root: { padding: 24, paddingTop: 48, gap: 12 },
 });

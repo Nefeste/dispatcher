@@ -78,26 +78,30 @@ export function shiftContext(): ShiftCtx {
   return ctxOf(PROTO_SHIFT);
 }
 
-export type LoadStep = 'map' | 'roads' | 'paths' | 'medicine';
-export const LOAD_STEPS: readonly LoadStep[] = ['map', 'roads', 'paths', 'medicine'];
+export type LoadStep = 'pictures' | 'map' | 'roads' | 'paths' | 'medicine';
+export const LOAD_STEPS: readonly LoadStep[] = ['pictures', 'map', 'roads', 'paths', 'medicine'];
 
 /**
  * Загрузка с настоящим ходом (спецификация прототипа, §3, шаг 2): файл карты, граф дорог и время рёбер, пути Skia,
- * медицина — по шагу за кадр; `onStep` — какой шаг начался. Уже загружено — сразу. `paths` строит экран (Skia).
+ * медицина — по шагу за кадр; `onStep` — какой шаг начался. Уже загружено — сразу. `paths` строит экран (Skia);
+ * картинки сцен (стол пульта, звонящие) грузит тоже экран — `pictures`; без него шаг пуст.
  */
-export async function prepare(shiftId: string, onStep: (step: LoadStep, i: number) => void, buildPaths: (map: ShiftCtx['map']) => void): Promise<void> {
+export async function prepare(shiftId: string, onStep: (step: LoadStep, i: number) => void, buildPaths: (map: ShiftCtx['map']) => void, pictures?: () => Promise<void>): Promise<void> {
   const frame = () => new Promise<void>(r => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => r()) : setTimeout(r, 0)));
-  onStep('map', 0);
+  onStep('pictures', 0);
+  await frame();
+  if (pictures) await pictures();
+  onStep('map', 1);
   await frame();
   const map = mapOf(shiftId);
-  onStep('roads', 1);
+  onStep('roads', 2);
   await frame();
   const ctx = ctxOf(shiftId);
   timesAt(ctx, 0);
-  onStep('paths', 2);
+  onStep('paths', 3);
   await frame();
   buildPaths(map);
-  onStep('medicine', 3);
+  onStep('medicine', 4);
   await frame();
   // первый больной смены — чтобы его рождение не пришлось на первый кадр пульта
   newShift(ctx, 1);

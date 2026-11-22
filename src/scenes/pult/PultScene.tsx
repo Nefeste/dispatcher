@@ -12,6 +12,7 @@ import {
   Group,
   Image,
   LinearGradient,
+  Path,
   RadialGradient,
   Rect,
   RoundedRect,
@@ -113,6 +114,8 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
   const clockText = T.pult.clock(clock);
   const speedText = paused ? T.pult.paused : T.pult.speed(speed);
   const speedX = 34 + width(bar, clockText) + 14 * s;
+  const lineW = width(bar, lineText);
+  const lineX = W - 14 - lineW - (line > 0 ? 6 : 0);
   const radioSays = radio ? T.pult.radioSays(radio.crew, radio.what, radio.transport) : null;
   const mon = L.monitor;
   const deskBack = L.desk.y + L.desk.h * 0.24;
@@ -133,6 +136,10 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
           <Rect x={0} y={mon.y + mon.h} width={W} height={deskBack - mon.y - mon.h + 4}>
             <LinearGradient start={vec(0, mon.y + mon.h)} end={vec(0, deskBack)} colors={[SCENE.partitionShade, SCENE.partition]} />
           </Rect>
+          {/* свет монитора ложится на перегородку за столом */}
+          <Rect x={0} y={mon.y + mon.h} width={W} height={deskBack - mon.y - mon.h + 4}>
+            <LinearGradient start={vec(0, mon.y + mon.h)} end={vec(0, deskBack)} colors={['rgba(200,225,255,0.16)', 'rgba(200,225,255,0)']} />
+          </Rect>
           <Rect x={0} y={deskFront} width={W} height={H - deskFront} color={SCENE.underDesk} />
           {/* монитор: рамка уходит за края экрана — сидим близко */}
           <RoundedRect x={mon.x} y={mon.y} width={mon.w} height={mon.h} r={10} color={SCENE.bezel} />
@@ -149,14 +156,27 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <Canvas style={StyleSheet.absoluteFill}>
           {/* строка программы: часы смены и скорость, линия */}
-          <Rect x={L.bar.x} y={L.bar.y} width={L.bar.w} height={L.bar.h} color={UI.bg} />
+          <Rect x={L.bar.x} y={L.bar.y} width={L.bar.w} height={L.bar.h}>
+            <LinearGradient start={vec(0, L.bar.y)} end={vec(0, L.bar.y + L.bar.h)} colors={[UI.panel, UI.bg]} />
+          </Rect>
           <Rect x={L.bar.x} y={L.bar.y + L.bar.h - 1} width={L.bar.w} height={1} color={UI.line} />
-          <Rect x={14} y={L.bar.y + 12 * s} width={4} height={14 * s} color={paused ? UI.amber : UI.dim} />
-          <Rect x={21} y={L.bar.y + 12 * s} width={4} height={14 * s} color={paused ? UI.amber : UI.dim} />
+          {/* часы идут — зелёный треугольник, пауза — две янтарные полосы: знак и цвет вместе */}
+          {paused ? (
+            <Group>
+              <RoundedRect x={14} y={L.bar.y + 12 * s} width={4} height={14 * s} r={1} color={UI.amber} />
+              <RoundedRect x={21} y={L.bar.y + 12 * s} width={4} height={14 * s} r={1} color={UI.amber} />
+            </Group>
+          ) : (
+            <Path path={`M 14 ${L.bar.y + 12 * s} L 26 ${L.bar.y + 19 * s} L 14 ${L.bar.y + 26 * s} Z`} color={UI.green} />
+          )}
           {bar ? <SkText x={34} y={L.bar.y + 25 * s} text={clockText} font={bar} color={UI.text} /> : null}
-          <RoundedRect x={speedX - 8} y={L.bar.y + 8 * s} width={width(bar, speedText) + 16} height={L.bar.h - 16 * s} r={8} color={paused ? UI.amber : UI.panel} />
+          <RoundedRect x={speedX - 8} y={L.bar.y + 8 * s} width={width(bar, speedText) + 16} height={L.bar.h - 16 * s} r={(L.bar.h - 16 * s) / 2} color={paused ? UI.amber : UI.bg} />
+          {paused ? null : <RoundedRect x={speedX - 8} y={L.bar.y + 8 * s} width={width(bar, speedText) + 16} height={L.bar.h - 16 * s} r={(L.bar.h - 16 * s) / 2} color={UI.line} style="stroke" strokeWidth={1} />}
           {bar ? <SkText x={speedX} y={L.bar.y + 25 * s} text={speedText} font={bar} color={paused ? UI.bg : UI.text} /> : null}
-          {bar ? <SkText x={W - 14 - width(bar, lineText)} y={L.bar.y + 25 * s} text={lineText} font={bar} color={line > 0 ? UI.red : UI.dim} /> : null}
+          {/* линия: звонок ждёт — плашка кумачом тёмной темы с точкой; свободна — тихая строка */}
+          {line > 0 ? <RoundedRect x={lineX - 24} y={L.bar.y + 8 * s} width={lineW + 34} height={L.bar.h - 16 * s} r={(L.bar.h - 16 * s) / 2} color="rgba(229,86,106,0.18)" /> : null}
+          {line > 0 ? <Circle cx={lineX - 11} cy={L.bar.y + L.bar.h / 2} r={4} color={UI.red} /> : null}
+          {bar ? <SkText x={lineX} y={L.bar.y + 25 * s} text={lineText} font={bar} color={line > 0 ? UI.red : UI.dim} /> : null}
 
           {/* вызовы, ждущие бригаду */}
           <Rect x={L.waiting.x} y={L.waiting.y} width={L.waiting.w} height={L.waiting.h} color={UI.bg} />
@@ -189,6 +209,10 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
 
           {/* край стола из Blender */}
           {desk ? <Image image={desk} x={L.desk.x} y={L.desk.y} width={L.desk.w} height={L.desk.h} fit="fill" /> : null}
+          {/* ближний край стола уходит в тень зала */}
+          <Rect x={0} y={deskFront - L.desk.h * 0.22} width={W} height={H - deskFront + L.desk.h * 0.22}>
+            <LinearGradient start={vec(0, deskFront - L.desk.h * 0.22)} end={vec(0, deskFront + 6)} colors={['rgba(14,18,21,0)', 'rgba(14,18,21,0.85)']} />
+          </Rect>
 
           {/* телефон: огонёк линии и экранчик */}
           <Lcd quad={L.phone.lcd} font={lcd} back={SCENE.lcdPhone} ink={SCENE.lcdPhoneInk} text={T.pult.phoneLcd(line)} />
@@ -203,7 +227,8 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
 
           {/* рация: экранчик и последняя строка бригады */}
           <Lcd quad={L.radio.lcd} font={lcd} back={SCENE.lcdRadio} ink={SCENE.lcdRadioInk} text={radio ? T.pult.radioLcd(radio.crew, radio.what, radio.transport) : T.pult.radioIdle} />
-          {radioSays ? <RoundedRect x={bubbleX} y={radioTop - 8 - 26 * s} width={bubbleW} height={26 * s} r={13 * s} color={UI.panel} opacity={0.94} /> : null}
+          {radioSays ? <RoundedRect x={bubbleX} y={radioTop - 8 - 26 * s} width={bubbleW} height={26 * s} r={13 * s} color={UI.bg} opacity={0.92} /> : null}
+          {radioSays ? <RoundedRect x={bubbleX} y={radioTop - 8 - 26 * s} width={bubbleW} height={26 * s} r={13 * s} color={UI.amber} style="stroke" strokeWidth={1} opacity={0.7} /> : null}
           {radioSays && tile ? <SkText x={bubbleX + 10 * s} y={radioTop - 8 - 8.5 * s} text={radioSays} font={tile} color={UI.text} /> : null}
         </Canvas>
       </View>
@@ -222,6 +247,8 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
         );
       })}
       {/* окно программы — над картой, но выше строки «© участники OpenStreetMap»: она видна всегда (ADR 0004) */}
+      {/* под окном карта приглушена: окно читается, карта остаётся видна */}
+      {panel ? <View style={[styles.abs, styles.scrim, { left: L.map.x, top: L.map.y, width: L.map.w, height: L.map.h }]} pointerEvents="none" /> : null}
       {panel ? <View style={[styles.abs, styles.panel, { left: L.map.x, top: L.map.y, width: L.map.w, height: L.map.h - OSM_LINE }]} pointerEvents="box-none">{panel}</View> : null}
       <Pressable style={[styles.abs, box(L.phone.tap)]} onPress={onPhone} accessibilityRole="button" accessibilityLabel={T.pult.phoneLabel(line)} testID="pult-phone" />
       <Pressable style={[styles.abs, box(L.radio.tap)]} onPress={onRadio} accessibilityRole="button" accessibilityLabel={T.pult.radioLabel(radioSays)} testID="pult-radio" />
@@ -238,4 +265,5 @@ function box(r: Box) {
 const styles = StyleSheet.create({
   abs: { position: 'absolute' },
   panel: { justifyContent: 'flex-end' },
+  scrim: { backgroundColor: 'rgba(8,11,13,0.34)' },
 });

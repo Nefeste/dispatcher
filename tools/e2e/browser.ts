@@ -87,6 +87,8 @@ async function buttonsFit(p: Page, name: string): Promise<void> {
   checks++;
 }
 const snap = async (p: Page, name: string) => {
+  // экран проявляется (src/ui/anim.tsx): снимок — когда переход кончился
+  await p.waitForTimeout(450);
   await buttonsFit(p, name);
   return p.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`) });
 };
@@ -143,6 +145,11 @@ try {
   await see(page, 'week-free', 'Откроется, когда пройдена вся неделя');
   await snap(page, 'week');
   await page.getByTestId('week-1').click();
+  // загрузка: какая смена начинается и настоящий ход (премиум-отделка); экран живёт около секунды — снимок без ожидания
+  await see(page, 'loading-shift', 'Понедельник, утро');
+  await see(page, 'loading-percent', '%');
+  await buttonsFit(page, 'loading');
+  await page.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-loading.png`) });
   await see(page, 'insert');
   await page.waitForTimeout(1500);
   await snap(page, 'insert-start');
@@ -296,6 +303,12 @@ try {
     } else if (await visible('pult')) {
       const now = await speed();
       if ((await line()) > 0) await tap('pult-phone');
+      // перезвонить ждущему можно только на свободной линии: часы на паузу — новый звонок не придёт, пока окно открывается
+      // (на медленной машине линия иначе всегда успевала заняться)
+      else if (!dialed && (await visible('pult-waiting-0'))) {
+        if (now !== 'пауза') await tap('pult-clock');
+        await tap('pult-waiting-0');
+      }
       else if (now === 'пауза') await tap('pult-clock');
       else if (now === '×1') await tap('pult-speed');
       else if (Date.now() - lastTile > 2000 && (await visible('pult-waiting-0'))) { lastTile = Date.now(); await tap('pult-waiting-0'); }

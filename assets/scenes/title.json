@@ -1,0 +1,28 @@
+{
+  "id": "title",
+  "name": "Зал диспетчерской ночью: фон заглавного экрана, загрузки и меню",
+  "licence": "своя работа студии «Горница»",
+  "made": {
+    "script": "blender/title.py",
+    "model": "blender/build.py",
+    "blender": "4.5.15",
+    "engine": "CYCLES",
+    "samples": 128,
+    "denoiser": "OPENIMAGEDENOISE",
+    "seed": 7,
+    "size": [
+      1080,
+      1920
+    ]
+  },
+  "files": {
+    "assets/scenes/title-hall.jpg": {
+      "sha256": "0e39fdd7c69f3c4a0017c8744b5839f537680ae36dd7bb8b2503fc8716bb8bea",
+      "bytes": 114802
+    },
+    "src/art/title.gen.ts": {
+      "sha256": "20016595a9afd9e816f1ed5301c92b0307743119d88d74b62d861b27ce5db328",
+      "bytes": 539
+    }
+  }
+}

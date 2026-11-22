@@ -2,7 +2,7 @@
 // (путь к 1.0, В2а) — семь смен по порядку; у пройденной — лучший итог; следующая открывается, когда пройдена
 // предыдущая — с любым итогом; следующая неделя — когда у каждой смены предыдущей есть итог.
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
 import { type Best, readBest } from '../state/progress';
 import { readStation } from '../state/station';
@@ -10,8 +10,9 @@ import { stationView } from '../state/stationView';
 import { FREE, type FreeChoice, freeId, freeOpen } from '../state/free';
 import { weekOpen, weekRows, weeksOf } from '../state/week';
 import { DB } from '../content/generated/db';
-import { Button, Txt } from '../ui/kit';
-import { C, R, S } from '../ui/theme';
+import { GLASS, UI } from '../scenes/palette';
+import { Button, Card, Row, Screen, Txt } from '../ui/kit';
+import { G, R, S, TOUCH } from '../ui/theme';
 
 export function WeekScreen({ onPick, onBack, onWeekEnd, onStation }: { onPick: (shiftId: string) => void; onBack: () => void; onWeekEnd: (week: string) => void; onStation: (week: string) => void }) {
   const [best, setBest] = useState<Record<string, Best> | null>(null);
@@ -35,43 +36,48 @@ export function WeekScreen({ onPick, onBack, onWeekEnd, onStation }: { onPick: (
   const weeks = weeksOf();
   const first = weeks[0].id;
   return (
-    <ScrollView contentContainerStyle={styles.root} testID="week">
+    <Screen
+      title={weeks[0].title}
+      lead={T.week.lead}
+      testID="week"
+      footer={<Button label={T.common.back} kind="ghost" onPress={onBack} testID="week-back" />}>
       {weeks.map((w, i) => {
         // у первой недели — прежние метки сценария в браузере, у следующих — с именем недели
         const tag = w.id === first ? '' : `${w.id.replace(/^week\./, '')}-`;
         const open = best ? weekOpen(best, w.id) : i === 0;
         const rows = best ? weekRows(best, DB, w.id) : [];
+        // следующая смена — первая открытая без итога: она подсвечена
+        const next = rows.find(r => r.open && !r.best)?.id;
         return (
           <View key={w.id} style={styles.week} testID={`week-section-${w.id}`}>
-            <Txt title style={styles.title}>{w.title}</Txt>
-            {i === 0 ? <Txt dim>{T.week.lead}</Txt> : null}
+            {i > 0 ? <Txt title style={styles.title}>{w.title}</Txt> : null}
             {!open ? <Txt dim testID={`week-${tag}locked`}>{T.week.weekLocked(weeks[i - 1].title)}</Txt> : null}
             {complete[w.id] ? <Button label={T.week.end} onPress={() => onWeekEnd(w.id)} testID={`week-end-open${tag ? `-${tag.slice(0, -1)}` : ''}`} /> : null}
             {started[w.id] && !complete[w.id] ? <Button label={T.week.station} kind="ghost" onPress={() => onStation(w.id)} testID={`week-station${tag ? `-${tag.slice(0, -1)}` : ''}`} /> : null}
             {rows.map(r => (
-              <Pressable
+              <Row
                 key={r.id}
                 disabled={!r.open}
                 onPress={() => onPick(r.id)}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !r.open }}
-                accessibilityLabel={T.week.label(r.n, r.day, r.open)}
+                label={T.week.label(r.n, r.day, r.open)}
                 testID={`week-${tag}${r.n}`}
-                style={({ pressed }) => [styles.row, !r.open && styles.locked, pressed && styles.pressed]}>
-                <Txt style={styles.head}>{T.week.head(r.n, r.day, T.pult.clock(r.from), T.pult.clock(r.to))}</Txt>
-                <Txt dim style={styles.what}>{r.what}</Txt>
-                <View>
-                  {r.best ? <Txt style={styles.best}>{T.week.best(r.best.inNorm, r.best.emergency)}</Txt> : null}
-                  {!r.open && open ? <Txt dim style={styles.best}>{T.week.locked(r.n - 1)}</Txt> : null}
+                style={[styles.row, r.id === next && styles.next]}>
+                <View style={[styles.no, r.best ? styles.noDone : r.id === next ? styles.noNext : null]}>
+                  <Txt style={[styles.noText, r.id === next && styles.noTextNext]}>{r.best ? '✓' : String(r.n)}</Txt>
                 </View>
-              </Pressable>
+                <View style={styles.rowText}>
+                  <Txt style={styles.head}>{T.week.head(r.n, r.day, T.pult.clock(r.from), T.pult.clock(r.to))}</Txt>
+                  <Txt dim style={styles.what}>{r.what}</Txt>
+                  {r.best ? <Txt style={styles.best}>{T.week.best(r.best.inNorm, r.best.emergency)}</Txt> : null}
+                  {!r.open && open ? <Txt dim style={styles.lockedText}>{T.week.locked(r.n - 1)}</Txt> : null}
+                </View>
+              </Row>
             ))}
           </View>
         );
       })}
       {best ? <FreeCard open={freeOpen(best)} best={best} onPick={onPick} /> : null}
-      <Button label={T.common.back} kind="ghost" onPress={onBack} testID="week-back" />
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -98,35 +104,43 @@ function FreeCard({ open, best, onPick }: { open: boolean; best: Readonly<Record
   const hoursAt = FREE.hours.indexOf(c.hours);
   const mine = best[freeId(c)];
   return (
-    <View style={[styles.row, !open && styles.locked]} testID="week-free">
+    <Card style={[styles.free, !open && styles.locked]} testID="week-free">
       <Txt style={styles.head}>{T.free.title}</Txt>
       <Txt dim style={styles.what}>{T.free.lead}</Txt>
-      {!open ? <Txt dim style={styles.best}>{T.free.locked}</Txt> : (
+      {!open ? <Txt dim style={styles.lockedText}>{T.free.locked}</Txt> : (
         <>
           <Step text={T.free.start(T.pult.clock(c.hour * 3600))} onLess={() => set({ hour: (c.hour + 23) % 24 })} onMore={() => set({ hour: (c.hour + 1) % 24 })} testID="free-hour" />
           <Step text={T.free.hours(c.hours)} onLess={() => set({ hours: FREE.hours[clamp(hoursAt - 1, 0, FREE.hours.length - 1)] })} onMore={() => set({ hours: FREE.hours[clamp(hoursAt + 1, 0, FREE.hours.length - 1)] })} testID="free-hours" />
           <Step text={T.free.general(c.general)} onLess={() => set({ general: clamp(c.general - 1, FREE.general.min, FREE.general.max) })} onMore={() => set({ general: clamp(c.general + 1, FREE.general.min, FREE.general.max) })} testID="free-general" />
           <Step text={T.free.resus(c.resus)} onLess={() => set({ resus: clamp(c.resus - 1, FREE.resus.min, FREE.resus.max) })} onMore={() => set({ resus: clamp(c.resus + 1, FREE.resus.min, FREE.resus.max) })} testID="free-resus" />
-          {mine ? <Txt dim style={styles.best}>{T.free.best(mine.inNorm, mine.emergency)}</Txt> : null}
+          {mine ? <Txt style={styles.best}>{T.free.best(mine.inNorm, mine.emergency)}</Txt> : null}
           <Button label={T.free.go} onPress={() => onPick(freeId(c))} testID="free-go" />
         </>
       )}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  step: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: G.s },
   stepText: { flex: 1, fontSize: S.small },
-  stepButton: { width: 44, height: 44, borderRadius: R.button, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  stepButton: { width: TOUCH, height: TOUCH, borderRadius: R.button, borderWidth: 1, borderColor: UI.line, backgroundColor: UI.bg, alignItems: 'center', justifyContent: 'center' },
   stepSign: { fontSize: S.lead, lineHeight: 26 },
-  root: { padding: 20, paddingTop: 40, gap: 12 },
-  title: { fontSize: S.hero, lineHeight: 44 },
-  week: { gap: 12 },
-  row: { padding: 14, borderRadius: R.card, backgroundColor: C.paper, borderWidth: 1, borderColor: C.line, gap: 4 },
-  locked: { opacity: 0.55 },
-  pressed: { opacity: 0.7 },
-  head: { fontSize: S.body, fontWeight: '600' },
+  title: { fontSize: S.title, lineHeight: 36, marginTop: G.m },
+  week: { gap: G.m },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: G.m },
+  next: { borderColor: UI.amber },
+  no: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: UI.line, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  noDone: { borderColor: UI.green, backgroundColor: 'rgba(127,179,163,0.16)' },
+  noNext: { borderColor: UI.amber, backgroundColor: UI.amber },
+  noText: { fontSize: 14, lineHeight: 18, fontWeight: '600', color: UI.text },
+  noTextNext: { color: UI.bg },
+  rowText: { flex: 1, gap: 3 },
+  free: { gap: G.s },
+  locked: { opacity: 0.5 },
+  pressed: { backgroundColor: GLASS.pressed },
+  head: { fontSize: S.body, lineHeight: 23, fontWeight: '600' },
   what: { fontSize: S.small, lineHeight: 20 },
-  best: { fontSize: S.small },
+  best: { fontSize: S.small, lineHeight: 20, color: UI.green },
+  lockedText: { fontSize: 13, lineHeight: 18 },
 });
