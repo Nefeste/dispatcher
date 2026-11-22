@@ -158,6 +158,8 @@ script:           # учебные звонки до потока: когда (�
 
 Ключи хранилища — `dispatcher.<ключ>.v1` (`KEYS` в `src/state/storage.ts`). Каждая версия с 0.24.0 оставляет образец
 своего хранилища (`tools/test/fixtures/saves/`), и тест читает все образцы нынешним кодом (`docs/06-testing.md`).
+С 0.25.0 всё хранилище переезжает с резервной копией Android (ADR [0010](adr/0010-android-backup.md)); новый ключ —
+решение «переезжает или нет» (`backup.test.ts`).
 
 Изменился смысл поля — версия схемы, шаг миграции и новый образец в `tools/test/fixtures/saves/`
 ([ADR 0004 устава](https://github.com/Nefeste/gornitsa/blob/main/adr/0004-pure-engine-snapshots.md)).

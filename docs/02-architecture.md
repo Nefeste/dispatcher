@@ -26,8 +26,9 @@
   `plugins/with-release-no-internet.js` вырезает сеть из манифеста варианта release, отладочной сборке сеть остаётся
   для Metro. Белый список разрешений — `.github/apk-permissions.txt` (часть П9): только `MODIFY_AUDIO_SETTINGS`
   (`expo-audio`) и служебное разрешение androidx; `VIBRATE` заблокирован — отклику на звонок
-  (`performAndroidHapticsAsync`) он не нужен. Сборка, подпись и проверки APK — [`05-process.md`](05-process.md),
-  «Сборка APK».
+  (`performAndroidHapticsAsync`) он не нужен. Резервная копия Android включена только для хранилища игры
+  (`plugins/with-backup.js`, ADR [0010](adr/0010-android-backup.md)): копию делает сам Android, сети игре не нужно.
+  Сборка, подпись и проверки APK — [`05-process.md`](05-process.md), «Сборка APK».
 - **Тесты — Bun** (`bun test tools/test`), сценарий в браузере — Playwright.
 
 ## 2. Слои
@@ -261,8 +262,8 @@ lineup)`), состав хранится в состоянии смены и с�
 | «Анамнез» | `src/engine/core/*`, модель медицины (§4), сборка содержания `tools/content/`, загрузка Skia в вебе, `android.yml` и плагины выпускной сборки — подпись и без сети (П9) |
 | «Больница» | поток по часам суток (`src/engine/shift/day.ts`, кривая скорой в `content/hospital/day.yaml`), подход «виртуального игрока» (`tools/sim/economy.ts`) |
 | «Вотчина» | свой диалог `src/ui/dialog.tsx`, механика `src/i18n/`, журнал сбоев, отчёт и граница ошибок (`src/state/crashlog.ts`, `report.ts`, `src/ui/ErrorBoundary.tsx`, с 0.25.0), хранилище и настройки |
-| «Козырь» | устройство экрана «Замер»: кадры двух потоков, итог текстом (П9) |
-| «Нарды» | тест плагина подписи (`signing.test.ts`); к 1.0 — плагин заставки `plugins/with-splash-window.js` и правила резервной копии Android |
+| «Козырь» | устройство экрана «Замер»: кадры двух потоков, итог текстом (П9); плагин резервной копии Android `plugins/with-backup.js` и его тест (оттуда — из «Нард»; с 0.25.0, ADR [0010](adr/0010-android-backup.md)) |
+| «Нарды» | тест плагина подписи (`signing.test.ts`); плагин заставки `plugins/with-splash-window.js` |
 | `gornitsa-kit` | CI: проверки на PR, подпись, проверка APK, загрузка в RuStore |
 
 ## 8. Проверки
