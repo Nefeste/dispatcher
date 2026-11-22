@@ -47,6 +47,21 @@ describe('звонок', () => {
 });
 
 describe('разговор', () => {
+  test('первые слова — о главной болезни: фоновая (давняя спина) — только если о главной сказать нечего', () => {
+    // игра владельца 22.11.2026: «спину прихватило», а на вопросы — жар и кашель
+    const main = (c: (typeof calls)[number], f: string) => c.patient.truth.findings.some(x => x.f === f && x.cause === c.condition);
+    let checked = 0;
+    for (const c of calls) {
+      const fw = firstWords(DB, c);
+      if (!fw.learned.length) continue;
+      const hasMainReason = Object.values(DB.phone.reasons).some(r => r.when.some(f => main(c, f) && c.knows[f]) && (!DB.phone.callers[c.caller].self || r.words.self.length));
+      if (!hasMainReason) continue;
+      expect(fw.learned.some(l => main(c, l.f)), `${c.condition}: ${fw.reason}`).toBe(true);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(100);
+  });
+
   test('звонящий не врёт: первые слова и все вопросы', () => {
     for (const c of calls) {
       const fw = firstWords(DB, c);

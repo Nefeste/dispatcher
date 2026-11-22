@@ -3,7 +3,7 @@
 // «Козыря» (durak: tools/test/make-save-fixture.ts @ ce28e06), ключи — «Диспетчера»:
 //   - первая смена недели сыграна до конца ботом «по правилам» — станция, журнал недели и лучший итог;
 //   - решение на станции, если оно возможно;
-//   - вторая смена идёт: двадцать команд через сессию, сохранение — как его пишет игра;
+//   - вторая смена идёт: двадцать команд через сессию, сохранение — как его пишет игра; с 0.28.0 — и перезвон ждущему;
 //   - настройки не по умолчанию и одна запись журнала сбоев (журнал — с 0.25.0; в коде 0.24.0 его нет — записей ноль).
 //
 // Образец 0.24.0 записан кодом тега `v0.24.0` этим же файлом и `phone.ts`, положенными в его рабочую копию.
@@ -54,8 +54,8 @@ const { s: s1 } = play(ctx1, 101, BOTS.rules);
 await recordShiftOnce(ctx1, s1);
 const t1 = totals(ctx1, s1);
 await recordBest(week[0].id, { emergency: t1.emergency, inNorm: t1.inNorm, urgentMedian: t1.urgentMedian, accepted: t1.accepted });
-// решение на станции — какое возможно: укладки, иначе ничего
-await decideAndSave({ d: 'kits' });
+// решение на станции — какое возможно: укладки бригад, у которых неполные, иначе ничего
+await decideAndSave({ d: 'kits', crews: Object.keys((await readStation()).kits) });
 
 // журнал сбоев — одна запись
 if (crash) {
@@ -77,6 +77,28 @@ for (let i = 0; i < 200_000; i++) {
     if (session.command(cmd)) break;
   } else {
     if (x.speed === 0) session.setSpeed(4);
+    session.tick(1000);
+  }
+}
+// перезвон ждущему (с 0.28.0): смена идёт, пока вызов не ждёт бригаду при свободной линии, — тогда `dial`, вопрос и
+// «Оставить ждать»; в коде до 0.28.0 команды нет — отказ, и записано как было
+for (let i = 0; i < 200_000; i++) {
+  const y = session.session()!;
+  if (y.log.length >= 120 || y.s.over) break;
+  const wait = y.s.calls.find(c => c.state === 'wait');
+  if (wait && !y.s.open && !y.s.rings.length) {
+    if (!session.command({ c: 'dial', call: wait.id })) {
+      const q = Object.keys(DB.phone.questions).find(id => !wait.asked.some(a => a.q === id));
+      if (q) session.command({ c: 'ask', q });
+      session.command({ c: 'hold', call: wait.id });
+    }
+    break;
+  }
+  const cmd = botMove(y.ctx, y.s, BOTS.rules);
+  if (cmd) {
+    if (session.command(cmd)) break;
+  } else {
+    if (y.speed === 0) session.setSpeed(4);
     session.tick(1000);
   }
 }

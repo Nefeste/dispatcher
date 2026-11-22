@@ -64,7 +64,32 @@ const WEEK = weekStorage();
 const errors: string[] = [];
 let shot = 0;
 let checks = 0;
-const snap = async (p: Page, name: string) => p.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`) });
+/** Текст кнопок — внутри кнопки (игра владельца 22.11.2026: «В поликлинику» не помещалось): у каждой видимой кнопки
+ *  ни одна строка текста не выходит за её края. Проверяется на каждом снимке. */
+async function buttonsFit(p: Page, name: string): Promise<void> {
+  const out = await p.evaluate(() => {
+    const bad: string[] = [];
+    for (const b of Array.from(document.querySelectorAll<HTMLElement>('[role="button"]'))) {
+      const r = b.getBoundingClientRect();
+      if (!r.width || !r.height || getComputedStyle(b).visibility === 'hidden') continue;
+      const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        const t = range.getBoundingClientRect();
+        if (t.left < r.left - 1 || t.right > r.right + 1) bad.push(`«${n.textContent.trim().slice(0, 40)}»: текст ${Math.round(t.width)} px, кнопка ${Math.round(r.width)} px`);
+      }
+    }
+    return bad;
+  });
+  if (out.length) throw new Error(`${name}: текст не помещается в кнопку\n${out.join('\n')}`);
+  checks++;
+}
+const snap = async (p: Page, name: string) => {
+  await buttonsFit(p, name);
+  return p.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`) });
+};
 const see = async (p: Page, id: string, text?: string) => {
   const el = p.getByTestId(id);
   await el.waitFor({ state: 'visible', timeout: 15000 });
@@ -178,8 +203,19 @@ try {
   await page.getByTestId('call-q-q.age').click();
   await page.waitForTimeout(300);
   await snap(page, 'call-asked');
+  // «Без выезда» — с подтверждением: «Вернуться к разговору» оставляет вызов открытым (игра владельца 22.11.2026)
+  await page.getByTestId('call-form-none').click();
+  await page.getByText('Закрыть вызов без бригады?').waitFor({ state: 'visible', timeout: 5000 });
+  await page.getByText('Вернуться к разговору', { exact: true }).click();
+  await see(page, 'call-q-q.age');
+  checks++;
   await page.getByTestId('call-form-emergency').click();
   await see(page, 'hint', 'ближайшей бригаде');
+  await see(page, 'call-crews', 'Кого послать');
+  // «Ещё спросить» — вопросы снова, форму можно назвать заново
+  await page.getByTestId('call-more').click();
+  await see(page, 'call-q-q.age');
+  await page.getByTestId('call-form-emergency').click();
   await see(page, 'call-crews', 'Кого послать');
   await snap(page, 'call-crews');
   await page.getByTestId('call-crew-0').click();
@@ -198,7 +234,7 @@ try {
   const visible = async (id: string) => (await page.getByTestId(id).count()) > 0 && page.getByTestId(id).first().isVisible();
   // экран живой: часы идут, строки пересобираются — касание, которое не успело, просто повторится на следующем шаге
   const tap = (id: string) => page.getByTestId(id).first().click({ timeout: 1500 }).then(() => true, () => false);
-  let calls = 1, reports = 0, held = 0, picked = 0, shotReport = false, shotWaiting = false, lastTile = 0, snags = 0, onsite = 0;
+  let calls = 1, reports = 0, held = 0, picked = 0, shotReport = false, shotWaiting = false, dialed = 0, lastTile = 0, snags = 0, onsite = 0;
   for (let i = 0; i < 3000; i++) {
     if (await visible('end')) break;
     const snag = (await visible('snag-door')) ? 'door' : (await visible('snag-address')) ? 'address' : (await visible('snag-victim')) ? 'victim' : null;
@@ -240,7 +276,22 @@ try {
       await page.waitForTimeout(200);
     } else if (await visible('crews')) {
       if (!shotWaiting) { await snap(page, 'pult-waiting'); shotWaiting = true; }
-      if (await visible('crews-0')) { if (await tap('crews-0')) picked++; }
+      // первый раз — перезвонить ждущему (игра владельца 22.11.2026): разговор открывается снова
+      if (!dialed && (await visible('crews-dial')) && (await tap('crews-dial'))) {
+        if (await visible('call')) {
+          const said = (await page.getByTestId('call-said').getAttribute('aria-label')) ?? '';
+          if (!said.includes('Скорая беспокоит')) throw new Error(`перезвон: на экране «${said}»`);
+          // перезвонили — сначала вопросы и формы, не окно бригад
+          await see(page, 'call-form-emergency');
+          if (await visible('call-crews')) throw new Error('перезвон: сразу окно бригад');
+          await snap(page, 'call-dialed');
+          dialed++;
+        }
+      } else if (!dialed) {
+        // линия занята — «Перезвонить» нет: окно закрыть и попробовать снова, когда линия освободится (бригаду не слать —
+        // ждущий нужен для перезвона)
+        await tap('crews-close');
+      } else if (await visible('crews-0')) { if (await tap('crews-0')) picked++; }
       else await tap('crews-close');
     } else if (await visible('pult')) {
       const now = await speed();
@@ -252,9 +303,10 @@ try {
     } else await page.waitForTimeout(100);
   }
   await see(page, 'end-emergency', 'Экстренные с доездом до 20 минут');
-  console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта, ${snags} просьб на месте, ${onsite} вставок на месте`);
+  console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта, ${dialed} перезвон, ${snags} просьб на месте, ${onsite} вставок на месте`);
   // зерно 2 — подъезд закрыт на первом звонке потока: просьба и вставка на месте должны быть
   if (!snags || !onsite) throw new Error('не было просьбы бригады на месте или вставки на месте');
+  if (!dialed) throw new Error('ждущему не перезвонили: «Перезвонить» не было на свободной линии');
   // послать с пульта удаётся, только когда свободна бригада, — это не всегда; звонки и доклады — всегда
   // первая смена недели — учебная, поток вполовину (§8 геймдизайна): около девяти звонков
   if (calls < 7 || reports < 1) throw new Error('смена прошла не вся');
@@ -269,6 +321,9 @@ try {
   // разбор вызова: разговор, решение, по известному и по правде — отдельно
   if (await visible('review-main-call')) await page.getByTestId('review-main-call').click();
   else await page.getByTestId('review-row-1').click();
+  // адрес вызова — улица и дом из OpenStreetMap (игра владельца 22.11.2026)
+  await see(page, 'call-review-address');
+  checks++;
   await see(page, 'call-review-known', 'По известному');
   await see(page, 'call-review-truth', 'По правде');
   await snap(page, 'call-review');
@@ -290,26 +345,37 @@ try {
   await page.getByTestId('station-close').click();
   await page.getByTestId('station-roster').click();
   await see(page, 'station-panel-roster', 'Табель на смену 2');
+  await snap(page, 'station-roster');
+  // из табеля — в «Закупки» (игра владельца 22.11.2026: «как попасть в меню закупки?»)
+  await page.getByTestId('station-roster-shop').click();
+  await see(page, 'station-panel-shop', 'Закупки станции');
   // после первой смены на новую бригаду фонда ещё нет: машина и два фельдшера — 320 тыс.
   await see(page, 'station-crew-base.north', 'не хватает фонда');
-  await snap(page, 'station-roster');
+  await see(page, 'station-stock-base.north', 'Склад на подстанции');
   await page.getByTestId('station-close').click();
-  await page.getByTestId('station-bag').click();
-  await see(page, 'station-panel-bag', 'Укладки бригад');
-  const refill = (await page.getByTestId('station-kits').count()) > 0 && !(await page.getByTestId('station-kits').innerText()).includes('укладки полные');
+  // «Закупки» — и кнопкой внизу станции: укладки — отметить бригады и заказать одним решением
+  await page.getByTestId('station-shop').click();
+  await see(page, 'station-panel-shop', 'Пополнить укладки');
+  const refill = (await page.getByTestId('station-kits').count()) > 0 && !(await page.getByTestId('station-kits').innerText()).includes('Отметьте');
   if (refill) {
+    await see(page, 'station-kits', 'Заказать на');
     await page.getByTestId('station-kits').click();
     await page.getByRole('button', { name: 'Да', exact: true }).click();
     await see(page, 'station-fund', 'решений осталось: 2 из 3');
   }
-  await snap(page, 'station-bag');
+  await snap(page, 'station-shop');
   await page.getByTestId('station-close').click();
   console.log(`станция: ${(await page.getByTestId('station-fund').innerText()).trim()}${refill ? ', укладки пополнены' : ''}`);
   // «К неделе»: первая смена пройдена — вторая открыта, у первой — лучший итог
   await page.getByTestId('station-week').click();
   await see(page, 'week-1', 'Лучший итог');
   await see(page, 'week-2', 'Понедельник, вечер');
+  // неделя начата — с выбора смены есть путь на станцию
+  await see(page, 'week-station', 'Станция');
   await snap(page, 'week-after');
+  await page.getByTestId('week-station').click();
+  await see(page, 'station-next', 'Смена 2');
+  await page.getByTestId('station-week').click();
   await page.getByTestId('week-back').click();
   await see(page, 'title-name');
   // неделя начата — «Продолжить неделю» ведёт на станцию (срез, С8; §3, шаг 1)

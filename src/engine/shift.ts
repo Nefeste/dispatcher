@@ -15,7 +15,7 @@ import { edgeTimes, type Road, roadOf } from './road/graph';
 import { arrival, passed } from './road/pos';
 import { FAR, search } from './road/route';
 import {
-  ADDRESS_CHANCE, ADDRESS_NEAR, ADDRESS_SEARCH, AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, CLINIC_ARRIVE, CLINIC_HOURS, DECIDE, DOOR_CHANCE, DOOR_WAIT, HANDOVER, NORM_EMERGENCY,
+  ADDRESS_CHANCE, KIT, KIT_PLUS, RESTOCK, RESTOCK_FAST, ADDRESS_NEAR, ADDRESS_SEARCH, AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, CLINIC_ARRIVE, CLINIC_HOURS, DECIDE, DOOR_CHANCE, DOOR_WAIT, HANDOVER, NORM_EMERGENCY,
   NORM_URGENT, REPEAT, REPORT_WAIT, SNAG_PHONE, VICTIM_CHANCE, VICTIM_EXTRA, VICTIM_SCENE,
 } from './rules';
 import { formByKnown, formByTruth, threatsHeard } from './form';
@@ -155,6 +155,8 @@ export interface CallRec {
   answeredAt: number | null;
   /** когда открыт этот разговор — последний раз; повторный звонок открывает его снова */
   openedAt: number | null;
+  /** диспетчер сам перезвонил ждущему (игра владельца 22.11.2026): когда в последний раз; нет — не перезванивал */
+  dialedAt?: number;
   /** первые слова и повод */
   first: { reason: string; words: string; learned: Learned[] } | null;
   asked: Asked[];
@@ -223,6 +225,9 @@ export interface Lineup {
   kits: Readonly<Record<string, number>>;
   /** бригады, которые станция обучила до реанимационных (срез, С4): выходят реанимационными */
   trained: readonly string[];
+  /** бригады с расширенной укладкой и подстанции со складом (игра владельца 22.11.2026, §15); нет — без них */
+  plus?: readonly string[];
+  stock?: readonly string[];
 }
 
 export const NO_LINEUP: Lineup = { extra: [], kits: {}, trained: [] };
@@ -273,10 +278,12 @@ export type Command =
   /** ответ на просьбу не про медицину: перезвонить звонящему, послать ещё бригаду `crew`, «ждите» / «справитесь сами» */
   | { c: 'snag'; call: string; act: 'phone' | 'send' | 'wait'; crew?: string }
   /** неотложный вызов — в неотложную помощь поликлиники (срез, С5), в её часы */
-  | { c: 'pass'; call: string };
+  | { c: 'pass'; call: string }
+  /** перезвонить звонящему вызова, который ждёт бригаду, — уточнить (игра владельца 22.11.2026); набор — минута */
+  | { c: 'dial'; call: string };
 
 /** Почему команду не приняли; слова — src/i18n (T.refusal). */
-export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus' | 'clinicClosed' | 'clinicBack';
+export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus' | 'clinicClosed' | 'clinicBack' | 'ringing' | 'notWaiting';
 
 const lengthOf = (ctx: ShiftCtx) => ctx.setup.length * 1000;
 
@@ -294,7 +301,12 @@ export function newShift(ctx: ShiftCtx, seed: number, lineup: Lineup = NO_LINEUP
   const crews = [...ctx.setup.crews, ...lineup.extra.filter(x => !ctx.setup.crews.some(c => c.id === x.id))];
   const s: Shift = {
     setup: ctx.setup.id, seed: seed >>> 0, lineup, t: 0, rev: 0, n: 0, script: 0, nextRing: FAR, flowN: 0,
-    rings: [], calls: [], crews: crews.map(c => crewAtBase(c.id, lineup.trained.includes(c.id) ? 'crew.resus' : c.kind, node(c.base), lineup.kits[c.id])), open: null, notices: [], trail: [], over: false,
+    rings: [], calls: [],
+    crews: crews.map(c => crewAtBase(
+      c.id, lineup.trained.includes(c.id) ? 'crew.resus' : c.kind, node(c.base), lineup.kits[c.id],
+      KIT + (lineup.plus?.includes(c.id) ? KIT_PLUS : 0), lineup.stock?.includes(c.base) ? RESTOCK_FAST : RESTOCK,
+    )),
+    open: null, notices: [], trail: [], over: false,
   };
   // поток — после последнего учебного звонка
   const last = ctx.setup.script.length ? ctx.setup.script[ctx.setup.script.length - 1].at * 1000 : 0;
@@ -844,6 +856,22 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
         call.state = 'talk';
       }
       runTo(ctx, s, s.t + ANSWER);
+      return null;
+    }
+    case 'dial': {
+      // линия одна: пока звонит телефон или открыт разговор — нельзя
+      if (open) return 'talking';
+      if (s.rings.length) return 'ringing';
+      const call = callOf(s, cmd.call);
+      if (!call) return 'unknown';
+      if (call.state !== 'wait') return 'notWaiting';
+      s.open = call.id;
+      call.openedAt = s.t;
+      call.dialedAt = s.t;
+      call.state = 'talk';
+      // пока говорят, сам звонящий не перезвонит; оставят ждать — срок повторного звонка заново (hold)
+      call.repeatAt = null;
+      runTo(ctx, s, s.t + SNAG_PHONE);
       return null;
     }
     case 'ask': {

@@ -7,7 +7,7 @@ import { type CallReview, heardAt, type Mistake, review, type Tier } from '../en
 import type { CallRec, Shift, ShiftCtx } from '../engine/shift';
 import { ask, render } from '../engine/talk';
 import { type Totals, totals } from '../engine/totals';
-import { callNo, crewNo } from './callView';
+import { addressOf, type CallAddress, callNo, crewNo } from './callView';
 
 export interface ReviewRow {
   id: string;
@@ -47,6 +47,8 @@ export interface MistakeView {
 
 export interface CallDetail {
   row: ReviewRow;
+  /** улица и дом вызова (игра владельца 22.11.2026) */
+  address: CallAddress | null;
   who: string;
   self: boolean;
   lines: { q: string | null; words: string; clock: number }[];
@@ -147,7 +149,7 @@ export function reviewView(ctx: ShiftCtx, s: Shift): ReviewView {
     ];
     const name = MED.conditions[x.truth.condition].name.ru;
     return {
-      row: rowOf(c), who: x.truth.relation.caller, self: ctx.db.phone.callers[x.truth.caller].self, lines, decided: c.decided, known: c.known, changed: c.changed,
+      row: rowOf(c), address: addressOf(ctx, s, x), who: x.truth.relation.caller, self: ctx.db.phone.callers[x.truth.caller].self, lines, decided: c.decided, known: c.known, changed: c.changed,
       threats: threatsAt(x), cleared: clearedAt(x),
       crew: x.crew ? crewNo(x.crew) : null, hospital: x.hospital ? hospitalName(x.hospital) : null,
       clinic: x.clinic ? (x.clinic.back ?? 'served') : null,

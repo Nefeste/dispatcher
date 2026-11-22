@@ -6,16 +6,16 @@
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
-import { Canvas, Group, Image, LinearGradient, Rect, rect, RoundedRect, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
+import { Canvas, Circle, Group, Image, LinearGradient, Rect, rect, RoundedRect, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { QuestionGroup } from '../../content/types';
 import { T } from '../../i18n';
 import { useTextScale } from '../../ui/textScale';
-import type { CallView } from '../../state/callView';
+import type { CallView, CardRow } from '../../state/callView';
 import { ProgramPanel } from '../panel';
 import { FORM, SCENE, UI } from '../palette';
-import { pictureRect, callLayout, fit, wrap } from './layout';
+import { pictureRect, callLayout, fit, fitLabel, wrap } from './layout';
 
 /** Картинки звонящих (assets/scenes/callers.json) — по имени из записи звонящего. */
 const PICTURES: Record<string, number> = {
@@ -62,7 +62,9 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
   const hasPicture = Boolean(view.picture && PICTURES[view.picture]);
   const bubbleMax = W - 24 - 28;
   // вызов вернулся из поликлиники: говорит её врач (срез, С5)
-  const said = view.clinic ? T.call.clinic[view.clinic] : view.said;
+  const said = view.clinic ? T.call.clinic[view.clinic] : view.dialed ? T.call.dialAnswer : view.said;
+  // строка диспетчера над словами звонящего — как по телефону: «Скорая, слушаю», перезвон, заданный вопрос
+  const meText = view.me.kind === 'asked' ? view.me.text : view.me.kind === 'dial' ? T.call.me.dial : T.call.me.answer;
   const lines = wrap(T.call.quote(said), bubbleMax, x => tw(big, x), 3);
   const bubbleW = Math.min(W - 24, Math.max(...lines.map(l => tw(big, l))) + 28);
   const bubbleH = lines.length * 20 * s + 16;
@@ -71,8 +73,15 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
   const who = `${whoWord}${view.repeat && !view.clinic ? ` · ${T.call.repeat}` : ''}`;
   const timer = T.call.timer(view.seconds);
   // карточка: повод — всегда, дальше — последние ответы, сколько помещается
-  const rows = view.rows.length <= L.rows ? view.rows : [view.rows[0], ...view.rows.slice(view.rows.length - (L.rows - 1))];
+  // адрес — сразу под поводом, всегда (игра владельца 22.11.2026: «улица и дом нигде не показываются»)
+  const addr: CardRow[] = view.address ? [{ label: T.call.addressLabel, value: T.call.address(view.address) }] : [];
+  const rest = L.rows - 1 - addr.length;
+  const rows = [view.rows[0], ...addr, ...(view.rows.length - 1 <= rest ? view.rows.slice(1) : view.rows.slice(view.rows.length - rest))];
   const decided = view.form === 'emergency' || view.form === 'urgent';
+  // «Ещё спросить» (игра владельца 22.11.2026): форма названа, бригаду не послали — можно вернуться к вопросам и
+  // назвать форму снова; разговор новый — снова окно бригад; перезвонили ждущему — сначала вопросы
+  const [asking, setAsking] = useState(view.dialed);
+  const crewsOpen = decided && !asking;
   const qs = view.groups.find(g => g.id === group)?.questions ?? [];
   // вкладки: ширина — по длине слова
   const tabNames = view.groups.map(g => T.call.tabs[g.id]);
@@ -85,6 +94,14 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
 
   return (
     <View style={{ width: W, height: H }} testID="call">
+      {/* слова разговора нарисованы Skia — для чтения с экрана они же подписью над картинкой */}
+      <View
+        style={{ position: 'absolute', left: 0, top: L.picture.y, width: W, height: L.picture.h }}
+        pointerEvents="none"
+        accessible
+        accessibilityLabel={`${meText}. ${who}: ${said}`}
+        testID="call-said"
+      />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <Canvas style={StyleSheet.absoluteFill}>
           <Rect x={0} y={0} width={W} height={H} color={SCENE.hallTop} />
@@ -106,6 +123,22 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
           <Rect x={0} y={L.picture.y + L.picture.h * 0.45} width={W} height={L.picture.h * 0.55 + 2}>
             <LinearGradient start={vec(0, L.picture.y + L.picture.h * 0.45)} end={vec(0, L.picture.y + L.picture.h)} colors={['rgba(14,18,21,0)', 'rgba(14,18,21,0.92)']} />
           </Rect>
+          {/* что сказал диспетчер — справа, тёмной строкой; что сказал звонящий — ниже, светлой */}
+          {small ? (() => {
+            // длинный вопрос — в две строки, не обрезая (игра владельца 22.11.2026: текст не помещается)
+            const meLines = wrap(meText, W * 0.72 - 24, x => tw(small, x), 2);
+            const w = Math.min(W * 0.72, Math.max(...meLines.map(l => tw(small, l))) + 24);
+            const h = meLines.length * 17 * s + 8;
+            const y = bubbleY - 8 - 14 * s - h - 6;
+            return (
+              <Group>
+                <RoundedRect x={W - 12 - w} y={y} width={w} height={h} r={12} color={UI.panel} opacity={0.94} />
+                {meLines.map((l, i) => (
+                  <SkText key={i} x={W - 12 - w + 12} y={y + 4 + (i + 1) * 17 * s - 4 * s} text={l} font={small} color={UI.text} />
+                ))}
+              </Group>
+            );
+          })() : null}
           {/* что сказал звонящий */}
           {small ? <SkText x={16} y={bubbleY - 8} text={who} font={small} color={view.repeat ? UI.amber : UI.dim} /> : null}
           <RoundedRect x={12} y={bubbleY} width={bubbleW} height={bubbleH} r={16} color={UI.text} opacity={0.96} />
@@ -128,7 +161,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
               </Group>
             );
           })}
-          {!decided ? (
+          {!crewsOpen ? (
             <Group>
               {/* вкладки групп вопросов */}
               {view.groups.map((g, i) => {
@@ -137,7 +170,9 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
                 return (
                   <Group key={g.id}>
                     <RoundedRect x={r.x} y={L.tabs.y + 8} width={r.w} height={L.tabs.h - 16} r={14} color={on ? UI.line : UI.panel} />
-                    {small ? <SkText x={r.x + r.w / 2 - tw(small, tabNames[i]) / 2} y={L.tabs.y + L.tabs.h / 2 + 4 * s} text={tabNames[i]} font={small} color={on ? UI.text : UI.dim} /> : null}
+                    {small ? <Label font={small} variants={[tabNames[i]]} cx={r.x + r.w / 2} y={L.tabs.y + L.tabs.h / 2 + 4 * s} max={r.w - 8} color={on ? UI.text : UI.dim} /> : null}
+                    {/* в группе есть вопрос, который может решить форму (docs/specs/2026-11-call-flow.md, §5) */}
+                    {g.questions.some(q => q.hint) ? <Circle cx={r.x + r.w - 7} cy={L.tabs.y + 13} r={3.5 * s} color={UI.amber} /> : null}
                   </Group>
                 );
               })}
@@ -153,6 +188,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
                     <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={UI.line} style="stroke" strokeWidth={1} />
                     {small ? textLines.map((l, j) => <SkText key={j} x={r.x + 10} y={r.y + r.h / 2 + (j - (textLines.length - 1) / 2) * 15 * s + 4 * s} text={l} font={small} color={UI.text} />) : null}
                     {small ? <SkText x={r.x + r.w - 8 - tw(small, cost)} y={r.y + r.h - 8} text={cost} font={small} color={UI.amber} /> : null}
+                    {q.hint ? <Circle cx={r.x + r.w - 10} cy={r.y + 10} r={4 * s} color={UI.amber} /> : null}
                   </Group>
                 );
               })}
@@ -167,14 +203,14 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
               <Group key={kind}>
                 <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={color} opacity={kind === 'none' ? 0.35 : decided && !chosen ? 0.5 : 1} />
                 {chosen ? <RoundedRect x={r.x - 2} y={r.y - 2} width={r.w + 4} height={r.h + 4} r={12} color={UI.text} style="stroke" strokeWidth={2} /> : null}
-                {bold ? <SkText x={r.x + r.w / 2 - tw(bold, `${letter}  ${name}`) / 2} y={r.y + r.h / 2 + 5 * s} text={`${letter}  ${name}`} font={bold} color={kind === 'none' ? UI.text : UI.bg} /> : null}
+                {bold ? <Label font={bold} variants={[`${letter}  ${name}`, name]} cx={r.x + r.w / 2} y={r.y + r.h / 2 + 5 * s} max={r.w - 8} color={kind === 'none' ? UI.text : UI.bg} /> : null}
               </Group>
             );
           })}
         </Canvas>
       </View>
 
-      {!decided
+      {!crewsOpen
         ? view.groups.map((g, i) => (
             <Pressable
               key={g.id}
@@ -187,7 +223,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
             />
           ))
         : null}
-      {!decided
+      {!crewsOpen
         ? qs.map((q, i) =>
             L.questions[i] ? (
               <Pressable
@@ -195,28 +231,41 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
                 style={[styles.abs, { left: L.questions[i].x, top: L.questions[i].y, width: L.questions[i].w, height: L.questions[i].h }]}
                 onPress={() => onAsk(q.id)}
                 accessibilityRole="button"
-                accessibilityLabel={T.call.questionLabel(q.text, q.cost)}
+                accessibilityLabel={`${T.call.questionLabel(q.text, q.cost)}${q.hint ? `. ${T.call.hint}` : ''}`}
                 testID={`call-q-${q.id}`}
               />
             ) : null,
           )
         : null}
-      {decided ? (
+      {crewsOpen ? (
         <View style={[styles.abs, { left: L.choice.x, top: L.choice.y, width: L.choice.w, height: L.choice.h }]}>
           <ProgramPanel
             testID="call-crews"
             title={T.crews.head(view.no)}
             empty={T.crews.none}
-            rows={view.options.map((o, i) => ({
-              key: o.crew,
-              text: T.crews.row(o.no, o.kind, o.minutes),
-              mark: o.redirect ? T.crews.redirect : undefined,
-              label: T.crews.label(o.no, o.kind, o.minutes, o.redirect),
-              onPress: () => onSend(o.crew),
-              testID: `call-crew-${i}`,
-            }))}
+            rows={[
+              // врач поликлиники на дом — первой строкой и с объяснением: что это и чем кончится (игра владельца 22.11.2026)
+              ...(view.pass ? [{
+                key: 'pass',
+                text: T.crews.pass,
+                sub: T.crews.passSub(view.clinicMin[0], view.clinicMin[1]),
+                mark: T.crews.passMark,
+                label: `${T.crews.pass}. ${T.crews.passSub(view.clinicMin[0], view.clinicMin[1])}`,
+                onPress: onPass,
+                testID: 'call-pass',
+              }] : []),
+              ...view.options.map((o, i) => ({
+                key: o.crew,
+                text: T.crews.row(o.no, o.kind, o.minutes),
+                mark: o.redirect ? T.crews.redirect : undefined,
+                label: T.crews.label(o.no, o.kind, o.minutes, o.redirect),
+                onPress: () => onSend(o.crew),
+                testID: `call-crew-${i}`,
+              })),
+            ]}
+            note={view.passClosed ? T.crews.passClosed(view.clinicHours[0], view.clinicHours[1]) : undefined}
             actions={[
-              ...(view.pass ? [{ label: T.crews.pass, onPress: onPass, testID: 'call-pass' }] : []),
+              { label: T.crews.more, onPress: () => setAsking(true), testID: 'call-more' },
               { label: T.crews.hold, onPress: onHold, testID: 'call-hold' },
             ]}
           />
@@ -226,13 +275,24 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
         <Pressable
           key={kind}
           style={[styles.abs, { left: L.forms[i].x, top: L.forms[i].y, width: L.forms[i].w, height: L.forms[i].h }]}
-          onPress={() => onForm(kind)}
+          onPress={() => { setAsking(false); onForm(kind); }}
           accessibilityRole="button"
           accessibilityLabel={T.call.formLabel(name)}
           testID={`call-form-${kind}`}
         />
       ))}
     </View>
+  );
+}
+
+/** Подпись кнопки Skia по середине `cx`: длинный вариант, если помещается, иначе короткий, иначе уменьшенный
+ *  (`fitLabel`) — текст никогда не выходит за кнопку (игра владельца 22.11.2026). */
+function Label({ font, variants, cx, y, max, color }: { font: SkFont; variants: readonly string[]; cx: number; y: number; max: number; color: string }) {
+  const { text, scale } = fitLabel(variants, max, x => tw(font, x));
+  return (
+    <Group origin={vec(cx, y)} transform={[{ scale }]}>
+      <SkText x={cx - tw(font, text) / 2} y={y} text={text} font={font} color={color} />
+    </Group>
   );
 }
 

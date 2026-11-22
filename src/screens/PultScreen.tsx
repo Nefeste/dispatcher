@@ -10,7 +10,7 @@ import { textScale } from '../ui/textScale';
 import { CrewLayer } from '../scenes/pult/CrewLayer';
 import { PultScene } from '../scenes/pult/PultScene';
 import { ProgramPanel } from '../scenes/panel';
-import { crewNo } from '../state/callView';
+import { addressOf, crewNo } from '../state/callView';
 import { crewAt, crewCard, crewPoint } from '../state/crewView';
 import { mark } from '../state/marks';
 import { pultView } from '../state/pultView';
@@ -162,11 +162,17 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
     );
   } else if (picked) {
     const opts = crewOptions(ctx, s, picked.id);
+    const lineBusy = s.rings.length > 0 || s.open !== null;
+    const pickedCall = s.calls.find(c => c.id === picked.id);
+    const pickedAddress = pickedCall ? addressOf(ctx, s, pickedCall) : null;
     panel = (
       <ProgramPanel
         testID="crews"
         title={T.crews.head(picked.no)}
+        lead={pickedAddress ? T.call.address(pickedAddress) : undefined}
         empty={T.crews.none}
+        // линия одна: пока звонит телефон или идёт разговор, перезвонить нельзя — так и сказано
+        note={lineBusy ? T.refusal.ringing : undefined}
         rows={opts.map((o, i) => {
           const kind = ctx.db.crews[s.crews.find(c => c.id === o.crew)!.kind].name;
           const min = Math.ceil(o.eta / 60_000);
@@ -179,7 +185,11 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
             testID: `crews-${i}`,
           };
         })}
-        actions={[{ label: T.crews.close, onPress: () => setPick(null), testID: 'crews-close' }]}
+        actions={[
+          // перезвонить ждущему — уточнить, пока линия свободна (игра владельца 22.11.2026)
+          ...(lineBusy ? [] : [{ label: T.crews.dial, onPress: () => { if (!command({ c: 'dial', call: picked.id })) { setPick(null); onCall(); } }, testID: 'crews-dial' }]),
+          { label: T.crews.close, onPress: () => setPick(null), testID: 'crews-close' },
+        ]}
       />
     );
   } else if (crewPick) {
@@ -196,6 +206,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
             T.crewCard.state[state],
             T.crewCard.kit(c.kit),
             ...(c.call ? [T.crewCard.call(c.call.no, c.call.form && c.call.form !== 'none' ? T.review.formWord[c.call.form] : null)] : []),
+            ...(c.call?.address ? [T.call.address(c.call.address)] : []),
             ...(c.hospital ? [T.crewCard.hospital(c.hospital)] : []),
           ].join('\n')}
           note={left ?? undefined}

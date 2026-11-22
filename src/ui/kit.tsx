@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   ghost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.8 },
-  buttonText: { color: C.kumachInk, fontSize: S.body, fontFamily: FONTS.bold },
+  buttonText: { color: C.kumachInk, fontSize: S.body, fontFamily: FONTS.bold, textAlign: 'center' },
   ghostText: { color: C.ink },
   // на тёмной сцене (рабочее место): прозрачная, светлая рамка и текст
   onDark: { backgroundColor: 'rgba(20,26,31,0.55)', borderWidth: 1, borderColor: 'rgba(230,233,228,0.5)' },
