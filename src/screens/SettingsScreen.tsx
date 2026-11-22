@@ -15,7 +15,7 @@ import { C, R, S } from '../ui/theme';
 
 type Key = 'autopause' | 'sound' | 'haptics' | 'lessMotion' | 'softOutcome';
 
-export function SettingsScreen({ settings, system, onChange, onBack }: { settings: Settings; system: boolean; onChange: (s: Settings) => void; onBack: () => void }) {
+export function SettingsScreen({ settings, system, onChange, onBack, onReport }: { settings: Settings; system: boolean; onChange: (s: Settings) => void; onBack: () => void; onReport: () => void }) {
   const [s, setS] = useState(settings);
   const value = (k: Key) => (k === 'lessMotion' ? lessMotionOf(s, system) : s[k]);
   const toggle = (k: Key) => {
@@ -67,6 +67,7 @@ export function SettingsScreen({ settings, system, onChange, onBack }: { setting
         </View>
         <Txt style={styles.on}>{T.settings.textSize.steps[s.textSize]}</Txt>
       </Pressable>
+      <Button label={T.about.report} kind="ghost" onPress={onReport} testID="settings-report" />
       <Button label={T.common.back} kind="ghost" onPress={onBack} testID="settings-back" />
     </ScrollView>
   );

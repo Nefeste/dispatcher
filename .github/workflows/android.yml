@@ -157,16 +157,16 @@ jobs:
           keystore-file: ${{ steps.keystore.outputs.file }}
 
       # Что внутри: разрешения ровно по белому списку .github/apk-permissions.txt и без сети (её вырезает из выпуска
-      # plugins/with-release-no-internet.js), запретные разрешения студии, резервная копия Android выключена
-      # (app.json, allowBackup), 16 КБ, только 64-битный ARM, target API, размер. Нужное разрешение — в белый список и
-      # в docs/05-process.md, ненужное — в blockedPermissions в app.json.
+      # plugins/with-release-no-internet.js), запретные разрешения студии, резервная копия Android включена — только
+      # хранилище игры (app.json, plugins/with-backup.js, ADR 0010), 16 КБ, только 64-битный ARM, target API, размер.
+      # Нужное разрешение — в белый список и в docs/05-process.md, ненужное — в blockedPermissions в app.json.
       - name: Содержимое
         uses: Nefeste/gornitsa-kit/actions/android-contents@v1
         with:
           file: android/app/build/outputs/apk/release/app-release.apk
           allow-file: .github/apk-permissions.txt
           forbid: 'INTERNET|NETWORK_STATE|FOREGROUND_SERVICE|INSTALL_REFERRER|VIBRATE'
-          backup: 'off'
+          backup: 'on'
           min-target-sdk: '36'
           only-arm64: 'true'
           max-size-mb: '80'

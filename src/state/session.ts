@@ -9,7 +9,7 @@ import { DB } from '../content/generated/db';
 import { MED } from '../content/generated/med';
 import { type Command, type Lineup, type Logged, NO_LINEUP, type Notice, newShift, nextEvent, type Refusal, replay, type Shift, type ShiftCtx, shiftCtx, timesAt, advance as advanceShift, apply } from '../engine/shift';
 import { loadMap } from '../map/load';
-import { dbFor, setupOf } from './free';
+import { dbFor, freeOf, setupOf } from './free';
 import type { IntroNote } from './stationView';
 import { KEYS, readRaw, writeRaw } from './storage';
 
@@ -32,7 +32,7 @@ export const FIRST_SHIFT = 'shift.week-1';
  *  6 — 0.17.0: просьбы бригады на месте не про медицину (подъезд, адрес, второй пострадавший) меняют жизнь смены.
  *  7 — 0.19.0: передача в поликлинику (команда `pass`) и звонок её врача.
  *  8 — 0.20.0: четыре новых состояния в потоке звонков — те же зёрна дают другие вызовы. */
-const SAVE_V = 8;
+export const SAVE_V = 8;
 
 export interface Session {
   ctx: ShiftCtx;
@@ -65,8 +65,12 @@ function mapOf(shiftId: string): ShiftCtx['map'] {
 }
 function ctxOf(shiftId: string): ShiftCtx {
   let c = ctxCache.get(shiftId);
-  // «свободная» смена — запись из выбора игрока (src/state/free.ts)
-  if (!c) ctxCache.set(shiftId, (c = shiftCtx(dbFor(shiftId), MED, shiftId, mapOf(shiftId))));
+  // «свободная» смена — запись из выбора игрока (src/state/free.ts); в памяти — только последняя: выборов почти две
+  // сотни, а смена недели — одна из семи (долгий прогон, tools/sim/soak.ts)
+  if (!c) {
+    if (freeOf(shiftId)) for (const id of ctxCache.keys()) if (freeOf(id)) ctxCache.delete(id);
+    ctxCache.set(shiftId, (c = shiftCtx(dbFor(shiftId), MED, shiftId, mapOf(shiftId))));
+  }
   return c;
 }
 /** Смена прототипа — для «Замера». */

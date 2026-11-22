@@ -67,6 +67,8 @@ bun tools/sim/shift.ts 100 --write  # virtual dispatcher: four rule bots × 100 
 bun tools/sim/week.ts 30 100 --write  # each shift of «Первая неделя», then 100 whole weeks with the station (no decisions /
                                     # best decisions) → docs/reports/virtual-dispatcher-week.md
 bun tools/test/golden.ts --write    # re-record the golden shifts when the shift's life changes on purpose
+bun tools/test/make-save-fixture.ts X.Y.Z   # the save sample of a new version → tools/test/fixtures/saves/ + SEALED line
+bun tools/sim/soak.ts 20 --write    # long run: 20 weeks in one process through the session and storage → docs/reports/soak.md
 bun tools/content/anamnez.ts <dir>  # medicine from a Nefeste/anamnez checkout at a pinned commit → content/med/ + FROM.yaml
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
 bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passport assets/map/nn-center.json
