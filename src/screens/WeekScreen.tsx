@@ -13,15 +13,23 @@ import { DB } from '../content/generated/db';
 import { Button, Txt } from '../ui/kit';
 import { C, R, S } from '../ui/theme';
 
-export function WeekScreen({ onPick, onBack, onWeekEnd }: { onPick: (shiftId: string) => void; onBack: () => void; onWeekEnd: (week: string) => void }) {
+export function WeekScreen({ onPick, onBack, onWeekEnd, onStation }: { onPick: (shiftId: string) => void; onBack: () => void; onWeekEnd: (week: string) => void; onStation: (week: string) => void }) {
   const [best, setBest] = useState<Record<string, Best> | null>(null);
-  // неделя этой станции пройдена — итог недели над сменами (срез, С8); у каждой недели своя станция (путь к 1.0, В2а)
+  // неделя этой станции пройдена — итог недели над сменами (срез, С8); у каждой недели своя станция (путь к 1.0, В2а);
+  // начата и не пройдена — «Станция» над сменами (игра владельца 22.11.2026: «как попасть в меню закупки?»)
   const [complete, setComplete] = useState<Record<string, boolean>>({});
+  const [started, setStarted] = useState<Record<string, boolean>>({});
   useEffect(() => {
     let alive = true;
     void readBest().then(b => { if (alive) setBest(b); });
-    void Promise.all(weeksOf().map(async w => [w.id, stationView(await readStation(w.id), DB, w.id).complete] as const))
-      .then(xs => { if (alive) setComplete(Object.fromEntries(xs)); });
+    void Promise.all(weeksOf().map(async w => {
+      const st = await readStation(w.id);
+      return [w.id, stationView(st, DB, w.id).complete, st.done.length > 0] as const;
+    })).then(xs => {
+      if (!alive) return;
+      setComplete(Object.fromEntries(xs.map(([w, c]) => [w, c])));
+      setStarted(Object.fromEntries(xs.map(([w, , s]) => [w, s])));
+    });
     return () => { alive = false; };
   }, []);
   const weeks = weeksOf();
@@ -39,6 +47,7 @@ export function WeekScreen({ onPick, onBack, onWeekEnd }: { onPick: (shiftId: st
             {i === 0 ? <Txt dim>{T.week.lead}</Txt> : null}
             {!open ? <Txt dim testID={`week-${tag}locked`}>{T.week.weekLocked(weeks[i - 1].title)}</Txt> : null}
             {complete[w.id] ? <Button label={T.week.end} onPress={() => onWeekEnd(w.id)} testID={`week-end-open${tag ? `-${tag.slice(0, -1)}` : ''}`} /> : null}
+            {started[w.id] && !complete[w.id] ? <Button label={T.week.station} kind="ghost" onPress={() => onStation(w.id)} testID={`week-station${tag ? `-${tag.slice(0, -1)}` : ''}`} /> : null}
             {rows.map(r => (
               <Pressable
                 key={r.id}

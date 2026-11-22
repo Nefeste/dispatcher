@@ -3,8 +3,9 @@
 // итог (`ShiftReport`: три числа, жалобы, ошибки с ценой, укладки) — правду о больных она не читает (критерий 3 среза).
 // Чистый TypeScript: состояние — обычный объект, каждая функция возвращает новое; та же цепочка итогов и решений — та же
 // станция байт в байт (золотая неделя).
+import { capOf } from './crews';
 import { type Mistake, review } from './review';
-import { KIT, NORM_URGENT } from './rules';
+import { KIT, KIT_PLUS, NORM_URGENT } from './rules';
 import type { Lineup, Shift, ShiftCtx } from './shift';
 import { totals } from './totals';
 
@@ -17,7 +18,12 @@ export const STATION = {
   inquiry: 50_000,
   carB: 200_000,
   feldsher: 60_000,
-  kits: 20_000,
+  /** пополнить укладку — за каждый вызов до полной (игра владельца 22.11.2026: выбирать, что докупать; §15) */
+  kitCall: 2_500,
+  /** расширенная укладка бригаде: +KIT_PLUS вызовов до конца недели */
+  plus: 40_000,
+  /** склад на подстанции: пополнение там — RESTOCK_FAST */
+  stock: 60_000,
   /** решений за перерыв */
   decisions: 3,
   /** бригад станции сверх записей смен — гараж подстанций */
@@ -72,7 +78,7 @@ export function reportOf(ctx: ShiftCtx, s: Shift): ShiftReport {
     }
   }
   const kits: Record<string, number> = {};
-  for (const c of s.crews) kits[c.id] = c.state === 'restock' ? KIT : c.kit;
+  for (const c of s.crews) kits[c.id] = c.state === 'restock' ? capOf(c) : c.kit;
   return { shift: s.setup, emergency: t.emergency, inNorm: t.inNorm, longWaits, refusals, costly, deaths, inquiries, kits };
 }
 
@@ -96,7 +102,7 @@ export interface Letter {
   fine: number;
 }
 
-export type EntryKind = 'shift' | 'thanks' | 'complaint' | 'inquiry' | 'crew' | 'resus' | 'kits';
+export type EntryKind = 'shift' | 'thanks' | 'complaint' | 'inquiry' | 'crew' | 'resus' | 'kits' | 'plus' | 'stock';
 
 /** Строка журнала фонда: что пришло или ушло, рубли со знаком. */
 export interface Entry {
@@ -107,6 +113,8 @@ export interface Entry {
   /** для бригады — какая и где */
   crew?: string;
   base?: string;
+  /** пополненные укладки — каких бригад */
+  crews?: string[];
 }
 
 export interface StationCrew {
@@ -122,6 +130,9 @@ export interface Station {
   trained: string[];
   /** укладки бригад после последней смены; нет записи — полная */
   kits: Record<string, number>;
+  /** бригады с расширенной укладкой и подстанции со складом (игра владельца 22.11.2026, §15) */
+  plus: string[];
+  stock: string[];
   journal: Entry[];
   letter: Letter | null;
   /** смены, итог которых станция уже приняла: повтор смены фонд не меняет */
@@ -131,7 +142,18 @@ export interface Station {
 }
 
 export function newStation(): Station {
-  return { fund: 0, extra: [], trained: [], kits: {}, journal: [], letter: null, done: [], decided: 0 };
+  return { fund: 0, extra: [], trained: [], kits: {}, plus: [], stock: [], journal: [], letter: null, done: [], decided: 0 };
+}
+
+/** Полная укладка бригады этой станции: с расширенной — больше. */
+export function capFor(st: Pick<Station, 'plus'>, crew: string): number {
+  return KIT + (st.plus.includes(crew) ? KIT_PLUS : 0);
+}
+
+/** Сколько вызовов не хватает до полной укладки бригады. */
+export function missingOf(st: Pick<Station, 'plus' | 'kits'>, crew: string): number {
+  const n = st.kits[crew];
+  return n === undefined ? 0 : Math.max(0, capFor(st, crew) - n);
 }
 
 /** Итог смены пришёл на станцию: доход, письмо, укладки. Повтор пройденной смены станцию не меняет. */
@@ -148,11 +170,11 @@ export function afterShift(st: Station, rep: ShiftReport): Station {
   const fund = st.fund + income + (thanks ? STATION.thanks : 0) - fine;
   const kits: Record<string, number> = { ...st.kits };
   for (const [id, n] of Object.entries(rep.kits)) {
-    if (n >= KIT) delete kits[id];
+    if (n >= capFor(st, id)) delete kits[id];
     else kits[id] = n;
   }
   return {
-    fund, extra: st.extra, trained: st.trained, kits, journal,
+    ...st, fund, kits, journal,
     letter: {
       after: rep.shift, emergency: rep.emergency, inNorm: rep.inNorm, income, thanks, longWaits: rep.longWaits, refusals: rep.refusals,
       deaths: rep.deaths, inquiries: rep.inquiries, fine,
@@ -161,16 +183,24 @@ export function afterShift(st: Station, rep: ShiftReport): Station {
   };
 }
 
-export type Decision = { d: 'crew'; base: string } | { d: 'kits' } | { d: 'resus'; crew: string };
+/** Решение за рабочим местом. Укладки — заказ на выбранные бригады (игра владельца 22.11.2026: выбирать, что
+ *  докупать): цена — за каждый вызов до полной; расширенная укладка — бригаде; склад — подстанции (§15). */
+export type Decision =
+  | { d: 'crew'; base: string }
+  | { d: 'kits'; crews: readonly string[] }
+  | { d: 'resus'; crew: string }
+  | { d: 'plus'; crew: string }
+  | { d: 'stock'; base: string };
 
 /** Почему решение нельзя: слова — src/i18n (T.station.no). */
-export type StationRefusal = 'noShift' | 'limit' | 'fund' | 'garage' | 'full' | 'trained';
+export type StationRefusal = 'noShift' | 'limit' | 'fund' | 'garage' | 'full' | 'trained' | 'none' | 'has';
 
 /** Реанимобиль: машина класса C (388н, прил. 2, п. 9) и обучение людей общепрофильной бригады. */
 export const RESUS_PRICE = STATION.carC + STATION.train;
 
-export function priceOf(d: Decision): number {
-  return d.d === 'crew' ? CREW_PRICE : d.d === 'resus' ? RESUS_PRICE : STATION.kits;
+export function priceOf(d: Decision, st: Pick<Station, 'plus' | 'kits'>): number {
+  if (d.d === 'kits') return d.crews.reduce((a, c) => a + missingOf(st, c) * STATION.kitCall, 0);
+  return d.d === 'crew' ? CREW_PRICE : d.d === 'resus' ? RESUS_PRICE : d.d === 'plus' ? STATION.plus : STATION.stock;
 }
 
 /** Можно ли решение сейчас; null — можно. */
@@ -179,9 +209,12 @@ export function canDecide(st: Station, d: Decision): StationRefusal | null {
   if (st.decided >= STATION.decisions) return 'limit';
   if (d.d === 'crew' && st.extra.length >= STATION.extraMax) return 'garage';
   if (d.d === 'kits' && !Object.keys(st.kits).length) return 'full';
+  if (d.d === 'kits' && (!d.crews.length || d.crews.some(c => missingOf(st, c) === 0))) return 'none';
+  if (d.d === 'plus' && st.plus.includes(d.crew)) return 'has';
+  if (d.d === 'stock' && st.stock.includes(d.base)) return 'has';
   if (d.d === 'resus' && st.trained.length >= STATION.trainedMax) return 'garage';
   if (d.d === 'resus' && st.trained.includes(d.crew)) return 'trained';
-  if (st.fund < priceOf(d)) return 'fund';
+  if (st.fund < priceOf(d, st)) return 'fund';
   return null;
 }
 
@@ -190,7 +223,7 @@ export function decide(st: Station, d: Decision): Station | StationRefusal {
   const why = canDecide(st, d);
   if (why) return why;
   const after = st.done[st.done.length - 1];
-  const price = priceOf(d);
+  const price = priceOf(d, st);
   if (d.d === 'crew') {
     const id = EXTRA_IDS[st.extra.length];
     return {
@@ -204,7 +237,22 @@ export function decide(st: Station, d: Decision): Station | StationRefusal {
       journal: [...st.journal, { kind: 'resus', amount: -price, after, crew: d.crew }], decided: st.decided + 1,
     };
   }
-  return { ...st, fund: st.fund - price, kits: {}, journal: [...st.journal, { kind: 'kits', amount: -price, after }], decided: st.decided + 1 };
+  if (d.d === 'plus') {
+    // укладка становится больше сразу: полная — полная и дальше, неполная — на KIT_PLUS вызовов полнее
+    const kits = { ...st.kits };
+    const plus = [...st.plus, d.crew];
+    if (kits[d.crew] !== undefined) {
+      kits[d.crew] += KIT_PLUS;
+      if (kits[d.crew] >= capFor({ plus }, d.crew)) delete kits[d.crew];
+    }
+    return { ...st, fund: st.fund - price, plus, kits, journal: [...st.journal, { kind: 'plus', amount: -price, after, crew: d.crew }], decided: st.decided + 1 };
+  }
+  if (d.d === 'stock') {
+    return { ...st, fund: st.fund - price, stock: [...st.stock, d.base], journal: [...st.journal, { kind: 'stock', amount: -price, after, base: d.base }], decided: st.decided + 1 };
+  }
+  const kits = { ...st.kits };
+  for (const c of d.crews) delete kits[c];
+  return { ...st, fund: st.fund - price, kits, journal: [...st.journal, { kind: 'kits', amount: -price, after, crews: [...d.crews] }], decided: st.decided + 1 };
 }
 
 /** Тяжёлая ошибка прошлой смены — служебная проверка или отказ в выезде, когда повод был (спецификация среза, §4,
@@ -217,5 +265,5 @@ export function consequenceOf(st: Station): Pick<Letter, 'after' | 'inquiries' |
 
 /** Что станция даёт следующей смене: свои бригады и укладки. */
 export function lineupOf(st: Station): Lineup {
-  return { extra: st.extra, kits: st.kits, trained: st.trained };
+  return { extra: st.extra, kits: st.kits, trained: st.trained, plus: st.plus, stock: st.stock };
 }

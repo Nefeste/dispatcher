@@ -173,7 +173,10 @@ function lineupFrom(x: unknown): Lineup {
   const extra = l.extra.filter(c => c && typeof c.id === 'string' && Boolean(DB.crews[c.kind]) && bases.has(c.base));
   const kits: Record<string, number> = {};
   for (const [id, n] of Object.entries(l.kits)) if (Number.isInteger(n)) kits[id] = n as number;
-  return { extra, kits, trained };
+  // расширенные укладки и склады станции (игра владельца 22.11.2026); сохранено раньше — их нет, смена та же
+  const plus = Array.isArray(l.plus) ? l.plus.filter((id): id is string => typeof id === 'string') : [];
+  const stock = Array.isArray(l.stock) ? l.stock.filter((id): id is string => typeof id === 'string' && bases.has(id)) : [];
+  return { extra, kits, trained, ...(plus.length ? { plus } : {}), ...(stock.length ? { stock } : {}) };
 }
 
 function parseSave(raw: string): Save | null {

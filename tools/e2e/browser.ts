@@ -315,26 +315,37 @@ try {
   await page.getByTestId('station-close').click();
   await page.getByTestId('station-roster').click();
   await see(page, 'station-panel-roster', 'Табель на смену 2');
+  await snap(page, 'station-roster');
+  // из табеля — в «Закупки» (игра владельца 22.11.2026: «как попасть в меню закупки?»)
+  await page.getByTestId('station-roster-shop').click();
+  await see(page, 'station-panel-shop', 'Закупки станции');
   // после первой смены на новую бригаду фонда ещё нет: машина и два фельдшера — 320 тыс.
   await see(page, 'station-crew-base.north', 'не хватает фонда');
-  await snap(page, 'station-roster');
+  await see(page, 'station-stock-base.north', 'Склад на подстанции');
   await page.getByTestId('station-close').click();
-  await page.getByTestId('station-bag').click();
-  await see(page, 'station-panel-bag', 'Укладки бригад');
-  const refill = (await page.getByTestId('station-kits').count()) > 0 && !(await page.getByTestId('station-kits').innerText()).includes('укладки полные');
+  // «Закупки» — и кнопкой внизу станции: укладки — отметить бригады и заказать одним решением
+  await page.getByTestId('station-shop').click();
+  await see(page, 'station-panel-shop', 'Пополнить укладки');
+  const refill = (await page.getByTestId('station-kits').count()) > 0 && !(await page.getByTestId('station-kits').innerText()).includes('Отметьте');
   if (refill) {
+    await see(page, 'station-kits', 'Заказать на');
     await page.getByTestId('station-kits').click();
     await page.getByRole('button', { name: 'Да', exact: true }).click();
     await see(page, 'station-fund', 'решений осталось: 2 из 3');
   }
-  await snap(page, 'station-bag');
+  await snap(page, 'station-shop');
   await page.getByTestId('station-close').click();
   console.log(`станция: ${(await page.getByTestId('station-fund').innerText()).trim()}${refill ? ', укладки пополнены' : ''}`);
   // «К неделе»: первая смена пройдена — вторая открыта, у первой — лучший итог
   await page.getByTestId('station-week').click();
   await see(page, 'week-1', 'Лучший итог');
   await see(page, 'week-2', 'Понедельник, вечер');
+  // неделя начата — с выбора смены есть путь на станцию
+  await see(page, 'week-station', 'Станция');
   await snap(page, 'week-after');
+  await page.getByTestId('week-station').click();
+  await see(page, 'station-next', 'Смена 2');
+  await page.getByTestId('station-week').click();
   await page.getByTestId('week-back').click();
   await see(page, 'title-name');
   // неделя начата — «Продолжить неделю» ведёт на станцию (срез, С8; §3, шаг 1)

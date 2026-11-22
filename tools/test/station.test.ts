@@ -5,9 +5,9 @@ import { describe, expect, test } from 'bun:test';
 import { DB } from '../../src/content/generated/db';
 import { MED } from '../../src/content/generated/med';
 import { free } from '../../src/engine/crews';
-import { KIT } from '../../src/engine/rules';
+import { KIT, KIT_PLUS, RESTOCK, RESTOCK_FAST } from '../../src/engine/rules';
 import { newShift, shiftCtx } from '../../src/engine/shift';
-import { afterShift, canDecide, CREW_PRICE, decide, EXTRA_IDS, lineupOf, newStation, reportOf, type ShiftReport, STATION, type Station } from '../../src/engine/station';
+import { afterShift, canDecide, capFor, CREW_PRICE, decide, EXTRA_IDS, lineupOf, missingOf, newStation, priceOf, reportOf, type ShiftReport, STATION, type Station } from '../../src/engine/station';
 import { totals } from '../../src/engine/totals';
 import { loadMap } from '../../src/map/load';
 import { parseStation } from '../../src/state/station';
@@ -50,23 +50,68 @@ describe('станция', () => {
   });
 
   test('решения: до первой смены нельзя; не больше трёх; фонд; гараж; полные укладки', () => {
-    expect(canDecide(newStation(), { d: 'kits' })).toBe('noShift');
-    let st: Station = { ...afterShift(newStation(), rep({ kits: { 'crew.1': 1 } })), fund: 2 * CREW_PRICE + 2 * STATION.kits };
+    expect(canDecide(newStation(), { d: 'kits', crews: ['crew.1'] })).toBe('noShift');
+    let st: Station = { ...afterShift(newStation(), rep({ kits: { 'crew.1': 1 } })), fund: 2 * CREW_PRICE + 3 * STATION.kitCall };
     expect(st.kits).toEqual({ 'crew.1': 1 });
-    st = ok(decide(st, { d: 'kits' }));
+    // заказ — на выбранные бригады, цена — за каждый вызов до полной
+    expect(priceOf({ d: 'kits', crews: ['crew.1'] }, st)).toBe(3 * STATION.kitCall);
+    expect(canDecide(st, { d: 'kits', crews: [] })).toBe('none');
+    expect(canDecide(st, { d: 'kits', crews: ['crew.2'] })).toBe('none');
+    st = ok(decide(st, { d: 'kits', crews: ['crew.1'] }));
     expect(st.kits).toEqual({});
-    expect(canDecide(st, { d: 'kits' })).toBe('full');
+    expect(st.journal.at(-1)).toMatchObject({ kind: 'kits', amount: -3 * STATION.kitCall, crews: ['crew.1'] });
+    expect(canDecide(st, { d: 'kits', crews: ['crew.1'] })).toBe('full');
     st = ok(decide(st, { d: 'crew', base: 'base.south' }));
     expect(st.extra).toEqual([{ id: 'crew.7', kind: 'crew.general', base: 'base.south' }]);
     st = ok(decide(st, { d: 'crew', base: 'base.north' }));
-    expect(st.fund).toBe(STATION.kits);
+    expect(st.fund).toBe(0);
     expect(canDecide(st, { d: 'crew', base: 'base.north' })).toBe('limit');
     // новый перерыв — решения снова; гараж — на две машины
     st = { ...afterShift(st, rep({ shift: week[1].id, kits: { 'crew.7': 0 } })), fund: 10 * CREW_PRICE };
     expect(st.decided).toBe(0);
     expect(canDecide(st, { d: 'crew', base: 'base.north' })).toBe('garage');
-    expect(canDecide({ ...st, fund: 0 }, { d: 'kits' })).toBe('fund');
-    expect(decide({ ...st, fund: 0 }, { d: 'kits' })).toBe('fund');
+    expect(canDecide({ ...st, fund: 0 }, { d: 'kits', crews: ['crew.7'] })).toBe('fund');
+    expect(decide({ ...st, fund: 0 }, { d: 'kits', crews: ['crew.7'] })).toBe('fund');
+  });
+
+  test('заказ укладок — только выбранным бригадам; остальные переходят на следующую смену неполными', () => {
+    let st: Station = { ...afterShift(newStation(), rep({ kits: { 'crew.1': 0, 'crew.2': 3, 'crew.3': 4 } })), fund: 100_000 };
+    expect(st.kits).toEqual({ 'crew.1': 0, 'crew.2': 3 });
+    st = ok(decide(st, { d: 'kits', crews: ['crew.1'] }));
+    expect(st.kits).toEqual({ 'crew.2': 3 });
+    expect(st.fund).toBe(100_000 - KIT * STATION.kitCall);
+    expect(lineupOf(st).kits).toEqual({ 'crew.2': 3 });
+  });
+
+  test('расширенная укладка: бригаде на два вызова больше — сразу и до конца недели; склад — подстанции; повторно — «уже есть»', () => {
+    let st: Station = { ...afterShift(newStation(), rep({ kits: { 'crew.1': 1, 'crew.2': 4 } })), fund: 500_000 };
+    st = ok(decide(st, { d: 'plus', crew: 'crew.1' }));
+    expect(st.plus).toEqual(['crew.1']);
+    expect(capFor(st, 'crew.1')).toBe(KIT + KIT_PLUS);
+    expect(st.kits['crew.1']).toBe(1 + KIT_PLUS);
+    expect(canDecide(st, { d: 'plus', crew: 'crew.1' })).toBe('has');
+    expect(missingOf(st, 'crew.1')).toBe(KIT + KIT_PLUS - 1 - KIT_PLUS);
+    st = ok(decide(st, { d: 'stock', base: 'base.north' }));
+    expect(st.stock).toEqual(['base.north']);
+    expect(canDecide(st, { d: 'stock', base: 'base.north' })).toBe('has');
+    expect(st.fund).toBe(500_000 - STATION.plus - STATION.stock);
+    expect(lineupOf(st)).toMatchObject({ plus: ['crew.1'], stock: ['base.north'] });
+    // полная укладка бригады с расширенной — шесть вызовов: после смены с шестью её нет в списке неполных
+    st = afterShift(st, rep({ shift: week[1].id, kits: { 'crew.1': KIT + KIT_PLUS, 'crew.2': KIT } }));
+    expect(st.kits).toEqual({});
+  });
+
+  test('смена с закупками: полная укладка — шесть, пополнение на подстанции со складом — 10 минут', () => {
+    const ctx = shiftCtx(DB, MED, week[1].id, map);
+    const crew = ctx.setup.crews[0];
+    const s = newShift(ctx, 7, { extra: [], kits: { [crew.id]: 0 }, trained: [], plus: [crew.id], stock: [crew.base] });
+    const c = s.crews.find(x => x.id === crew.id)!;
+    expect(c.cap).toBe(KIT + KIT_PLUS);
+    expect(c.state).toBe('restock');
+    expect(c.until).toBe(RESTOCK_FAST);
+    const other = s.crews.find(x => x.id !== crew.id)!;
+    expect(other.cap).toBeUndefined();
+    expect(other.restockMs ?? RESTOCK).toBe(other.base === c.base ? RESTOCK_FAST : RESTOCK);
   });
 
   test('итог смены для станции — из итога и разбора; укладки бригад в конце смены', () => {

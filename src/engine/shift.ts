@@ -15,7 +15,7 @@ import { edgeTimes, type Road, roadOf } from './road/graph';
 import { arrival, passed } from './road/pos';
 import { FAR, search } from './road/route';
 import {
-  ADDRESS_CHANCE, ADDRESS_NEAR, ADDRESS_SEARCH, AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, CLINIC_ARRIVE, CLINIC_HOURS, DECIDE, DOOR_CHANCE, DOOR_WAIT, HANDOVER, NORM_EMERGENCY,
+  ADDRESS_CHANCE, KIT, KIT_PLUS, RESTOCK, RESTOCK_FAST, ADDRESS_NEAR, ADDRESS_SEARCH, AGAIN, ANSWER, ASK_AFTER, ASK_WAIT, CALLBACK, CALLBACK_SOON, CLINIC_ARRIVE, CLINIC_HOURS, DECIDE, DOOR_CHANCE, DOOR_WAIT, HANDOVER, NORM_EMERGENCY,
   NORM_URGENT, REPEAT, REPORT_WAIT, SNAG_PHONE, VICTIM_CHANCE, VICTIM_EXTRA, VICTIM_SCENE,
 } from './rules';
 import { formByKnown, formByTruth, threatsHeard } from './form';
@@ -223,6 +223,9 @@ export interface Lineup {
   kits: Readonly<Record<string, number>>;
   /** бригады, которые станция обучила до реанимационных (срез, С4): выходят реанимационными */
   trained: readonly string[];
+  /** бригады с расширенной укладкой и подстанции со складом (игра владельца 22.11.2026, §15); нет — без них */
+  plus?: readonly string[];
+  stock?: readonly string[];
 }
 
 export const NO_LINEUP: Lineup = { extra: [], kits: {}, trained: [] };
@@ -294,7 +297,12 @@ export function newShift(ctx: ShiftCtx, seed: number, lineup: Lineup = NO_LINEUP
   const crews = [...ctx.setup.crews, ...lineup.extra.filter(x => !ctx.setup.crews.some(c => c.id === x.id))];
   const s: Shift = {
     setup: ctx.setup.id, seed: seed >>> 0, lineup, t: 0, rev: 0, n: 0, script: 0, nextRing: FAR, flowN: 0,
-    rings: [], calls: [], crews: crews.map(c => crewAtBase(c.id, lineup.trained.includes(c.id) ? 'crew.resus' : c.kind, node(c.base), lineup.kits[c.id])), open: null, notices: [], trail: [], over: false,
+    rings: [], calls: [],
+    crews: crews.map(c => crewAtBase(
+      c.id, lineup.trained.includes(c.id) ? 'crew.resus' : c.kind, node(c.base), lineup.kits[c.id],
+      KIT + (lineup.plus?.includes(c.id) ? KIT_PLUS : 0), lineup.stock?.includes(c.base) ? RESTOCK_FAST : RESTOCK,
+    )),
+    open: null, notices: [], trail: [], over: false,
   };
   // поток — после последнего учебного звонка
   const last = ctx.setup.script.length ? ctx.setup.script[ctx.setup.script.length - 1].at * 1000 : 0;

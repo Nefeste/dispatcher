@@ -180,6 +180,7 @@ export default function App() {
                   }}
                   onBack={() => setScreen('title')}
                   onWeekEnd={w => { setWeek(w); setScreen('weekEnd'); }}
+                  onStation={w => { setWeek(w); setScreen('station'); }}
                 />
               ) : null}
               {screen === 'weekEnd' ? <WeekEndScreen week={week} onWeek={() => setScreen('week')} /> : null}
