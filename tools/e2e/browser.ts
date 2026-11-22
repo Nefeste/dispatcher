@@ -24,7 +24,9 @@ import { fitOf } from '../../src/ui/map/scale';
 
 const ROOT = join(import.meta.dir, '../..');
 const DIST = join(ROOT, process.env.E2E_DIST ?? 'dist-web');
-const OUT = join(import.meta.dir, 'out');
+// E2E_OUT, E2E_VIEW — другая папка и окно: снимки магазина 9 : 16 (`E2E_VIEW=432x768x2.5` → 1080 × 1920, tools/store/shots.ts)
+const OUT = process.env.E2E_OUT ?? join(import.meta.dir, 'out');
+const [VW, VH, VS] = (process.env.E2E_VIEW ?? '412x915x2').split('x').map(Number);
 mkdirSync(OUT, { recursive: true });
 
 const server = Bun.serve({
@@ -104,7 +106,7 @@ const see = async (p: Page, id: string, text?: string) => {
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 try {
   // телефон в портрете (ADR 0006); снимки для людей — с плотностью 2
-  const page = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2 });
+  const page = await browser.newPage({ viewport: { width: VW, height: VH }, deviceScaleFactor: VS });
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push(String(e)));
   // часы смены — в 20 раз быстрее ×1: смена проходится за минуты (src/state/session.ts, setPace)
@@ -534,7 +536,7 @@ try {
   // граница ошибок (путь к 1.0, В1): заглавный экран падает при рисовании (`?crash=1`, один раз) — вместо пустого
   // экрана «Что-то пошло не так», ошибка — в журнале сбоев и в отчёте. Своя страница: ошибка в её консоли — та самая
   {
-    const crash = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2 });
+    const crash = await browser.newPage({ viewport: { width: VW, height: VH }, deviceScaleFactor: VS });
     const own: string[] = [];
     crash.on('console', m => { if (m.type() === 'error') own.push(m.text()); });
     crash.on('pageerror', e => own.push(String(e)));
