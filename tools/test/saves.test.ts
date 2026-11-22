@@ -19,6 +19,7 @@ const SEALED: Record<string, string> = {
   '0.29.0': '71936138c1bb57f2bff795b17509fa02779585728d08812c71eddc9d986e2a82',
   '0.30.0': '41322906a96067a0e9e0da0b780b29d05e27da3f68bfb5ce5d8a3bcf644a460f',
   '0.31.0': 'b51913e4dcb513cb632275d52d5c510b64e27e66a7eec87059188ca398b9a2c2',
+  '0.32.0': '98de59d9f8a4c4639ee9d35e7447b875a40d7667c8d16439d647f5d6d3ce36b5',
 };
 
 const DIR = join(import.meta.dir, 'fixtures/saves');

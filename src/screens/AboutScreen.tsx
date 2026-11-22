@@ -1,32 +1,35 @@
 // «Об игре» (docs/08-game-design.md, §10): что за игра, «игра, а не обучение» (ADR 0007), вымышленные учреждения
 // и строка OpenStreetMap (ADR 0004), источники медицины, студия и версия.
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { T } from '../i18n';
-import { Button, Txt } from '../ui/kit';
+import { UI } from '../scenes/palette';
+import { Button, Card, Overline, Screen, Txt } from '../ui/kit';
 
 export function AboutScreen({ onBack, onReport }: { onBack: () => void; onReport: () => void }) {
   return (
-    <ScrollView contentContainerStyle={styles.root}>
-      <Txt title>{T.about.title}</Txt>
-      <Txt>{T.about.what}</Txt>
-      <Txt testID="about-not-training">{T.about.notTraining}</Txt>
+    <Screen
+      title={T.about.title}
+      lead={T.about.what}
+      footer={<Button label={T.common.back} kind="ghost" onPress={onBack} testID="about-back" />}>
+      <Card accent={UI.red}>
+        <Txt testID="about-not-training">{T.about.notTraining}</Txt>
+      </Card>
       <Txt>{T.about.fictional}</Txt>
       <Txt dim>{T.about.clinic}</Txt>
       <Txt dim testID="about-osm">{T.about.map}</Txt>
       <Txt dim>{T.about.medicine}</Txt>
-      <Txt style={styles.head}>{T.about.sourcesHead}</Txt>
-      {T.about.sources.map(x => <Txt dim key={x} style={styles.source}>{`· ${x}`}</Txt>)}
+      <Card>
+        <Overline>{T.about.sourcesHead}</Overline>
+        {T.about.sources.map(x => <Txt dim key={x} style={styles.source}>{`· ${x}`}</Txt>)}
+      </Card>
       <Txt dim>{T.about.studio}</Txt>
       <Txt dim testID="about-version">{T.about.version}</Txt>
-      <Button label={T.about.report} kind="ghost" onPress={onReport} testID="about-report" />
-      <Button label={T.common.back} kind="ghost" onPress={onBack} testID="about-back" />
-    </ScrollView>
+      <Button label={T.about.report} kind="quiet" small onPress={onReport} testID="about-report" />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: 24, paddingTop: 48, gap: 14 },
-  head: { fontWeight: '600' },
   source: { fontSize: 14, lineHeight: 20 },
 });

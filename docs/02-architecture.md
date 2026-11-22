@@ -37,7 +37,7 @@
 content/ (YAML) ──tools/content/build.ts──▶ src/content/generated/   (база: болезни, признаки, звонящие, вопросы, бригады)
 OSM (Overpass) ──tools/map/fetch.ts, build.ts──▶ src/map/generated/<район>.ts (граф дорог и слои, паспорт — assets/map/)
 blender/build.py (Blender 4.5.15) ──▶ src/art/desk.gen.ts (рабочее место; модель и паспорт — assets/models/)
-blender/pult.py, caller.py, insert.py, station.py (общее — look.py) ──▶ assets/scenes/ (кадры сцен, ролики, паспорта), src/art/pult.gen.ts, station.gen.ts (места предметов)
+blender/pult.py, title.py, caller.py, insert.py, station.py (общее — look.py) ──▶ assets/scenes/ (кадры сцен, ролики, паспорта), src/art/pult.gen.ts, station.gen.ts (места предметов)
 
 src/engine/   чистый TypeScript: смена, поток звонков, разговор, бригады, дороги, исходы, разбор
 src/state/    сессия (зерно + команды), вид вызова (только услышанное), учебные подсказки, лучший итог, сохранение,
@@ -404,7 +404,7 @@ lineup)`), состав хранится в состоянии смены и с�
   бригад своими цветами, подстанции и больницы, три числа и строка OpenStreetMap; PNG. На телефоне файл ложится во
   временную папку приложения и уходит в окно «Поделиться» (`expo-sharing`) — разрешений на память не нужно; в браузере —
   скачивание (`src/ui/saveImage.web.ts`).
-- **Заставка** — `expo-splash-screen`: значок кругом на льне, у темы заставки фон окна тот же (`plugins/with-splash-window.js`,
+- **Заставка** — `expo-splash-screen`: значок кругом на ночном фоне `#0e1215` (с 0.32.0), у темы заставки фон окна тот же (`plugins/with-splash-window.js`,
   копия «Нард»; правило устава «два фона»); держится до первого кадра заглавного экрана с готовыми шрифтами, не
   дольше 4 с (`src/state/splash.ts`).
 - **Видеовставки** — «начало смены» после загрузки новой смены и «бригада выезжает» после первого решения, каждая один

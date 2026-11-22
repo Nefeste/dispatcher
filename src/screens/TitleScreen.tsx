@@ -1,6 +1,7 @@
-// Первый экран (спецификация прототипа, §3, шаг 1): название, строка «Это игра…» (ADR 0007), «Первая неделя» — к выбору смены, а если
-// смена не закончена — «Продолжить смену»; настройки и «Об игре». Две пробы прототипа — рабочее место и «Замер» —
-// одной строкой.
+// Первый экран (спецификация прототипа, §3, шаг 1; docs/13-art.md, §7): зал диспетчерской ночью, логотип игры и меню —
+// окно программы на стекле внизу, под большим пальцем. «Первая неделя» — к выбору смены, а если смена не закончена —
+// «Продолжить смену»; настройки и «Об игре». Две пробы прототипа — рабочее место и «Замер» — мелко под меню. Строка
+// «Это игра…» (ADR 0007) всегда на виду. Части появляются по очереди; с «Меньше движения» — сразу.
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
@@ -10,11 +11,24 @@ import { DB } from '../content/generated/db';
 import { readStation } from '../state/station';
 import { weeksOf } from '../state/week';
 import { stationView } from '../state/stationView';
+import { Appear } from '../ui/anim';
 import { Button, Txt } from '../ui/kit';
-import { R, S } from '../ui/theme';
-import { UI } from '../scenes/palette';
-import { pultLayout } from '../scenes/pult/layout';
+import { C, G, R } from '../ui/theme';
+import { GLASS, UI } from '../scenes/palette';
 import { TitleScene } from '../scenes/title/TitleScene';
+
+/** Логотип: «Диспетчер» шрифтом Kurale и «03» в метке кумачом — как метка вызова на значке игры. */
+export function Logo({ size = 46 }: { size?: number }) {
+  const badge = Math.round(size * 1.02);
+  return (
+    <View style={styles.logo} accessible accessibilityRole="header" accessibilityLabel={T.title.name} testID="title-name">
+      <Txt title fixed style={{ fontSize: size, lineHeight: Math.round(size * 1.2), color: UI.text }}>{T.title.logo.word}</Txt>
+      <View style={[styles.badge, { height: badge, minWidth: badge * 1.28, borderRadius: badge / 2, paddingHorizontal: badge * 0.24 }]}>
+        <Txt title fixed style={{ fontSize: Math.round(size * 0.74), lineHeight: badge, color: C.kumachInk }}>{T.title.logo.no}</Txt>
+      </View>
+    </View>
+  );
+}
 
 export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onSettings, onAbout }: { onStart: () => void; onResume: () => void; onStation: (week: string) => void; onDesk: () => void; onBench: () => void; onSettings: () => void; onAbout: () => void }) {
   const [saved, setSaved] = useState(false);
@@ -36,53 +50,58 @@ export function TitleScreen({ onStart, onResume, onStation, onDesk, onBench, onS
     const id = requestAnimationFrame(() => mark('title', true));
     return () => cancelAnimationFrame(id);
   }, []);
-  // окно программы на мониторе диспетчера (игра владельца 22.11.2026: меню закрывало сцену, а низ фона был светлым):
-  // тёмное, как программы пульта, — по экрану монитора; стол под ним виден и приглушён (TitleScene)
-  const L = size ? pultLayout(size.w, size.h) : null;
-  const win = L ? { top: L.screen.y + 10, bottom: size!.h - (L.screen.y + L.screen.h) + 6 } : null;
   return (
     <View style={styles.root} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
-      {/* за стеклом — живая сцена: зал, монитор, стол, огонёк телефона (§10 геймдизайна; срез, С8б) */}
+      {/* за стеклом — живая сцена: зал, видеостена с вызовом, огонёк телефона (§10 геймдизайна; срез, С8б) */}
       {size ? <TitleScene width={size.w} height={size.h} /> : null}
-      {win ? (
-        <View style={[styles.window, win]} testID="title-window">
-          <ScrollView contentContainerStyle={styles.scroll}>
-            <View style={styles.head}>
-              <Txt title style={styles.name} testID="title-name">{T.title.name}</Txt>
-              <Txt style={styles.lead}>{T.title.lead}</Txt>
+      <Appear delay={120} rise={8} duration={520} style={styles.head}>
+        <Txt style={styles.over}>{T.title.over}</Txt>
+        <Logo size={size && size.w < 380 ? 40 : 46} />
+        <View style={styles.thread} />
+        <Txt style={styles.lead}>{T.title.lead}</Txt>
+      </Appear>
+      <View style={styles.gap} />
+      {/* окно программы: стекло в цветах пульта (src/scenes/palette.ts), чтобы меню было частью сцены */}
+      <Appear delay={320} rise={16} duration={420} style={styles.window}>
+        <ScrollView contentContainerStyle={styles.scroll} testID="title-window">
+          {saved ? <Button label={T.title.resume} onPress={onResume} testID="title-resume" /> : null}
+          {going ? <Button label={T.title.continueWeek} kind={saved ? 'ghost' : 'primary'} onPress={() => onStation(going)} testID="title-week" /> : null}
+          <Button label={T.title.start} kind={saved || going ? 'ghost' : 'primary'} onPress={onStart} testID="title-start" />
+          <Txt dim style={styles.shift}>{T.title.shift}</Txt>
+          <View style={styles.row}>
+            <View style={styles.half}><Button label={T.title.settings} kind="ghost" small onPress={onSettings} testID="title-settings" /></View>
+            <View style={styles.half}><Button label={T.title.about} kind="ghost" small onPress={onAbout} testID="title-about" /></View>
+          </View>
+          <View style={styles.probes}>
+            <Txt dim style={styles.probesHead}>{T.title.probes}</Txt>
+            <View style={styles.row}>
+              <View style={styles.half}><Button label={T.title.desk} kind="quiet" small onPress={onDesk} testID="title-desk" /></View>
+              <View style={styles.half}><Button label={T.title.bench} kind="quiet" small onPress={onBench} testID="title-bench" /></View>
             </View>
-            <View style={styles.actions}>
-              {saved ? <Button label={T.title.resume} onPress={onResume} testID="title-resume" /> : null}
-              {going ? <Button label={T.title.continueWeek} kind={saved ? 'onDark' : 'primary'} onPress={() => onStation(going)} testID="title-week" /> : null}
-              <Button label={T.title.start} kind={saved || going ? 'onDark' : 'primary'} onPress={onStart} testID="title-start" />
-              <Txt style={styles.shift}>{T.title.shift}</Txt>
-              <View style={styles.row}>
-                <View style={styles.half}><Button label={T.title.desk} kind="onDark" onPress={onDesk} testID="title-desk" /></View>
-                <View style={styles.half}><Button label={T.title.bench} kind="onDark" onPress={onBench} testID="title-bench" /></View>
-              </View>
-              <Button label={T.title.settings} kind="onDark" onPress={onSettings} testID="title-settings" />
-              <Button label={T.title.about} kind="onDark" onPress={onAbout} testID="title-about" />
-            </View>
-          </ScrollView>
-          {/* ADR 0007: строка всегда на виду — под прокруткой, не в ней */}
-          <Txt style={styles.foot} testID="title-not-training">{T.title.notTraining}</Txt>
-        </View>
-      ) : null}
+          </View>
+        </ScrollView>
+      </Appear>
+      {/* ADR 0007: строка всегда на виду — под окном меню, не в прокрутке */}
+      <Txt style={styles.foot} testID="title-not-training">{T.title.notTraining}</Txt>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 12 },
-  half: { flex: 1 },
   root: { flex: 1 },
-  // окно программы: цвета пульта (src/scenes/palette.ts), чтобы меню было частью сцены
-  window: { position: 'absolute', left: 12, right: 12, borderRadius: R.card, backgroundColor: 'rgba(20,26,31,0.94)', borderWidth: 1, borderColor: UI.line, overflow: 'hidden' },
-  scroll: { padding: 20, gap: 20 },
-  head: { marginTop: 8, gap: 10 },
-  name: { fontSize: S.hero, lineHeight: 44, color: UI.text },
-  lead: { fontSize: S.lead, lineHeight: 28, color: UI.text },
-  actions: { gap: 12 },
-  shift: { textAlign: 'center', color: UI.dim },
-  foot: { textAlign: 'center', color: UI.dim, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: UI.line },
+  head: { paddingHorizontal: G.xl, paddingTop: 44, gap: G.s, flexShrink: 0 },
+  over: { color: UI.amber, fontSize: 13, lineHeight: 18, letterSpacing: 0.8, fontWeight: '600' },
+  logo: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
+  badge: { backgroundColor: C.kumach, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  thread: { width: 56, height: 2, borderRadius: 1, backgroundColor: C.kumach, marginTop: 2 },
+  lead: { fontSize: 16, lineHeight: 23, color: UI.text, maxWidth: 300 },
+  gap: { flexGrow: 1, flexShrink: 1, minHeight: G.m },
+  row: { flexDirection: 'row', gap: G.m },
+  half: { flex: 1 },
+  window: { flexShrink: 1, marginHorizontal: G.m, borderRadius: R.card + 4, backgroundColor: GLASS.window, borderWidth: 1, borderColor: UI.line, borderTopColor: GLASS.edge, overflow: 'hidden' },
+  scroll: { padding: G.l, gap: G.m },
+  shift: { textAlign: 'center', fontSize: 13, lineHeight: 18 },
+  probes: { borderTopWidth: 1, borderTopColor: UI.line, paddingTop: G.s, gap: 2 },
+  probesHead: { textAlign: 'center', fontSize: 12, lineHeight: 16 },
+  foot: { textAlign: 'center', color: UI.dim, fontSize: 13, lineHeight: 18, paddingHorizontal: G.l, paddingTop: G.m, paddingBottom: G.m },
 });

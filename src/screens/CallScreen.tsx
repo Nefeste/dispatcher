@@ -1,6 +1,7 @@
 // Сцена «Разговор» как экран (ADR 0009; часть П5): открытый вызов смены (src/state/session.ts). Вопрос — команда
 // смены, часы сдвигаются на его цену (ADR 0003); решение — форма вызова; потом — кого послать или оставить ждать.
 // Первый выезд смены — видеовставка (onSent).
+import { cue } from '../audio/feedback';
 import React, { useEffect, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { CallScene } from '../scenes/call/CallScene';
@@ -52,7 +53,7 @@ export function CallScreen({ onDone, onSent }: { onDone: () => void; onSent: () 
             command({ c: 'form', form: kind });
           }}
           onSend={crew => {
-            if (!command({ c: 'send', call: view.id, crew })) onSent();
+            if (!command({ c: 'send', call: view.id, crew })) { cue('send'); onSent(); }
           }}
           onHold={() => {
             if (!command({ c: 'hold', call: view.id })) onDone();

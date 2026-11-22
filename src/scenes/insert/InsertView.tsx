@@ -1,10 +1,11 @@
 // Видеовставка (ADR 0009; docs/08-game-design.md, §9 и §11): короткий ролик из Blender (blender/insert.py) на весь
-// экран, без звука и без кнопок проигрывателя. Касание пропускает ролик. При «Меньше движения» — один кадр вместо
+// экран, без кнопок проигрывателя; сам ролик немой, звук — свой синтез (`sound`). Касание пропускает ролик. При «Меньше движения» — один кадр вместо
 // ролика. Ролик не проигрался (нет кодека, ошибка) — тоже кадр: вставка никогда не держит игрока.
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { cue, type Cue } from '../../audio/feedback';
 import { T } from '../../i18n';
 import { FONTS } from '../../ui/fonts';
 import { Txt } from '../../ui/kit';
@@ -14,7 +15,7 @@ import { SCENE } from '../palette';
 /** Сколько ждать конца ролика сверх его длины, мс; кадр вместо ролика держится столько же. */
 const GRACE = 1500;
 
-export function InsertView({ video, still, seconds, onDone }: { video: number; still: number; seconds: number; onDone: () => void }) {
+export function InsertView({ video, still, seconds, sound, onDone }: { video: number; still: number; seconds: number; sound?: Cue; onDone: () => void }) {
   const less = useLessMotion();
   const done = useRef(false);
   const finish = () => {
@@ -27,6 +28,10 @@ export function InsertView({ video, still, seconds, onDone }: { video: number; s
     p.loop = false;
     p.play();
   });
+  // звук вставки — один раз, с её началом; «Звук» выключен — молчит (src/audio/feedback.ts)
+  useEffect(() => {
+    if (sound) cue(sound);
+  }, [sound]);
   const { status } = useEvent(player, 'statusChange', { status: player.status });
   useEffect(() => {
     const sub = player.addListener('playToEnd', finish);
