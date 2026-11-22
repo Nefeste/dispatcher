@@ -12,7 +12,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import type { QuestionGroup } from '../../content/types';
 import { T } from '../../i18n';
 import { useTextScale } from '../../ui/textScale';
-import type { CallView } from '../../state/callView';
+import type { CallView, CardRow } from '../../state/callView';
 import { ProgramPanel } from '../panel';
 import { FORM, SCENE, UI } from '../palette';
 import { pictureRect, callLayout, fit, fitLabel, wrap } from './layout';
@@ -73,7 +73,10 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
   const who = `${whoWord}${view.repeat && !view.clinic ? ` · ${T.call.repeat}` : ''}`;
   const timer = T.call.timer(view.seconds);
   // карточка: повод — всегда, дальше — последние ответы, сколько помещается
-  const rows = view.rows.length <= L.rows ? view.rows : [view.rows[0], ...view.rows.slice(view.rows.length - (L.rows - 1))];
+  // адрес — сразу под поводом, всегда (игра владельца 22.11.2026: «улица и дом нигде не показываются»)
+  const addr: CardRow[] = view.address ? [{ label: T.call.addressLabel, value: T.call.address(view.address) }] : [];
+  const rest = L.rows - 1 - addr.length;
+  const rows = [view.rows[0], ...addr, ...(view.rows.length - 1 <= rest ? view.rows.slice(1) : view.rows.slice(view.rows.length - rest))];
   const decided = view.form === 'emergency' || view.form === 'urgent';
   // «Ещё спросить» (игра владельца 22.11.2026): форма названа, бригаду не послали — можно вернуться к вопросам и
   // назвать форму снова; разговор новый — снова окно бригад; перезвонили ждущему — сначала вопросы

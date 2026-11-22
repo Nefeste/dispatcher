@@ -72,6 +72,8 @@ bun tools/sim/soak.ts 20 --write    # long run: 20 weeks in one process through 
 bun tools/content/anamnez.ts <dir>  # medicine from a Nefeste/anamnez checkout at a pinned commit → content/med/ + FROM.yaml
 bun tools/map/fetch.ts nn-center    # OSM extract of a district via Overpass (network) → map-src/ (not in git)
 bun tools/map/build.ts nn-center    # → src/map/generated/nn-center.ts + passport assets/map/nn-center.json
+bun tools/map/fetch.ts nn-center --addr  # house addresses of the district (network) → map-src/nn-center.addr.osm.json
+bun tools/map/addr.ts nn-center     # → src/map/generated/nn-center.addr.ts + passport assets/map/nn-center.addr.json (call addresses)
 python blender/build.py             # the workplace model: src/art/desk.gen.ts + assets/models/ (bpy==4.5.15, Python 3.11)
 python blender/pult.py              # the desk frame of the «Пульт» scene: assets/scenes/pult-desk.png + src/art/pult.gen.ts
 python blender/station.py           # the «Станция» frame between shifts: assets/scenes/station-desk.jpg + src/art/station.gen.ts

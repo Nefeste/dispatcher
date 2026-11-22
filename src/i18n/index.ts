@@ -139,6 +139,10 @@ export const T = {
       urgent: 'Неотложная помощь поликлиники, по вашему вызову. Врач у больного: нужна больница, пришлите бригаду',
     } as const,
     reason: 'Повод',
+    addressLabel: 'Адрес',
+    /** адрес вызова: «ул. Минина, 3А»; на улице — «у дома»; дом далеко — «около дома» */
+    address: (a: { street: string; house: string; outside: boolean; far: boolean }) =>
+      a.far ? `${a.street}, около дома ${a.house}` : a.outside ? `${a.street}, у дома ${a.house}` : `${a.street}, ${a.house}`,
     quote: (s: string) => `«${s}»`,
     tabLabel: (name: string) => `Вопросы: ${name}`,
     cost: (s: number) => `${s} с`,
