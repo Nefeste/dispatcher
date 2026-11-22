@@ -78,8 +78,21 @@ export interface ShiftSetup {
   hospitals: string[] | null;
   /** неотложная помощь поликлиники принимает переданные вызовы — в свои часы (срез, С5; docs/08-game-design.md, §4) */
   clinic: boolean;
-  /** место в «Первой неделе» (срез, часть С1): номер, день и час словами, что нового; null — смена не из недели */
-  week: { n: number; day: string; what: string } | null;
+  /** место в неделе (срез, часть С1; путь к 1.0, В2а): какая неделя (`content/weeks/`), номер — место в её списке,
+   *  день и час словами, что нового; null — смена не из недели */
+  week: { of: string; n: number; day: string; what: string } | null;
+}
+
+/** Неделя (путь к 1.0, В2а; content/weeks/): семь смен по порядку в одном районе и своя станция. */
+export interface WeekDef {
+  id: string;
+  /** место среди недель: следующая открывается, когда у каждой смены предыдущей есть итог */
+  order: number;
+  title: string;
+  /** район (город записей `content/cities/`) — общий у всех смен недели */
+  city: string;
+  /** смены по номерам */
+  shifts: string[];
 }
 
 /** Поток звонков: сколько в час — с какого часа суток (оценка). */
@@ -276,5 +289,6 @@ export interface Db {
   crews: Record<string, CrewKind>;
   cities: Record<string, City>;
   shifts: Record<string, ShiftSetup>;
+  weeks: Record<string, WeekDef>;
   phone: Phone;
 }

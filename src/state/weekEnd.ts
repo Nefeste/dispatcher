@@ -6,7 +6,7 @@ import { DB } from '../content/generated/db';
 import type { Db } from '../content/types';
 import type { Station } from '../engine/station';
 import type { Best } from './progress';
-import { weekShifts } from './week';
+import { firstWeek, weekShifts } from './week';
 import type { WeekLog } from './weekLog';
 
 export interface WeekEndRow {
@@ -43,9 +43,9 @@ export interface WeekEndView {
 const crewNo = (id: string) => Number(id.split('.')[1] ?? 0);
 
 /** Итог недели этой станции. `complete` — неделя пройдена: тогда открывается экран итога. */
-export function weekEnd(st: Station, log: WeekLog, best: Readonly<Record<string, Best>>, db: Db = DB): WeekEndView {
-  const shifts = weekShifts(db);
-  const city = db.cities[shifts[0].city];
+export function weekEnd(st: Station, log: WeekLog, best: Readonly<Record<string, Best>>, db: Db = DB, week: string = firstWeek(db)): WeekEndView {
+  const shifts = weekShifts(db, week);
+  const city = db.cities[db.weeks[week].city];
   const baseName = (id: string) => city.bases.find(b => b.id === id)?.short ?? id;
   const rows = shifts.map(s => {
     const e = log.shifts.find(x => x.shift === s.id);

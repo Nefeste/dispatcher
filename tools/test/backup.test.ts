@@ -3,7 +3,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { KEYS } from '../../src/state/storage';
+import { KEYS, weekKey } from '../../src/state/storage';
 
 const ROOT = join(import.meta.dir, '../..');
 const sources = () => (readdirSync(join(ROOT, 'src'), { recursive: true }) as string[])
@@ -17,6 +17,9 @@ describe('у каждого ключа хранилища есть решени�
     expect(Object.keys(KEYS).sort()).toEqual(['crashlog', 'current', 'history', 'progress', 'settings', 'station', 'week']);
     for (const v of Object.values(KEYS)) expect(v).toMatch(/^dispatcher\.[a-z.]+\.v\d+$/);
     expect(new Set(Object.values(KEYS)).size).toBe(Object.keys(KEYS).length);
+    // станция и журнал недель после первой (путь к 1.0, В2а) — те же строки хранилища, с именем недели: переезжают
+    expect(weekKey('station', 'second')).toBe('dispatcher.station.second.v1');
+    expect(weekKey('week', 'second')).toBe('dispatcher.week.second.v1');
   });
 
   test('в хранилище пишут только через KEYS: AsyncStorage знает один файл', () => {

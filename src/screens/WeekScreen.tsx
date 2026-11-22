@@ -1,5 +1,6 @@
-// Выбор смены «Первой недели» (docs/08-game-design.md, §8, §10; срез, docs/specs/2026-11-vertical-slice.md, часть С1):
-// семь смен по порядку; у пройденной — лучший итог; следующая открывается, когда пройдена предыдущая — с любым итогом.
+// Выбор смены (docs/08-game-design.md, §8, §10; срез, docs/specs/2026-11-vertical-slice.md, часть С1): по неделям
+// (путь к 1.0, В2а) — семь смен по порядку; у пройденной — лучший итог; следующая открывается, когда пройдена
+// предыдущая — с любым итогом; следующая неделя — когда у каждой смены предыдущей есть итог.
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { T } from '../i18n';
@@ -7,44 +8,58 @@ import { type Best, readBest } from '../state/progress';
 import { readStation } from '../state/station';
 import { stationView } from '../state/stationView';
 import { FREE, type FreeChoice, freeId, freeOpen } from '../state/free';
-import { weekRows } from '../state/week';
+import { weekOpen, weekRows, weeksOf } from '../state/week';
+import { DB } from '../content/generated/db';
 import { Button, Txt } from '../ui/kit';
 import { C, R, S } from '../ui/theme';
 
-export function WeekScreen({ onPick, onBack, onWeekEnd }: { onPick: (shiftId: string) => void; onBack: () => void; onWeekEnd: () => void }) {
+export function WeekScreen({ onPick, onBack, onWeekEnd }: { onPick: (shiftId: string) => void; onBack: () => void; onWeekEnd: (week: string) => void }) {
   const [best, setBest] = useState<Record<string, Best> | null>(null);
-  // неделя этой станции пройдена — итог недели над сменами (срез, С8)
-  const [complete, setComplete] = useState(false);
+  // неделя этой станции пройдена — итог недели над сменами (срез, С8); у каждой недели своя станция (путь к 1.0, В2а)
+  const [complete, setComplete] = useState<Record<string, boolean>>({});
   useEffect(() => {
     let alive = true;
     void readBest().then(b => { if (alive) setBest(b); });
-    void readStation().then(st => { if (alive) setComplete(stationView(st).complete); });
+    void Promise.all(weeksOf().map(async w => [w.id, stationView(await readStation(w.id), DB, w.id).complete] as const))
+      .then(xs => { if (alive) setComplete(Object.fromEntries(xs)); });
     return () => { alive = false; };
   }, []);
-  const rows = best ? weekRows(best) : [];
+  const weeks = weeksOf();
+  const first = weeks[0].id;
   return (
     <ScrollView contentContainerStyle={styles.root} testID="week">
-      <Txt title style={styles.title}>{T.week.title}</Txt>
-      <Txt dim>{T.week.lead}</Txt>
-      {complete ? <Button label={T.week.end} onPress={onWeekEnd} testID="week-end-open" /> : null}
-      {rows.map(r => (
-        <Pressable
-          key={r.id}
-          disabled={!r.open}
-          onPress={() => onPick(r.id)}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !r.open }}
-          accessibilityLabel={T.week.label(r.n, r.day, r.open)}
-          testID={`week-${r.n}`}
-          style={({ pressed }) => [styles.row, !r.open && styles.locked, pressed && styles.pressed]}>
-          <Txt style={styles.head}>{T.week.head(r.n, r.day, T.pult.clock(r.from), T.pult.clock(r.to))}</Txt>
-          <Txt dim style={styles.what}>{r.what}</Txt>
-          <View>
-            {r.best ? <Txt style={styles.best}>{T.week.best(r.best.inNorm, r.best.emergency)}</Txt> : null}
-            {!r.open ? <Txt dim style={styles.best}>{T.week.locked(r.n - 1)}</Txt> : null}
+      {weeks.map((w, i) => {
+        // у первой недели — прежние метки сценария в браузере, у следующих — с именем недели
+        const tag = w.id === first ? '' : `${w.id.replace(/^week\./, '')}-`;
+        const open = best ? weekOpen(best, w.id) : i === 0;
+        const rows = best ? weekRows(best, DB, w.id) : [];
+        return (
+          <View key={w.id} style={styles.week} testID={`week-section-${w.id}`}>
+            <Txt title style={styles.title}>{w.title}</Txt>
+            {i === 0 ? <Txt dim>{T.week.lead}</Txt> : null}
+            {!open ? <Txt dim testID={`week-${tag}locked`}>{T.week.weekLocked(weeks[i - 1].title)}</Txt> : null}
+            {complete[w.id] ? <Button label={T.week.end} onPress={() => onWeekEnd(w.id)} testID={`week-end-open${tag ? `-${tag.slice(0, -1)}` : ''}`} /> : null}
+            {rows.map(r => (
+              <Pressable
+                key={r.id}
+                disabled={!r.open}
+                onPress={() => onPick(r.id)}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !r.open }}
+                accessibilityLabel={T.week.label(r.n, r.day, r.open)}
+                testID={`week-${tag}${r.n}`}
+                style={({ pressed }) => [styles.row, !r.open && styles.locked, pressed && styles.pressed]}>
+                <Txt style={styles.head}>{T.week.head(r.n, r.day, T.pult.clock(r.from), T.pult.clock(r.to))}</Txt>
+                <Txt dim style={styles.what}>{r.what}</Txt>
+                <View>
+                  {r.best ? <Txt style={styles.best}>{T.week.best(r.best.inNorm, r.best.emergency)}</Txt> : null}
+                  {!r.open && open ? <Txt dim style={styles.best}>{T.week.locked(r.n - 1)}</Txt> : null}
+                </View>
+              </Pressable>
+            ))}
           </View>
-        </Pressable>
-      ))}
+        );
+      })}
       {best ? <FreeCard open={freeOpen(best)} best={best} onPick={onPick} /> : null}
       <Button label={T.common.back} kind="ghost" onPress={onBack} testID="week-back" />
     </ScrollView>
@@ -98,6 +113,7 @@ const styles = StyleSheet.create({
   stepSign: { fontSize: S.lead, lineHeight: 26 },
   root: { padding: 20, paddingTop: 40, gap: 12 },
   title: { fontSize: S.hero, lineHeight: 44 },
+  week: { gap: 12 },
   row: { padding: 14, borderRadius: R.card, backgroundColor: C.paper, borderWidth: 1, borderColor: C.line, gap: 4 },
   locked: { opacity: 0.55 },
   pressed: { opacity: 0.7 },

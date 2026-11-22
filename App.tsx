@@ -23,10 +23,10 @@ import { type InsertKind, InsertScreen } from './src/screens/InsertScreen';
 import { TitleScreen } from './src/screens/TitleScreen';
 import { WeekEndScreen } from './src/screens/WeekEndScreen';
 import { StationScreen } from './src/screens/StationScreen';
-import { DB } from './src/content/generated/db';
 import { NO_LINEUP } from './src/engine/shift';
 import { lineupOf } from './src/engine/station';
 import { readStation } from './src/state/station';
+import { firstWeek, weekOfShift } from './src/state/week';
 import { introNote } from './src/state/stationView';
 import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
 import { mark } from './src/state/marks';
@@ -105,6 +105,8 @@ export default function App() {
   const resuming = useRef(false);
   // какую смену недели грузить (выбор смены или сохранённая)
   const [picked, setPicked] = useState(FIRST_SHIFT);
+  // какая неделя на станции и в итоге недели (путь к 1.0, В2а): у каждой недели своя станция
+  const [week, setWeek] = useState(firstWeek());
   const onLoaded = useCallback(() => {
     if (resuming.current) {
       resuming.current = false;
@@ -115,9 +117,9 @@ export default function App() {
     departed.current = false;
     mark('loaded');
     // смена недели выходит с бригадами и укладками станции (срез, С2)
-    void readStation().then(st => {
-      const week = Boolean(DB.shifts[picked]?.week);
-      startShift(picked, undefined, settings.current.autopause, week ? lineupOf(st) : NO_LINEUP, week ? introNote(st, picked) : null);
+    const of = weekOfShift(picked);
+    void readStation(of ?? firstWeek()).then(st => {
+      startShift(picked, undefined, settings.current.autopause, of ? lineupOf(st) : NO_LINEUP, of ? introNote(st, picked) : null);
       setInsert('start');
       setScreen('insert');
     });
@@ -159,7 +161,7 @@ export default function App() {
                       setScreen('loading');
                     });
                   }}
-                  onStation={() => setScreen('station')}
+                  onStation={w => { setWeek(w); setScreen('station'); }}
                   onDesk={() => setScreen('desk')}
                   onBench={() => setScreen('bench')}
                   onSettings={() => {
@@ -177,10 +179,10 @@ export default function App() {
                     setScreen('loading');
                   }}
                   onBack={() => setScreen('title')}
-                  onWeekEnd={() => setScreen('weekEnd')}
+                  onWeekEnd={w => { setWeek(w); setScreen('weekEnd'); }}
                 />
               ) : null}
-              {screen === 'weekEnd' ? <WeekEndScreen onWeek={() => setScreen('week')} /> : null}
+              {screen === 'weekEnd' ? <WeekEndScreen week={week} onWeek={() => setScreen('week')} /> : null}
               {screen === 'loading' ? <LoadingScreen shiftId={picked} onReady={onLoaded} /> : null}
               {screen === 'map' ? <PultScreen onBack={() => setScreen('title')} onCall={toCall} onEnd={toEnd} /> : null}
               {screen === 'call' ? (
@@ -216,14 +218,16 @@ export default function App() {
                     setScreen('loading');
                   }}
                   onHome={() => {
-                    const week = Boolean(session()?.ctx.setup.week);
+                    const of = session()?.ctx.setup.week?.of ?? null;
                     closeShift();
-                    setScreen(week ? 'station' : 'week');
+                    if (of) setWeek(of);
+                    setScreen(of ? 'station' : 'week');
                   }}
                 />
               ) : null}
               {screen === 'station' ? (
                 <StationScreen
+                  week={week}
                   onWeek={() => setScreen('week')}
                   onWeekEnd={() => setScreen('weekEnd')}
                   onNext={id => {

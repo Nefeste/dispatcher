@@ -13,7 +13,7 @@ import { weekSnapshot } from '../scenes/snapshot';
 import { readBest } from '../state/progress';
 import { softOutcome } from '../state/session';
 import { readStation, readWeekLog, resetWeek } from '../state/station';
-import { weekShifts } from '../state/week';
+import { firstWeek } from '../state/week';
 import { type WeekEndView, weekEnd } from '../state/weekEnd';
 import { edgesOf, type WeekLog } from '../state/weekLog';
 import { Dialog, type DialogSpec } from '../ui/dialog';
@@ -21,7 +21,7 @@ import { Button, Card, Txt } from '../ui/kit';
 import { saveImage } from '../ui/saveImage';
 import { C, R, S } from '../ui/theme';
 
-export function WeekEndScreen({ onWeek }: { onWeek: () => void }) {
+export function WeekEndScreen({ week, onWeek }: { week: string; onWeek: () => void }) {
   const [data, setData] = useState<{ view: WeekEndView; log: WeekLog } | null>(null);
   const [snap, setSnap] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogSpec | null>(null);
@@ -30,11 +30,11 @@ export function WeekEndScreen({ onWeek }: { onWeek: () => void }) {
   const small = useFont(Onest_400Regular, 26);
   useEffect(() => {
     let alive = true;
-    void Promise.all([readStation(), readWeekLog(), readBest()]).then(([st, log, best]) => {
-      if (alive) setData({ view: weekEnd(st, log, best), log });
+    void Promise.all([readStation(week), readWeekLog(week), readBest()]).then(([st, log, best]) => {
+      if (alive) setData({ view: weekEnd(st, log, best, DB, week), log });
     });
     return () => { alive = false; };
-  }, []);
+  }, [week]);
   if (!data) return <View style={styles.root} testID="week-end-loading" />;
   const { view, log } = data;
   const W = T.weekEnd;
@@ -44,7 +44,7 @@ export function WeekEndScreen({ onWeek }: { onWeek: () => void }) {
     if (!title || !body || !small) return;
     let png: Uint8Array | null = null;
     try {
-      const city = DB.cities[weekShifts()[0].city];
+      const city = DB.cities[DB.weeks[week].city];
       const map = loadMap(city.map);
       // пути — только если журнал записан по этой карте (другая карта — другие номера рёбер)
       const same = log.map === map.id && log.edges === map.edges.a.length;
@@ -53,17 +53,19 @@ export function WeekEndScreen({ onWeek }: { onWeek: () => void }) {
         ...view.rows.map(r => W.snapshotRow(r.n, r.day, r.played?.inNorm ?? 0, r.played?.emergency ?? 0)),
         W.snapshotStation(view.fund, view.crews.length),
       ];
-      png = weekSnapshot(map, city, shifts, { title: W.snapshotTitle, shifts: W.snapshotShifts, lines, osm: T.map.osm }, { title, body, small });
+      png = weekSnapshot(map, city, shifts, { title: W.snapshotTitle(DB.weeks[week].title), shifts: W.snapshotShifts, lines, osm: T.map.osm }, { title, body, small });
     } catch {
       // снимок — не главное: не вышел — так и скажем
     }
     if (!png) return setSnap(T.end.snapshotFailed);
-    void saveImage('dispetcher-03-nedelya.png', png, W.snapshot).then(ok => setSnap(ok ? T.end.snapshotSaved : T.end.snapshotFailed));
+    // у первой недели — прежнее имя файла, у следующих — с именем недели
+    const file = week === firstWeek() ? 'dispetcher-03-nedelya.png' : `dispetcher-03-nedelya-${week.replace(/^week\./, '')}.png`;
+    void saveImage(file, png, W.snapshot).then(ok => setSnap(ok ? T.end.snapshotSaved : T.end.snapshotFailed));
   };
   const askAgain = () => setDialog({
     title: W.againAsk,
     text: W.againText,
-    actions: [{ label: W.againYes, onPress: () => void resetWeek().then(onWeek) }],
+    actions: [{ label: W.againYes, onPress: () => void resetWeek(week).then(onWeek) }],
   });
 
   const station = [

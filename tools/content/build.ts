@@ -8,7 +8,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import type { ContentDb } from '../../src/content/med';
-import { type Base, type City, type CrewKind, type Db, type Flow, type Hospital, type Place, PROFILES, type Profile, type Roads, type ShiftSetup } from '../../src/content/types';
+import { type Base, type City, type CrewKind, type Db, type Flow, type Hospital, type Place, PROFILES, type Profile, type Roads, type ShiftSetup, type WeekDef } from '../../src/content/types';
 import { roadOf } from '../../src/engine/road/graph';
 import { FAR, search } from '../../src/engine/road/route';
 import type { MapData } from '../../src/map/format';
@@ -121,12 +121,12 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
       id, city: String(s.city ?? ''), start: Number(s.start), length: Number(s.length), season: s.season as ShiftSetup['season'],
       crews: (s.crews as ShiftSetup['crews']) ?? [], script: (s.script as ShiftSetup['script']) ?? [],
       flowPct: s.flow === undefined ? 100 : Number(s.flow), hospitals: (s.hospitals as string[] | undefined) ?? null,
-      week: (s.week as ShiftSetup['week'] | undefined) ?? null, clinic: s.clinic === true,
+      // неделю (`of`) смене даёт запись недели ниже
+      week: s.week ? { of: '', ...(s.week as Omit<NonNullable<ShiftSetup['week']>, 'of'>) } : null, clinic: s.clinic === true,
     };
     if (!Number.isInteger(setup.flowPct) || setup.flowPct < 10 || setup.flowPct > 300) err(`${id}: flow must be a whole percent, 10…300`);
     if (setup.week) {
       const w = setup.week;
-      if (!(Number.isInteger(w.n) && w.n >= 1 && w.n <= 7)) err(`${id}: week.n must be 1…7`);
       if (!w.day || !w.what) err(`${id}: week needs day and what`);
     }
     if (!['winter', 'spring', 'summer', 'autumn'].includes(setup.season)) err(`${id}: season must be winter, spring, summer or autumn`);
@@ -148,9 +148,30 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
     shifts[id] = setup;
   }
 
-  // «Первая неделя»: семь смен, номера 1…7 — каждый один раз
-  const week = Object.values(shifts).filter(s => s.week).map(s => s.week!.n).sort((a, b) => a - b);
-  if (week.length && week.join(',') !== '1,2,3,4,5,6,7') err(`week shifts must be numbered 1…7 once each, got ${week.join(',')}`);
+  // недели (путь к 1.0, В2а): смены по номерам, номер смены — её место в списке; смена недели — ровно в одной неделе;
+  // у смен недели один район; порядок недель — без повторов
+  const weeks: Record<string, WeekDef> = {};
+  for (const [id, w] of records(dir, 'weeks', 'week')) {
+    const def: WeekDef = { id, order: Number(w.order), title: String(w.title ?? ''), city: '', shifts: ((w.shifts as string[]) ?? []).map(String) };
+    if (!Number.isInteger(def.order) || def.order < 1) err(`${id}: order must be a whole number from 1`);
+    if (!def.title) err(`${id}: no title`);
+    if (!def.shifts.length) err(`${id}: no shifts`);
+    def.shifts.forEach((sid, i) => {
+      const s = shifts[sid];
+      if (!s) { err(`${id}: unknown shift ${sid}`); return; }
+      if (!s.week) { err(`${id}: ${sid} has no week line (n, day, what)`); return; }
+      if (s.week.of) err(`${sid}: in two weeks, ${s.week.of} and ${id}`);
+      if (s.week.n !== i + 1) err(`${id}: ${sid} is number ${i + 1} in the week, but its week.n is ${s.week.n}`);
+      s.week.of = id;
+    });
+    const cityOf = new Set(def.shifts.map(sid => shifts[sid]?.city).filter(Boolean));
+    if (cityOf.size > 1) err(`${id}: shifts of one week must share a city, got ${[...cityOf].join(', ')}`);
+    def.city = [...cityOf][0] ?? '';
+    weeks[id] = def;
+  }
+  for (const s of Object.values(shifts)) if (s.week && !s.week.of) err(`${s.id}: has a week line but no week lists it`);
+  const orders = Object.values(weeks).map(w => w.order);
+  if (new Set(orders).size !== orders.length) err(`weeks: order must not repeat, got ${orders.join(', ')}`);
 
   // медицина: копия базы «Анамнеза» (tools/content/anamnez.ts) и своё — записи «по телефону» (tools/content/phone.ts)
   const med = JSON.parse(readFileSync(join(dir, 'med/anamnez.json'), 'utf8')) as ContentDb;
@@ -169,7 +190,7 @@ export function buildDb(dir = CONTENT): { db: Db; med: ContentDb; errors: string
       prev = r.at;
     }
   }
-  return { db: { roads, flow, crews, cities, shifts, phone }, med, errors };
+  return { db: { roads, flow, crews, cities, shifts, weeks, phone }, med, errors };
 }
 
 export function moduleText(db: Db): string {

@@ -17,6 +17,11 @@ export const KEYS = {
   crashlog: 'dispatcher.crashlog.v1',
 } as const;
 
+/** Ключ станции или журнала недели после первой (путь к 1.0, В2а): `dispatcher.station.<неделя>.v1`. */
+export function weekKey(kind: 'station' | 'week', week: string): string {
+  return `dispatcher.${kind}.${week}.v1`;
+}
+
 export async function readRaw(key: string): Promise<string | null> {
   try {
     return await AsyncStorage.getItem(key);
