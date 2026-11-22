@@ -10,6 +10,7 @@
 // Пока камера движется (палец, приближение, автопилот «Замера»), нижний холст рисует одну картинку района вместо сотен
 // путей (0.10.2, по второму замеру: долгие кадры сдвига и приближения); камера встала на `IDLE_MS` — снова пути, чёткие
 // на любом приближении. Так делают карты в телефонах: в движении при сильном приближении чуть мягче, на месте — чётко.
+import { useLessMotion } from '../motion';
 import { Canvas, Group, Image, Path, Rect, type SkImage, Skia, type Transforms3d } from '@shopify/react-native-skia';
 import React, { memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -99,6 +100,11 @@ const MapLayers = memo(function MapLayers({ map, paths, image, width, height, tr
   );
 });
 
+/** Докат карты после пальца: наибольшая скорость, точек в секунду; затухание, 1/с; ниже этой скорости — стоп. */
+const FLING_MAX = 2400;
+const FLING_FRICTION = 5;
+const FLING_STOP = 14;
+
 /** Касание карты: точка в единицах карты и приближение (точек экрана на единицу карты) — чтобы найти знак под пальцем. */
 export type MapTap = (x: number, y: number, zoom: number) => void;
 
@@ -118,11 +124,22 @@ export function MapView({ map, width, height, testID, overlay, dusk = 0, night =
   const idle = useSharedValue(0);
   const image = useMemo(() => cachedMapImage(map, fit), [map, fit]);
 
+  // карту отпустили на ходу — она докатывается и плавно встаёт (премиум-отделка); с «Меньше движения» встаёт сразу
+  const less = useLessMotion();
+  const vel = useSharedValue([0, 0]);
+
   const pan = Gesture.Pan()
     .maxPointers(1)
     .onStart(() => {
       'worklet';
+      vel.set([0, 0]);
       start.set([tx.get(), ty.get(), zoom.get(), 0, 0]);
+    })
+    .onEnd(e => {
+      'worklet';
+      if (less) return;
+      const cap = (v: number) => Math.max(-FLING_MAX, Math.min(FLING_MAX, v));
+      vel.set([cap(e.velocityX), cap(e.velocityY)]);
     })
     .onUpdate(e => {
       'worklet';
@@ -135,6 +152,7 @@ export function MapView({ map, width, height, testID, overlay, dusk = 0, night =
   const pinch = Gesture.Pinch()
     .onStart(e => {
       'worklet';
+      vel.set([0, 0]);
       start.set([tx.get(), ty.get(), zoom.get(), e.focalX, e.focalY]);
     })
     .onUpdate(e => {
@@ -162,6 +180,22 @@ export function MapView({ map, width, height, testID, overlay, dusk = 0, night =
   // камера встала на IDLE_MS — снова пути
   useFrameCallback(info => {
     'worklet';
+    const v = vel.get();
+    if (v[0] !== 0 || v[1] !== 0) {
+      const dt = Math.min(info.timeSincePreviousFrame ?? 16, 48) / 1000;
+      const x = clampPan(tx.get() + v[0] * dt, map.width, width, zoom.get());
+      const y = clampPan(ty.get() + v[1] * dt, map.height, height, zoom.get());
+      // упёрлась в край — по этой оси встала
+      const k = Math.exp(-dt * FLING_FRICTION);
+      const nx = x === tx.get() ? 0 : v[0] * k;
+      const ny = y === ty.get() ? 0 : v[1] * k;
+      tx.set(x);
+      ty.set(y);
+      vel.set(Math.abs(nx) + Math.abs(ny) < FLING_STOP ? [0, 0] : [nx, ny]);
+      if (motion.get() !== 1) motion.set(1);
+      idle.set(0);
+      return;
+    }
     if (motion.get() !== 1) return;
     const t = idle.get() + (info.timeSincePreviousFrame ?? 0);
     idle.set(t);

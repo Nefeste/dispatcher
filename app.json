@@ -2,10 +2,10 @@
   "expo": {
     "name": "Dispatcher 03",
     "slug": "dispatcher",
-    "version": "0.31.0",
+    "version": "0.32.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#ECEDE6",
+    "backgroundColor": "#0E1215",
     "icon": "./assets/icon.png",
     "android": {
       "package": "games.gornitsa.dispatcher",
@@ -63,7 +63,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ECEDE6",
+          "backgroundColor": "#0E1215",
           "image": "./assets/splash-icon.png",
           "imageWidth": 288
         }

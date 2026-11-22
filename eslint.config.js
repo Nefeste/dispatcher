@@ -9,6 +9,26 @@ module.exports = defineConfig([
     ignores: ['dist/*', 'dist-web/*', 'src/content/generated/*', 'src/map/generated/*'],
   },
   {
+    // картинки и шрифты Skia — через src/ui/skiaAssets.ts: useImage и useFont Skia грузят файл при каждом появлении
+    // экрана и не освобождают его (в вебе куча CanvasKit росла до предела — docs/06-testing.md)
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'App.tsx'],
+    ignores: ['src/engine/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@shopify/react-native-skia',
+              importNames: ['useImage', 'useFont', 'useTypeface'],
+              message: 'Картинки и шрифты Skia — useSkiaImage и useSkiaFont из src/ui/skiaAssets.ts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // движок чистый: ни часов, ни случайности, ни экрана (AGENTS.md, docs/02-architecture.md §2)
     files: ['src/engine/**/*.ts'],
     rules: {

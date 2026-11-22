@@ -6,7 +6,8 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { T } from '../i18n';
 import { Button, Txt } from './kit';
-import { C, R } from './theme';
+import { GLASS, UI } from '../scenes/palette';
+import { R } from './theme';
 
 export interface DialogAction { label: string; kind?: 'primary' | 'ghost'; onPress?: () => void }
 export interface DialogSpec {
@@ -44,10 +45,10 @@ export function Dialog({ spec, onClose }: { spec: DialogSpec | null; onClose: ()
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: GLASS.scrim },
   center: { flex: 1, justifyContent: 'center', padding: 22 },
   // на широком экране окно не растягивается во всю ширину монитора
-  box: { width: '100%', maxWidth: 480, alignSelf: 'center', borderRadius: R.card, borderWidth: 1, borderColor: C.line, backgroundColor: C.paper, padding: 18, gap: 8, elevation: 6 },
+  box: { width: '100%', maxWidth: 480, alignSelf: 'center', borderRadius: R.card + 4, borderWidth: 1, borderColor: UI.line, borderTopColor: GLASS.edge, backgroundColor: UI.bg, padding: 18, gap: 8, elevation: 6 },
   title: { fontSize: 21, lineHeight: 28 },
   actions: { gap: 8, marginTop: 8 },
 });

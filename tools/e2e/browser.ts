@@ -89,6 +89,8 @@ async function buttonsFit(p: Page, name: string): Promise<void> {
   checks++;
 }
 const snap = async (p: Page, name: string) => {
+  // экран проявляется, части встают по очереди, числа итога досчитывают (src/ui/anim.tsx): снимок — когда всё встало
+  await p.waitForTimeout(1100);
   await buttonsFit(p, name);
   return p.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`) });
 };
@@ -298,6 +300,12 @@ try {
     } else if (await visible('pult')) {
       const now = await speed();
       if ((await line()) > 0) await tap('pult-phone');
+      // перезвонить ждущему можно только на свободной линии: часы на паузу — новый звонок не придёт, пока окно открывается
+      // (на медленной машине линия иначе всегда успевала заняться)
+      else if (!dialed && (await visible('pult-waiting-0'))) {
+        if (now !== 'пауза') await tap('pult-clock');
+        await tap('pult-waiting-0');
+      }
       else if (now === 'пауза') await tap('pult-clock');
       else if (now === '×1') await tap('pult-speed');
       else if (Date.now() - lastTile > 2000 && (await visible('pult-waiting-0'))) { lastTile = Date.now(); await tap('pult-waiting-0'); }
@@ -559,6 +567,25 @@ try {
     await crash.close();
     const foreign = own.filter(e => !e.includes('error boundary probe') && !/The above error occurred|ErrorBoundary/.test(e));
     if (foreign.length) throw new Error(`ошибки в консоли страницы сбоя:\n${foreign.join('\n')}`);
+  }
+
+  // загрузка смены (премиум-отделка): какая смена начинается и шаги с настоящим ходом. В браузере шаги идут одним
+  // куском — экран не успеть снять; `?loading=hold` держит его, пока не коснутся: все шаги сделаны, 100 %
+  {
+    const load = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2 });
+    load.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+    load.on('pageerror', e => errors.push(String(e)));
+    await load.goto(`http://localhost:${server.port}/?loading=hold`);
+    await load.getByTestId('title-start').click();
+    await load.getByTestId('week-1').click();
+    await see(load, 'loading-shift', 'Понедельник, утро');
+    await load.getByTestId('loading-percent').filter({ hasText: '100' }).waitFor({ state: 'visible', timeout: 15000 });
+    checks++;
+    await see(load, 'loading', 'Карта района');
+    await snap(load, 'loading');
+    await load.getByTestId('loading').click();
+    await see(load, 'insert');
+    await load.close();
   }
 
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);

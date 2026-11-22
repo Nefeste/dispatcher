@@ -6,7 +6,7 @@ import { describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { C } from '../../src/ui/theme';
+import { SCENE } from '../../src/scenes/palette';
 
 const ROOT = join(import.meta.dir, '../..');
 const passport = JSON.parse(readFileSync(join(ROOT, 'assets/icon.json'), 'utf8')) as {
@@ -56,11 +56,11 @@ describe('значок', () => {
 });
 
 describe('заставка', () => {
-  test('плагин expo-splash-screen: фон — лён, как у заглавного экрана; картинка — знак, поле 288 dp', () => {
+  test('плагин expo-splash-screen: фон — ночь зала, как у заглавного экрана (с 0.32.0); картинка — знак, поле 288 dp', () => {
     const p = app.expo.plugins.find(x => Array.isArray(x) && x[0] === 'expo-splash-screen') as [string, Record<string, unknown>] | undefined;
     expect(p).toBeDefined();
-    expect(String(p![1].backgroundColor).toLowerCase()).toBe(C.linen);
-    expect(app.expo.backgroundColor.toLowerCase()).toBe(C.linen);
+    expect(String(p![1].backgroundColor).toLowerCase()).toBe(SCENE.hallTop);
+    expect(app.expo.backgroundColor.toLowerCase()).toBe(SCENE.hallTop);
     expect(p![1].image).toBe('./assets/splash-icon.png');
     expect(p![1].imageWidth).toBe(288);
   });

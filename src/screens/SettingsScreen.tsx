@@ -2,16 +2,17 @@
 // 0023, правило 6: не выбрано — как в системе телефона), «Мягкий исход» (срез, С3), размер текста в трёх ступенях
 // (§12; срез, С8б). Пишутся сразу.
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { setFeedback } from '../audio/feedback';
 import { T } from '../i18n';
 import { setAutopause, setSoftOutcome } from '../state/session';
 import { lessMotionOf, type Settings } from '../state/settings';
 import { saveSettings } from '../state/storage';
-import { Button, Txt } from '../ui/kit';
+import { UI } from '../scenes/palette';
+import { Button, Row, Screen, Toggle, Txt } from '../ui/kit';
 import { setLessMotion } from '../ui/motion';
 import { setTextSize } from '../ui/textScale';
-import { C, R, S } from '../ui/theme';
+import { G, S } from '../ui/theme';
 
 type Key = 'autopause' | 'sound' | 'haptics' | 'lessMotion' | 'softOutcome';
 
@@ -36,50 +37,45 @@ export function SettingsScreen({ settings, system, onChange, onBack, onReport }:
     setTextSize(next.textSize);
   };
   return (
-    <ScrollView contentContainerStyle={styles.root} testID="settings">
-      <Txt title>{T.settings.title}</Txt>
+    <Screen
+      title={T.settings.title}
+      scrollID="settings"
+      footer={<Button label={T.common.back} kind="ghost" onPress={onBack} testID="settings-back" />}>
       {(['autopause', 'sound', 'haptics', 'lessMotion', 'softOutcome'] as const).map(k => (
-        <Pressable
-          key={k}
-          onPress={() => toggle(k)}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: value(k) }}
-          accessibilityLabel={T.settings[k].name}
-          testID={`settings-${k}`}
-          style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+        <Row key={k} onPress={() => toggle(k)} role="switch" checked={value(k)} label={T.settings[k].name} testID={`settings-${k}`} style={styles.row}>
           <View style={styles.text}>
             <Txt style={styles.name}>{T.settings[k].name}</Txt>
             <Txt dim style={styles.hint}>{T.settings[k].hint}</Txt>
           </View>
-          <Txt style={value(k) ? styles.on : styles.off}>{value(k) ? T.settings.on : T.settings.off}</Txt>
-        </Pressable>
+          <Toggle on={value(k)} word={value(k) ? T.settings.on : T.settings.off} />
+        </Row>
       ))}
       {/* размер текста — три ступени, касание — следующая (§12 геймдизайна; срез, С8б) */}
-      <Pressable
-        onPress={nextSize}
-        accessibilityRole="button"
-        accessibilityLabel={`${T.settings.textSize.name}: ${T.settings.textSize.steps[s.textSize]}`}
-        testID="settings-textSize"
-        style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+      <Row onPress={nextSize} label={`${T.settings.textSize.name}: ${T.settings.textSize.steps[s.textSize]}`} testID="settings-textSize" style={styles.row}>
         <View style={styles.text}>
           <Txt style={styles.name}>{T.settings.textSize.name}</Txt>
           <Txt dim style={styles.hint}>{T.settings.textSize.hint}</Txt>
         </View>
-        <Txt style={styles.on}>{T.settings.textSize.steps[s.textSize]}</Txt>
-      </Pressable>
-      <Button label={T.about.report} kind="ghost" onPress={onReport} testID="settings-report" />
-      <Button label={T.common.back} kind="ghost" onPress={onBack} testID="settings-back" />
-    </ScrollView>
+        <View style={styles.size}>
+          <Txt style={styles.sizeWord}>{T.settings.textSize.steps[s.textSize]}</Txt>
+          <View style={styles.steps}>
+            {[0, 1, 2].map(i => <View key={i} style={[styles.stepDot, { height: 8 + i * 4 }, i <= s.textSize && styles.stepOn]} />)}
+          </View>
+        </View>
+      </Row>
+      <Button label={T.about.report} kind="quiet" small onPress={onReport} testID="settings-report" />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { padding: 24, paddingTop: 48, gap: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, minHeight: 56, borderRadius: R.card, backgroundColor: C.paper, borderWidth: 1, borderColor: C.line },
-  pressed: { opacity: 0.7 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: G.m },
   text: { flex: 1, gap: 2 },
   name: { fontSize: S.body, fontWeight: '500' },
   hint: { fontSize: S.small },
-  on: { fontSize: S.small, fontWeight: '600', color: C.spruce },
-  off: { fontSize: S.small, color: C.inkSoft },
+  size: { alignItems: 'flex-end', gap: 4 },
+  sizeWord: { fontSize: S.small, fontWeight: '600', color: UI.text },
+  steps: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
+  stepDot: { width: 6, borderRadius: 2, backgroundColor: UI.line },
+  stepOn: { backgroundColor: UI.amber },
 });

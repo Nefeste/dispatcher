@@ -128,7 +128,7 @@ def shade(c, k):
 def materials():
     return {
         # столешница — светлый ламинат: едва заметные волокна, блеск неровный — в нём живёт отсвет монитора
-        'desk': look.grain('desk', shade(COL['desk'], 0.9), COL['desk'], scale=5.0, rough=(0.25, 0.5), bump=0.03, coat=0.15, stretch=(1, 14, 14)),
+        'desk': look.grain('desk', shade(COL['desk'], 0.9), COL['desk'], scale=5.0, rough=(0.2, 0.42), bump=0.03, coat=0.4, stretch=(1, 14, 14)),
         'edge': mat('edge', COL['edge'], rough=0.5),
         # пластик корпусов — мелкая фактура: блик мягкий, не зеркальный
         'plastic': look.grain('plastic', shade(COL['plastic'], 0.85), COL['plastic'], scale=900.0, rough=(0.3, 0.45), bump=0.04, coat=0.15),
@@ -342,37 +342,39 @@ def scene_objects(M):
 
 
 def lights():
-    # потолок — холодный рассеянный свет зала
+    # вечерний зал (премиум-отделка 22.11.2026): потолок приглушён — стол освещают монитор сзади и лампа справа,
+    # как на заглавном экране и в остальных сценах; тени мягкие, в лаке стола — отсвет монитора
     bpy.ops.object.light_add(type='AREA', location=(0.3, 0.1, 3.0))
     top = bpy.context.object
     top.data.size = 3.0
-    top.data.energy = 70
-    top.data.color = (0.92, 0.96, 1.0)
+    top.data.energy = 5
+    top.data.color = (0.78, 0.88, 1.0)
     # настольная лампа справа — тёплый свет
     # (площадкой, не точкой: точка отражалась в лаке стола белым кругом у правого края)
     bpy.ops.object.light_add(type='AREA', location=(0.95, 0.5, 1.2))
     warm = bpy.context.object
-    warm.data.size = 0.45
-    warm.data.energy = 42
-    warm.data.color = (1.0, 0.8, 0.55)
-    warm.rotation_euler = (Vector((0.2, 0.25, TOP)) - warm.location).to_track_quat('-Z', 'Y').to_euler()
+    warm.data.size = 0.4
+    warm.data.energy = 34
+    warm.data.color = (1.0, 0.74, 0.46)
+    warm.rotation_euler = (Vector((0.3, 0.22, TOP)) - warm.location).to_track_quat('-Z', 'Y').to_euler()
     warm.visible_glossy = False
-    # монитор с картой светит на стол сзади; в кадре его нет — его рисует Skia
-    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0.62, 1.12), rotation=(math.radians(90), 0, 0))
+    # монитор с картой светит на стол сзади; в кадре его нет — его рисует Skia. Светлая карта — главный свет стола:
+    # холодноватый, от дальнего края к ближнему слабеет, в лаке столешницы — его отсвет
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0.66, 1.2), rotation=(math.radians(96), 0, 0))
     glow = bpy.context.object
-    glow.scale = (0.62, 0.36, 1)
-    glow.data.materials.append(mat('glow', (0, 0, 0, 1), emit=COL['linen'], strength=2.5))
+    glow.scale = (1.1, 0.62, 1)
+    glow.data.materials.append(mat('glow', (0, 0, 0, 1), emit=(0.80, 0.90, 1.0, 1.0), strength=1.45))
     glow.visible_camera = False
     # слабый холодный свет слева сзади — кромка на телефоне и гарнитуре, отделяет тёмные корпуса от стола
     bpy.ops.object.light_add(type='AREA', location=(-1.0, 0.9, 1.25))
     edge = bpy.context.object
     edge.data.size = 0.8
-    edge.data.energy = 30
-    edge.data.color = (0.75, 0.86, 1.0)
+    edge.data.energy = 12
+    edge.data.color = (0.7, 0.84, 1.0)
     edge.rotation_euler = (Vector((-0.2, 0.25, TOP)) - edge.location).to_track_quat('-Z', 'Y').to_euler()
     world = bpy.data.worlds.new('hall')
     world.use_nodes = True
-    world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.03, 0.035, 0.04, 1)
+    world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.012, 0.016, 0.02, 1)
     bpy.context.scene.world = world
 
 

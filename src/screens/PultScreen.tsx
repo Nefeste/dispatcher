@@ -22,6 +22,7 @@ import { FONTS } from '../ui/fonts';
 import { duskOf, nightOf } from '../ui/map/palette';
 import { Txt } from '../ui/kit';
 import { InsertView } from '../scenes/insert/InsertView';
+import { cue } from '../audio/feedback';
 import { INSERTS } from './InsertScreen';
 import type { OnScene } from '../state/crewView';
 
@@ -233,7 +234,7 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
           night={nightOf(view.clock)}
           overlay={zoom => <CrewLayer ctx={ctx} shift={s} pos={pos} zoom={zoom} />}
           panel={panel}
-          onPhone={() => { if (!command({ c: 'answer' })) onCall(); }}
+          onPhone={() => { if (!command({ c: 'answer' })) { cue('pickup'); onCall(); } }}
           onWaiting={id => setPick(id)}
           onMapTap={(mx, my, zoom) => openCrew(crewAt(ctx, s, mx, my, TAP_DP / zoom))}
           onRadio={() => openCrew(view.radio?.id ?? null)}
@@ -243,12 +244,12 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
       ) : null}
       {size && !x.intro && hint ? <HintBar text={T.tutorial[hint]} top={pultLayout(size.w, size.h, textScale()).map.y + 8} /> : null}
       <Pressable style={styles.back} onPress={onBack} accessibilityRole="button" testID="map-back">
-        <Txt style={styles.backText}>{T.common.back}</Txt>
+        <Txt style={styles.backText}>{`‹ ${T.common.back}`}</Txt>
       </Pressable>
       {/* вставка на месте — поверх всего пульта, «Назад» тоже под ней: касание пропускает ролик */}
       {scene ? (
         <View style={StyleSheet.absoluteFill}>
-          <InsertView key={scene.place} video={INSERTS[scene.place].video} still={INSERTS[scene.place].still} seconds={INSERTS[scene.place].seconds} onDone={() => setScene(null)} />
+          <InsertView key={scene.place} video={INSERTS[scene.place].video} still={INSERTS[scene.place].still} seconds={INSERTS[scene.place].seconds} sound={INSERTS[scene.place].sound} onDone={() => setScene(null)} />
         </View>
       ) : null}
     </View>
@@ -257,6 +258,6 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#101315' },
-  back: { position: 'absolute', left: 8, bottom: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(20,26,31,0.7)' },
+  back: { position: 'absolute', left: 8, bottom: 6, minHeight: 30, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 15, backgroundColor: 'rgba(20,26,31,0.82)', borderWidth: 1, borderColor: '#2c3842' },
   backText: { color: '#e6e9e4', fontSize: 13, fontFamily: FONTS.medium },
 });

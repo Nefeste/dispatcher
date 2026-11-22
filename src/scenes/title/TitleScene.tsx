@@ -1,55 +1,72 @@
-// Живая сцена за стеклом заглавного экрана (docs/08-game-design.md, §10: «за стеклом — живая сцена зала диспетчерской»;
-// срез, часть С8б): зал, тёмный монитор с отсветом карты, край стола из Blender — тот же кадр, что у пульта; огонёк
-// телефона мигает — на линии звонок. С «Меньше движения» огонёк просто горит. Только картинка: касаний у сцены нет.
-import { Circle, Canvas, Group, Image, LinearGradient, RadialGradient, Rect, RoundedRect, useImage, vec } from '@shopify/react-native-skia';
+// Живая сцена за стеклом заглавного экрана (docs/08-game-design.md, §10; docs/13-art.md, §7): зал диспетчерской ночью —
+// кадр Cycles из Blender (blender/title.py): видеостена с картой района, мониторы, стол под лампой. Поверх Skia рисует
+// то, что живёт: на видеостене расходятся круги вызова — как на значке игры, — и мигает огонёк телефона на столе. С
+// «Меньше движения» круги стоят, огонёк горит. Только картинка: касаний у сцены нет.
+import { Canvas, Circle, Fill, Group, Image, LinearGradient, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
+import { useSkiaImage } from '../../ui/skiaAssets';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { TITLE } from '../../art/title.gen';
+import { HALL } from '../../ui/Backdrop';
 import { useLessMotion } from '../../ui/motion';
 import { SCENE, UI } from '../palette';
-import { pultLayout } from '../pult/layout';
 
-const DESK = require('../../../assets/scenes/pult-desk.png');
-/** Огонёк телефона: горит и гаснет, мс. */
-const BLINK = 900;
+/** Шаг жизни сцены, мс: круг вызова расходится за четыре шага, огонёк телефона горит и гаснет через шаг. */
+const STEP = 700;
+
+/** Кадр заполняет экран целиком (как `cover`), верх кадра — у верха экрана: потолок и видеостена не режутся. */
+export function titleFit(W: number, H: number): { k: number; x: number; y: number } {
+  const k = Math.max(W / TITLE.w, H / TITLE.h);
+  return { k, x: (W - TITLE.w * k) / 2, y: Math.min(0, (H - TITLE.h * k) * 0.35) };
+}
 
 export function TitleScene({ width: W, height: H }: { width: number; height: number }) {
-  const L = useMemo(() => pultLayout(W, H), [W, H]);
-  const desk = useImage(DESK);
+  const hall = useSkiaImage(HALL);
   const less = useLessMotion();
-  const [on, setOn] = useState(true);
+  const f = useMemo(() => titleFit(W, H), [W, H]);
+  // сцена живёт шагами, а не кадрами: четыре перерисовки за три секунды
+  const [n, setN] = useState(0);
   useEffect(() => {
     if (less) return;
-    const id = setInterval(() => setOn(x => !x), BLINK);
+    const id = setInterval(() => setN(x => (x + 1) % 4), STEP);
     return () => clearInterval(id);
   }, [less]);
-  const lit = less || on;
-  const [lx, ly, lr] = L.phone.lamp;
-  const mon = L.monitor;
+  const at = (p: readonly number[]) => [f.x + p[0] * f.k, f.y + p[1] * f.k] as const;
+  const [cx, cy] = at(TITLE.call);
+  const [lx, ly] = at(TITLE.lamp);
+  const lr = Math.max(2, TITLE.lamp[2] * f.k);
+  const ring = Math.max(5, TITLE.callR * f.k);
+  const lit = less || n % 2 === 0;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden testID="title-scene">
       <Canvas style={StyleSheet.absoluteFill}>
-        <Rect x={0} y={0} width={W} height={H}>
-          <LinearGradient start={vec(0, 0)} end={vec(0, H)} colors={[SCENE.hallTop, SCENE.hallBottom]} />
-        </Rect>
-        {/* монитор: тёмный экран с отсветом карты района */}
-        <RoundedRect x={mon.x} y={mon.y} width={mon.w} height={mon.h} r={10} color={SCENE.bezel} />
-        <Rect x={L.screen.x} y={L.screen.y} width={L.screen.w} height={L.screen.h} color={UI.bg} />
-        <Rect x={L.screen.x} y={L.screen.y} width={L.screen.w} height={L.screen.h}>
-          <RadialGradient c={vec(W * 0.45, L.screen.y + L.screen.h * 0.45)} r={W * 0.9} colors={['rgba(126,166,201,0.16)', 'rgba(126,166,201,0)']} />
-        </Rect>
-        {desk ? <Image image={desk} x={L.desk.x} y={L.desk.y} width={L.desk.w} height={L.desk.h} fit="fill" /> : null}
-        {/* ночной зал: стол под окном программы приглушён — светлый кадр не спорит с меню (игра владельца 22.11.2026) */}
-        <Rect x={L.desk.x} y={L.desk.y} width={L.desk.w} height={L.desk.h}>
-          <LinearGradient start={vec(0, L.desk.y)} end={vec(0, L.desk.y + L.desk.h)} colors={['rgba(14,18,21,0.55)', 'rgba(14,18,21,0.75)']} />
-        </Rect>
+        <Fill color={SCENE.hallTop} />
+        {hall ? <Image image={hall} x={f.x} y={f.y} width={TITLE.w * f.k} height={TITLE.h * f.k} fit="fill" /> : null}
+        {/* вызов на видеостене: точка и расходящиеся круги — кумач тёмной темы */}
+        <Group>
+          <Circle cx={cx} cy={cy} r={ring * 4}>
+            <RadialGradient c={vec(cx, cy)} r={ring * 4} colors={['rgba(229,86,106,0.30)', 'rgba(229,86,106,0)']} />
+          </Circle>
+          {(less ? [1, 2] : [n]).map(i => (
+            <Circle key={i} cx={cx} cy={cy} r={ring * (1 + i * 0.75)} style="stroke" strokeWidth={1.5} color={UI.red} opacity={less ? 0.7 - i * 0.2 : 0.85 - i * 0.22} />
+          ))}
+          <Circle cx={cx} cy={cy} r={ring * 0.42} color={UI.red} />
+        </Group>
         {lit ? (
           <Group>
-            <Circle cx={lx} cy={ly} r={lr * 5}>
-              <RadialGradient c={vec(lx, ly)} r={lr * 5} colors={['rgba(229,86,106,0.55)', 'rgba(229,86,106,0)']} />
+            <Circle cx={lx} cy={ly} r={lr * 6}>
+              <RadialGradient c={vec(lx, ly)} r={lr * 6} colors={['rgba(229,86,106,0.5)', 'rgba(229,86,106,0)']} />
             </Circle>
-            <Circle cx={lx} cy={ly} r={lr * 1.1} color="#ff8a9a" />
+            <Circle cx={lx} cy={ly} r={lr} color="#ff8a9a" />
           </Group>
         ) : null}
+        {/* сверху — затемнение под логотип, снизу — под окно меню */}
+        <Rect x={0} y={0} width={W} height={H * 0.3}>
+          <LinearGradient start={vec(0, 0)} end={vec(0, H * 0.3)} colors={['rgba(14,18,21,0.82)', 'rgba(14,18,21,0)']} />
+        </Rect>
+        <Rect x={0} y={H * 0.45} width={W} height={H * 0.55}>
+          <LinearGradient start={vec(0, H * 0.45)} end={vec(0, H)} colors={['rgba(14,18,21,0)', 'rgba(14,18,21,0.88)']} />
+        </Rect>
       </Canvas>
     </View>
   );

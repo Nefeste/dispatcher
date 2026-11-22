@@ -1,6 +1,7 @@
 // Сцены (ADR 0009; docs/02-architecture.md, §10): кадры из Blender сходятся со своими паспортами, раскладка пульта и
 // разговора помещается на экраны телефонов, касания не наезжают друг на друга, вопросы и решение — в нижней половине,
 // текст ложится на экранчики в перспективе кадра.
+import { TITLE } from '../../src/art/title.gen';
 import { describe, expect, test } from 'bun:test';
 import { DB } from '../../src/content/generated/db';
 import { createHash } from 'node:crypto';
@@ -57,6 +58,24 @@ describe('паспорта кадров', () => {
         if (pics.includes('teen')) expect([r.caller, r.age![0] >= 30, r.age![1] <= 50]).toEqual(['сын', true, true]);
         if (pics.includes('young') && (r.caller === 'жена' || r.caller === 'сам')) expect(r.age![1]).toBeLessThan(40);
       }
+    }
+  });
+});
+
+describe('заглавный кадр (премиум-отделка)', () => {
+  test('кадр зала: отпечатки файлов, скрипт, размер; огонёк и вызов — внутри кадра', () => {
+    const p = json('assets/scenes/title.json');
+    for (const [file, f] of Object.entries(p.files as Record<string, { sha256: string; bytes: number }>)) {
+      expect([file, sha(file)]).toEqual([file, f.sha256]);
+    }
+    expect(readFileSync(join(root, p.made.script), 'utf8')).toContain("VERSION = build.VERSION");
+    expect(readFileSync(join(root, p.made.model), 'utf8')).toContain(`VERSION = '${p.made.blender}'`);
+    expect([TITLE.w, TITLE.h]).toEqual(p.made.size);
+    for (const [x, y] of [TITLE.lamp, TITLE.call]) {
+      expect(x).toBeGreaterThan(0);
+      expect(x).toBeLessThan(TITLE.w);
+      expect(y).toBeGreaterThan(0);
+      expect(y).toBeLessThan(TITLE.h);
     }
   });
 });

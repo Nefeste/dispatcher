@@ -5,7 +5,8 @@
 // чтения с экрана; что по касанию открыть — решает экран (src/screens/StationScreen.tsx).
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
-import { Canvas, Group, Image, LinearGradient, Rect, Skia, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
+import { Canvas, Group, Image, LinearGradient, Rect, Skia, Text as SkText, type SkFont, vec } from '@shopify/react-native-skia';
+import { useSkiaFont, useSkiaImage } from '../../ui/skiaAssets';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { T } from '../../i18n';
@@ -49,12 +50,12 @@ export interface StationSceneProps {
 
 export function StationScene({ width: W, height: H, view, onItem }: StationSceneProps) {
   const L = useMemo(() => stationLayout(W, H), [W, H]);
-  const frame = useImage(FRAME);
-  const head = useFont(Onest_600SemiBold, 24);
-  const body = useFont(Onest_400Regular, 22);
-  const row = useFont(Onest_400Regular, 21);
-  const big = useFont(Onest_600SemiBold, 30);
-  const tag = useFont(Onest_600SemiBold, 16);
+  const frame = useSkiaImage(FRAME);
+  const head = useSkiaFont(Onest_600SemiBold, 24);
+  const body = useSkiaFont(Onest_400Regular, 22);
+  const row = useSkiaFont(Onest_400Regular, 21);
+  const big = useSkiaFont(Onest_600SemiBold, 30);
+  const tag = useSkiaFont(Onest_600SemiBold, 16);
   const on = T.station.on;
   const letter = view.letter;
   const complaints = letter ? letter.longWaits + letter.refusals : 0;

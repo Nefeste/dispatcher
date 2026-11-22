@@ -28,7 +28,7 @@ import { lineupOf } from './src/engine/station';
 import { readStation } from './src/state/station';
 import { firstWeek, weekOfShift } from './src/state/week';
 import { introNote } from './src/state/stationView';
-import { cue, preloadSounds, setFeedback } from './src/audio/feedback';
+import { cue, preloadSounds, setAmbience, setFeedback } from './src/audio/feedback';
 import { mark } from './src/state/marks';
 import { hideSplash, keepSplash } from './src/state/splash';
 import { closeShift, resumeShift, session, setCue, setPace, setSeed, setSoftOutcome, startShift, FIRST_SHIFT, savedShift } from './src/state/session';
@@ -38,7 +38,7 @@ import { FONT_FILES } from './src/ui/fonts';
 import { setLessMotion } from './src/ui/motion';
 import { setTextSize } from './src/ui/textScale';
 import { SCENE } from './src/scenes/palette';
-import { C } from './src/ui/theme';
+import { Appear, MOTION } from './src/ui/anim';
 
 type Screen = 'title' | 'week' | 'weekEnd' | 'loading' | 'map' | 'call' | 'insert' | 'end' | 'callReview' | 'station' | 'desk' | 'bench' | 'settings' | 'about' | 'report';
 
@@ -52,6 +52,8 @@ const query = Platform.OS === 'web' && typeof location !== 'undefined' ? new URL
 if (query) setPace(Number(query.get('pace') ?? 1));
 if (query?.get('seed')) setSeed(Number(query.get('seed')));
 const quickBench = query?.get('bench') === 'quick';
+// сценарий снимает экран загрузки: ?loading=hold — он ждёт касания, когда всё загружено (в браузере шаги идут одним куском)
+const holdLoading = query?.get('loading') === 'hold';
 // граница ошибок в сценарии: ?crash=1 — заглавный экран падает при рисовании, пока с экрана сбоя не ушли (путь к 1.0,
 // В1); падает каждый раз, а не один: упавшее рисование React повторяет само, прежде чем отдать ошибку границе
 let crashProbe = query?.get('crash') === '1';
@@ -139,17 +141,24 @@ export default function App() {
     return () => sub.remove();
   }, [screen, reportBack]);
 
-  // сцены тёмные: полоса состояния телефона над ними — тоже (ADR 0009); экраны программы — светлые
-  const scene = screen !== 'about' && screen !== 'settings' && screen !== 'report';
+  // фон оперативного отдела — пока идёт смена: на пульте и в разговоре (docs/08-game-design.md, §11)
+  const inShift = screen === 'map' || screen === 'call';
+  useEffect(() => {
+    setAmbience(inShift);
+    return () => setAmbience(false);
+  }, [inShift]);
   return (
     <GestureHandlerRootView style={styles.root}>
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.root, scene && styles.dark]}>
-        <StatusBar style={scene ? 'light' : 'dark'} />
+      {/* всё — тёмная программа в ночном зале: полоса состояния телефона над ней — светлыми знаками (docs/13-art.md, §7) */}
+      <SafeAreaView style={styles.root}>
+        <StatusBar style="light" />
         <View style={styles.root}>
           {fontsReady || fontsError ? (
             <ErrorBoundary key={screen} onHome={() => { crashProbe = false; setScreen('title'); }} onReport={() => { crashProbe = false; setReportFrom(screen); setScreen('report'); }}>
               {screen === 'title' ? <CrashProbe /> : null}
+              {/* смена экрана — короткое проявление; с «Меньше движения» — сразу (src/ui/anim.tsx) */}
+              <Appear rise={0} duration={MOTION.screen} style={styles.root}>
               {screen === 'title' ? (
                 <TitleScreen
                   onStart={() => setScreen('week')}
@@ -184,7 +193,7 @@ export default function App() {
                 />
               ) : null}
               {screen === 'weekEnd' ? <WeekEndScreen week={week} onWeek={() => setScreen('week')} /> : null}
-              {screen === 'loading' ? <LoadingScreen shiftId={picked} onReady={onLoaded} /> : null}
+              {screen === 'loading' ? <LoadingScreen shiftId={picked} onReady={onLoaded} hold={holdLoading} /> : null}
               {screen === 'map' ? <PultScreen onBack={() => setScreen('title')} onCall={toCall} onEnd={toEnd} /> : null}
               {screen === 'call' ? (
                 <CallScreen
@@ -246,6 +255,7 @@ export default function App() {
               {screen === 'settings' && settingsOpen ? (
                 <SettingsScreen settings={settingsOpen.s} system={settingsOpen.system} onChange={x => { settings.current = x; }} onReport={() => { setReportFrom('settings'); setScreen('report'); }} onBack={() => setScreen('title')} />
               ) : null}
+              </Appear>
             </ErrorBoundary>
           ) : null}
         </View>
@@ -255,4 +265,4 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: C.linen }, dark: { backgroundColor: SCENE.hallTop } });
+const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: SCENE.hallTop } });
