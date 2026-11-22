@@ -31,12 +31,22 @@ export interface Crew {
   call: string | null;
   /** сколько вызовов ещё хватит укладки; 0 — пустая, бригада едет пополнять */
   kit: number;
+  /** укладка полная — на столько вызовов; нет — `KIT` (расширенная укладка станции, §15) */
+  cap?: number;
+  /** пополнение на подстанции, мс; нет — `RESTOCK` (склад на подстанции, §15) */
+  restockMs?: number;
 }
+
+/** Полная укладка бригады. */
+export const capOf = (c: Pick<Crew, 'cap'>): number => c.cap ?? KIT;
 
 /** Бригада на подстанции в начале смены; укладка — сколько вызовов в ней осталось (станция знает это с прошлой
  *  смены). Пустая — смена начинается с пополнения. */
-export function crewAtBase(id: string, kind: string, base: number, kit = KIT): Crew {
-  const c: Crew = { id, kind, base, state: 'base', at: base, route: null, until: 0, call: null, kit: Math.max(0, Math.min(KIT, Math.floor(kit))) };
+export function crewAtBase(id: string, kind: string, base: number, kit = KIT, cap = KIT, restockMs = RESTOCK): Crew {
+  const c: Crew = { id, kind, base, state: 'base', at: base, route: null, until: 0, call: null, kit: Math.max(0, Math.min(cap, Math.floor(kit))) };
+  // поля станции — только когда они не обычные: смена без закупок та же, что была (золотые смены)
+  if (cap !== KIT) c.cap = cap;
+  if (restockMs !== RESTOCK) c.restockMs = restockMs;
   return atBase(c, 0);
 }
 
@@ -97,13 +107,13 @@ export function home(road: Road, times: Uint32Array, c: Crew, t: number): Crew {
 
 /** Доехала до подстанции в момент `t`: укладка пустая — пополняет до `t + RESTOCK`, иначе на подстанции. */
 export function atBase(c: Crew, t: number): Crew {
-  if (c.kit <= 0) return { ...c, state: 'restock', at: c.base, route: null, until: t + RESTOCK };
+  if (c.kit <= 0) return { ...c, state: 'restock', at: c.base, route: null, until: t + (c.restockMs ?? RESTOCK) };
   return { ...c, state: 'base', at: c.base, route: null, until: 0 };
 }
 
 /** Пополнила укладку — на подстанции, полная. */
 export function restocked(c: Crew): Crew {
-  return { ...c, state: 'base', at: c.base, route: null, until: 0, kit: KIT };
+  return { ...c, state: 'base', at: c.base, route: null, until: 0, kit: capOf(c) };
 }
 
 /** Когда у бригады следующее событие, мс: конец пути или конец стоянки; нет — FAR. */

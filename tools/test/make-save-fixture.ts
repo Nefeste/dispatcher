@@ -54,8 +54,8 @@ const { s: s1 } = play(ctx1, 101, BOTS.rules);
 await recordShiftOnce(ctx1, s1);
 const t1 = totals(ctx1, s1);
 await recordBest(week[0].id, { emergency: t1.emergency, inNorm: t1.inNorm, urgentMedian: t1.urgentMedian, accepted: t1.accepted });
-// решение на станции — какое возможно: укладки, иначе ничего
-await decideAndSave({ d: 'kits' });
+// решение на станции — какое возможно: укладки бригад, у которых неполные, иначе ничего
+await decideAndSave({ d: 'kits', crews: Object.keys((await readStation()).kits) });
 
 // журнал сбоев — одна запись
 if (crash) {

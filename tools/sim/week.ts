@@ -36,8 +36,11 @@ export function policyMoves(st: Station, next: string | null, policy: Policy): D
     out.push(d);
     return true;
   };
-  tryDo({ d: 'kits' });
   const setup = DB.shifts[next];
+  // укладки — бригадам следующей смены, у которых неполные (игра владельца 22.11.2026: заказ на выбранные)
+  const onNext = new Set([...setup.crews.map(c => c.id), ...x.extra.map(c => c.id)]);
+  const short = Object.keys(x.kits).filter(id => onNext.has(id));
+  if (short.length) tryDo({ d: 'kits', crews: short });
   for (;;) {
     const count = (b: string) => setup.crews.filter(c => c.base === b).length + x.extra.filter(c => c.base === b).length;
     const base = count('base.north') <= count('base.south') ? 'base.north' : 'base.south';

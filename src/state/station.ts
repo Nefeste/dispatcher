@@ -2,9 +2,8 @@
 // недели своя (путь к 1.0, В2а; у первой — ключ `station`). Итог смены приходит на станцию один раз (повтор экрана итога и «Ещё раз» его не удваивают — повтор
 // пройденной смены станцию не меняет, src/engine/station.ts). Без React: проверяется тестом.
 import { DB } from '../content/generated/db';
-import { KIT } from '../engine/rules';
 import type { Shift, ShiftCtx } from '../engine/shift';
-import { afterShift, decide as decideStation, type Decision, newStation, reportOf, type Station, type StationRefusal } from '../engine/station';
+import { afterShift, capFor, decide as decideStation, type Decision, newStation, reportOf, type Station, type StationRefusal } from '../engine/station';
 import { KEYS, readRaw, weekKey, writeRaw } from './storage';
 import { firstWeek, weekOfShift } from './week';
 import { addEntry, entryOf, newWeekLog, parseWeekLog, type WeekLog } from './weekLog';
@@ -17,11 +16,14 @@ export function parseStation(raw: string | null): Station {
     const bases = new Set(Object.values(DB.cities).flatMap(c => c.bases.map(b => b.id)));
     const extra = x.extra.filter(c => c && typeof c.id === 'string' && c.kind === 'crew.general' && bases.has(c.base));
     const kits: Record<string, number> = {};
-    for (const [id, n] of Object.entries(x.kits ?? {})) if (Number.isInteger(n) && n >= 0 && n < KIT) kits[id] = n;
+    // расширенные укладки и склады (игра владельца 22.11.2026): сохранено до 0.27.0 — их нет
+    const plus = Array.isArray(x.plus) ? x.plus.filter((id): id is string => typeof id === 'string') : [];
+    for (const [id, n] of Object.entries(x.kits ?? {})) if (Number.isInteger(n) && n >= 0 && n < capFor({ plus }, id)) kits[id] = n;
     const done = x.done.filter(id => typeof id === 'string' && Boolean(DB.shifts[id]));
     const trained = Array.isArray(x.trained) ? x.trained.filter((id): id is string => typeof id === 'string') : [];
+    const stock = Array.isArray(x.stock) ? x.stock.filter((id): id is string => typeof id === 'string' && bases.has(id)) : [];
     return {
-      fund: Math.round(x.fund), extra, trained, kits, journal: x.journal, letter: x.letter ?? null, done,
+      fund: Math.round(x.fund), extra, trained, kits, plus, stock, journal: x.journal, letter: x.letter ?? null, done,
       decided: Number.isInteger(x.decided) ? Math.max(0, x.decided!) : 0,
     };
   } catch {
