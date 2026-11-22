@@ -66,7 +66,7 @@ export function WeekScreen({ onPick, onBack, onWeekEnd, onStation }: { onPick: (
                   <Txt style={[styles.noText, r.id === next && styles.noTextNext]}>{r.best ? '✓' : String(r.n)}</Txt>
                 </View>
                 <View style={styles.rowText}>
-                  <Txt style={styles.head}>{T.week.head(r.n, r.day, T.pult.clock(r.from), T.pult.clock(r.to))}</Txt>
+                  <Txt style={styles.head}>{T.week.name(r.day, T.pult.clock(r.from), T.pult.clock(r.to))}</Txt>
                   <Txt dim style={styles.what}>{r.what}</Txt>
                   {r.best ? <Txt style={styles.best}>{T.week.best(r.best.inNorm, r.best.emergency)}</Txt> : null}
                   {!r.open && open ? <Txt dim style={styles.lockedText}>{T.week.locked(r.n - 1)}</Txt> : null}

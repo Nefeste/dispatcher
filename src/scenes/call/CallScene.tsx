@@ -3,6 +3,7 @@
 // программы: карточка вызова, вкладки групп вопросов, вопросы с ценой в игровых секундах и решение — форма вызова.
 // После решения на месте вопросов — кого послать. Сцена получает вид вызова (src/state/callView.ts): правды о больном
 // в ней нет (ADR 0005).
+import { tick } from '../../audio/feedback';
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
@@ -82,6 +83,9 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
   // назвать форму снова; разговор новый — снова окно бригад; перезвонили ждущему — сначала вопросы
   const [asking, setAsking] = useState(view.dialed);
   const crewsOpen = decided && !asking;
+  // что сейчас под пальцем — вопрос, вкладка или форма: рисуется нажатым (премиум-отделка); касание — с откликом
+  const [down, setDown] = useState<string | null>(null);
+  const hold = (id: string) => ({ onPressIn: () => setDown(id), onPressOut: () => setDown(x => (x === id ? null : x)) });
   const qs = view.groups.find(g => g.id === group)?.questions ?? [];
   // вкладки: ширина — по длине слова
   const tabNames = view.groups.map(g => T.call.tabs[g.id]);
@@ -184,8 +188,8 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
                 const textLines = wrap(q.text, r.w - 20 - tw(small, cost), x => tw(small, x), 2);
                 return (
                   <Group key={q.id} opacity={q.asked ? 0.55 : 1}>
-                    <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={UI.panel} />
-                    <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={UI.line} style="stroke" strokeWidth={1} />
+                    <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={down === q.id ? UI.line : UI.panel} />
+                    <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={down === q.id ? UI.dim : UI.line} style="stroke" strokeWidth={1} />
                     {small ? textLines.map((l, j) => <SkText key={j} x={r.x + 10} y={r.y + r.h / 2 + (j - (textLines.length - 1) / 2) * 15 * s + 4 * s} text={l} font={small} color={UI.text} />) : null}
                     {small ? <SkText x={r.x + r.w - 8 - tw(small, cost)} y={r.y + r.h - 8} text={cost} font={small} color={UI.amber} /> : null}
                     {q.hint ? <Circle cx={r.x + r.w - 10} cy={r.y + 10} r={4 * s} color={UI.amber} /> : null}
@@ -202,6 +206,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
             return (
               <Group key={kind}>
                 <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={color} opacity={kind === 'none' ? 0.35 : decided && !chosen ? 0.5 : 1} />
+                {down === `form-${kind}` ? <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color="rgba(14,18,21,0.28)" /> : null}
                 {chosen ? <RoundedRect x={r.x - 2} y={r.y - 2} width={r.w + 4} height={r.h + 4} r={12} color={UI.text} style="stroke" strokeWidth={2} /> : null}
                 {bold ? <Label font={bold} variants={[`${letter}  ${name}`, name]} cx={r.x + r.w / 2} y={r.y + r.h / 2 + 5 * s} max={r.w - 8} color={kind === 'none' ? UI.text : UI.bg} /> : null}
               </Group>
@@ -215,7 +220,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
             <Pressable
               key={g.id}
               style={[styles.abs, { left: tabRects[i].x, top: L.tabs.y, width: tabRects[i].w, height: L.tabs.h }]}
-              onPress={() => setGroup(g.id)}
+              onPress={() => { tick(); setGroup(g.id); }}
               accessibilityRole="tab"
               accessibilityState={{ selected: g.id === group }}
               accessibilityLabel={T.call.tabLabel(T.call.tabs[g.id])}
@@ -229,7 +234,8 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
               <Pressable
                 key={q.id}
                 style={[styles.abs, { left: L.questions[i].x, top: L.questions[i].y, width: L.questions[i].w, height: L.questions[i].h }]}
-                onPress={() => onAsk(q.id)}
+                onPress={() => { tick(); onAsk(q.id); }}
+                {...hold(q.id)}
                 accessibilityRole="button"
                 accessibilityLabel={`${T.call.questionLabel(q.text, q.cost)}${q.hint ? `. ${T.call.hint}` : ''}`}
                 testID={`call-q-${q.id}`}
@@ -275,7 +281,8 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
         <Pressable
           key={kind}
           style={[styles.abs, { left: L.forms[i].x, top: L.forms[i].y, width: L.forms[i].w, height: L.forms[i].h }]}
-          onPress={() => { setAsking(false); onForm(kind); }}
+          onPress={() => { tick(); setAsking(false); onForm(kind); }}
+          {...hold(`form-${kind}`)}
           accessibilityRole="button"
           accessibilityLabel={T.call.formLabel(name)}
           testID={`call-form-${kind}`}

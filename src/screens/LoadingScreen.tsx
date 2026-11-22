@@ -5,7 +5,7 @@
 // смена) — пролетает за пару кадров.
 import { Asset } from 'expo-asset';
 import React, { useEffect, useRef, useState } from 'react';
-import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { DB } from '../content/generated/db';
 import { T } from '../i18n';
@@ -35,16 +35,17 @@ const PICTURES: number[] = [
 // картинки не загрузились — игра идёт: сцена сама возьмёт файл, когда он понадобится
 const loadPictures = () => Asset.loadAsync(PICTURES).then(() => {}, () => {});
 
-/** «Понедельник, утро · 08:00–10:00» — у смены недели; у свободной смены строки нет. */
-function shiftLine(shiftId: string): string | null {
+/** «Понедельник, утро» и «Смена 1 · 08:00–10:00» — у смены недели; у свободной смены строк нет. */
+function shiftLine(shiftId: string): { day: string; time: string } | null {
   for (const w of weeksOf()) {
     const r = weekRows({}, DB, w.id).find(x => x.id === shiftId);
-    if (r) return T.week.head(r.n, r.day, T.pult.clock(r.from), T.pult.clock(r.to));
+    if (r) return { day: r.day, time: T.loading.shift(r.n, T.pult.clock(r.from), T.pult.clock(r.to)) };
   }
   return null;
 }
 
-export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: () => void }) {
+/** `hold` — для сценария в браузере: загружено — экран ждёт касания, а не уходит сам. */
+export function LoadingScreen({ shiftId, onReady, hold }: { shiftId: string; onReady: () => void; hold?: boolean }) {
   const [step, setStep] = useState<{ s: LoadStep; i: number }>({ s: LOAD_STEPS[0], i: 0 });
   const [done, setDone] = useState(false);
   // экран загрузки — во весь экран, как пульт: по его размеру — окно карты пульта
@@ -66,10 +67,10 @@ export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: 
     void prepare(shiftId, (s, i) => { if (alive) setStep({ s, i }); }, build, loadPictures).then(() => {
       if (!alive) return;
       setDone(true);
-      onReady();
+      if (!hold) onReady();
     });
     return () => { alive = false; };
-  }, [shiftId, onReady]);
+  }, [shiftId, onReady, hold]);
   // доля — сколько шагов сделано; идущий шаг считается наполовину: полоса не стоит на нуле
   const share = done ? 1 : (step.i + 0.5) / LOAD_STEPS.length;
   const percent = Math.round(share * 100);
@@ -77,14 +78,19 @@ export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: 
   const fill = useAnimatedStyle(() => ({ width: `${t.value * 100}%` }));
   const line = shiftLine(shiftId);
   return (
-    <View style={styles.root} testID="loading" onLayout={onLayout}>
+    <Pressable style={styles.root} testID="loading" onLayout={onLayout} disabled={!hold || !done} onPress={onReady}>
       <Backdrop blur={10} dim={0.55} />
       <View style={styles.top}>
         <Logo size={34} />
       </View>
       <View style={styles.box} accessible accessibilityRole="progressbar" accessibilityLabel={T.loading.label(percent, T.loading.steps[step.s])} accessibilityValue={{ min: 0, max: 100, now: percent }}>
         <Txt style={styles.over}>{T.loading.title}</Txt>
-        {line ? <Txt title style={styles.shift} testID="loading-shift">{line}</Txt> : null}
+        {line ? (
+          <View testID="loading-shift">
+            <Txt title style={styles.shift}>{line.day}</Txt>
+            <Txt dim>{line.time}</Txt>
+          </View>
+        ) : null}
         <View style={styles.steps}>
           {LOAD_STEPS.map((s, i) => {
             const state = done || i < step.i ? 'done' : i === step.i ? 'now' : 'next';
@@ -104,7 +110,7 @@ export function LoadingScreen({ shiftId, onReady }: { shiftId: string; onReady: 
           <Txt style={styles.percent} testID="loading-percent">{T.loading.percent(percent)}</Txt>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -113,7 +119,7 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', top: 44, left: G.xl, right: G.xl },
   box: { borderRadius: R.card + 4, backgroundColor: GLASS.window, borderWidth: 1, borderColor: UI.line, borderTopColor: GLASS.edge, padding: G.l + 2, gap: G.m, marginBottom: G.xl },
   over: { color: UI.amber, fontSize: 13, lineHeight: 18, letterSpacing: 0.8, fontWeight: '600' },
-  shift: { fontSize: 24, lineHeight: 31 },
+  shift: { fontSize: 26, lineHeight: 33 },
   steps: { gap: 6, marginTop: 2 },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: G.s + 2 },
   dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: UI.dim },

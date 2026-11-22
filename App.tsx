@@ -52,6 +52,8 @@ const query = Platform.OS === 'web' && typeof location !== 'undefined' ? new URL
 if (query) setPace(Number(query.get('pace') ?? 1));
 if (query?.get('seed')) setSeed(Number(query.get('seed')));
 const quickBench = query?.get('bench') === 'quick';
+// сценарий снимает экран загрузки: ?loading=hold — он ждёт касания, когда всё загружено (в браузере шаги идут одним куском)
+const holdLoading = query?.get('loading') === 'hold';
 // граница ошибок в сценарии: ?crash=1 — заглавный экран падает при рисовании, пока с экрана сбоя не ушли (путь к 1.0,
 // В1); падает каждый раз, а не один: упавшее рисование React повторяет само, прежде чем отдать ошибку границе
 let crashProbe = query?.get('crash') === '1';
@@ -191,7 +193,7 @@ export default function App() {
                 />
               ) : null}
               {screen === 'weekEnd' ? <WeekEndScreen week={week} onWeek={() => setScreen('week')} /> : null}
-              {screen === 'loading' ? <LoadingScreen shiftId={picked} onReady={onLoaded} /> : null}
+              {screen === 'loading' ? <LoadingScreen shiftId={picked} onReady={onLoaded} hold={holdLoading} /> : null}
               {screen === 'map' ? <PultScreen onBack={() => setScreen('title')} onCall={toCall} onEnd={toEnd} /> : null}
               {screen === 'call' ? (
                 <CallScreen

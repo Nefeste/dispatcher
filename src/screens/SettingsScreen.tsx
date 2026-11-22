@@ -40,12 +40,7 @@ export function SettingsScreen({ settings, system, onChange, onBack, onReport }:
     <Screen
       title={T.settings.title}
       scrollID="settings"
-      footer={
-        <View style={styles.footer}>
-          <View style={styles.half}><Button label={T.common.back} kind="ghost" onPress={onBack} testID="settings-back" /></View>
-          <View style={styles.half}><Button label={T.about.report} kind="quiet" onPress={onReport} testID="settings-report" /></View>
-        </View>
-      }>
+      footer={<Button label={T.common.back} kind="ghost" onPress={onBack} testID="settings-back" />}>
       {(['autopause', 'sound', 'haptics', 'lessMotion', 'softOutcome'] as const).map(k => (
         <Row key={k} onPress={() => toggle(k)} role="switch" checked={value(k)} label={T.settings[k].name} testID={`settings-${k}`} style={styles.row}>
           <View style={styles.text}>
@@ -68,6 +63,7 @@ export function SettingsScreen({ settings, system, onChange, onBack, onReport }:
           </View>
         </View>
       </Row>
+      <Button label={T.about.report} kind="quiet" small onPress={onReport} testID="settings-report" />
     </Screen>
   );
 }
@@ -82,6 +78,4 @@ const styles = StyleSheet.create({
   steps: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
   stepDot: { width: 6, borderRadius: 2, backgroundColor: UI.line },
   stepOn: { backgroundColor: UI.amber },
-  footer: { flexDirection: 'row', gap: G.m },
-  half: { flex: 1 },
 });

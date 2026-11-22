@@ -76,12 +76,13 @@ bun tools/map/fetch.ts nn-center --addr  # house addresses of the district (netw
 bun tools/map/addr.ts nn-center     # → src/map/generated/nn-center.addr.ts + passport assets/map/nn-center.addr.json (call addresses)
 python blender/build.py             # the workplace model: src/art/desk.gen.ts + assets/models/ (bpy==4.5.15, Python 3.11)
 python blender/pult.py              # the desk frame of the «Пульт» scene: assets/scenes/pult-desk.png + src/art/pult.gen.ts
+python blender/title.py             # the night hall frame of the title, loading and menu backdrop: assets/scenes/title-hall.jpg + src/art/title.gen.ts
 python blender/station.py           # the «Станция» frame between shifts: assets/scenes/station-desk.jpg + src/art/station.gen.ts
 bun tools/people/fetch.ts <dir>     # Rocketbox sources at the pinned commit, SHA-256 checked (tools/people/sources.json)
 python blender/caller.py <dir>      # the caller pictures from those sources: assets/scenes/caller-*.jpg (--only=man — one)
 python blender/insert.py            # the video inserts (Cycles frames + ffmpeg H.264): --insert=depart «бригада выезжает»,
                                     # --insert=start «начало смены»; --preview — three small frames, game files untouched
-bun tools/sound/gen.ts              # the synthesized sounds: assets/audio/ring.wav, radio.wav (sound.test.ts — byte-exact)
+bun tools/sound/gen.ts              # the synthesized sounds: assets/audio/*.wav — ring, radio, tap, hall ambience… (sound.test.ts — byte-exact)
 NODE_PATH=/opt/node22/lib/node_modules bun tools/art/icon.ts   # the app icon, its adaptive layers and the splash picture → assets/ + icon.json
 npm run export:web                  # web build into dist-web/
 NODE_PATH=/opt/node22/lib/node_modules bun tools/e2e/browser.ts   # the browser scenario, shots in tools/e2e/out/

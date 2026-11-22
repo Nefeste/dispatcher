@@ -87,8 +87,8 @@ async function buttonsFit(p: Page, name: string): Promise<void> {
   checks++;
 }
 const snap = async (p: Page, name: string) => {
-  // экран проявляется (src/ui/anim.tsx): снимок — когда переход кончился
-  await p.waitForTimeout(450);
+  // экран проявляется, части встают по очереди, числа итога досчитывают (src/ui/anim.tsx): снимок — когда всё встало
+  await p.waitForTimeout(1100);
   await buttonsFit(p, name);
   return p.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`) });
 };
@@ -145,11 +145,6 @@ try {
   await see(page, 'week-free', 'Откроется, когда пройдена вся неделя');
   await snap(page, 'week');
   await page.getByTestId('week-1').click();
-  // загрузка: какая смена начинается и настоящий ход (премиум-отделка); экран живёт около секунды — снимок без ожидания
-  await see(page, 'loading-shift', 'Понедельник, утро');
-  await see(page, 'loading-percent', '%');
-  await buttonsFit(page, 'loading');
-  await page.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-loading.png`) });
   await see(page, 'insert');
   await page.waitForTimeout(1500);
   await snap(page, 'insert-start');
@@ -570,6 +565,25 @@ try {
     await crash.close();
     const foreign = own.filter(e => !e.includes('error boundary probe') && !/The above error occurred|ErrorBoundary/.test(e));
     if (foreign.length) throw new Error(`ошибки в консоли страницы сбоя:\n${foreign.join('\n')}`);
+  }
+
+  // загрузка смены (премиум-отделка): какая смена начинается и шаги с настоящим ходом. В браузере шаги идут одним
+  // куском — экран не успеть снять; `?loading=hold` держит его, пока не коснутся: все шаги сделаны, 100 %
+  {
+    const load = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2 });
+    load.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+    load.on('pageerror', e => errors.push(String(e)));
+    await load.goto(`http://localhost:${server.port}/?loading=hold`);
+    await load.getByTestId('title-start').click();
+    await load.getByTestId('week-1').click();
+    await see(load, 'loading-shift', 'Понедельник, утро');
+    await load.getByTestId('loading-percent').filter({ hasText: '100' }).waitFor({ state: 'visible', timeout: 15000 });
+    checks++;
+    await see(load, 'loading', 'Карта района');
+    await snap(load, 'loading');
+    await load.getByTestId('loading').click();
+    await see(load, 'insert');
+    await load.close();
   }
 
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);

@@ -293,6 +293,8 @@ export const T = {
   week: {
     lead: 'Семь смен по порядку. Следующая открывается, когда пройдена предыдущая — с любым итогом.',
     head: (n: number, day: string, from: string, to: string) => `${n}. ${day} · ${from}–${to}`,
+    /** строка смены в списке: номер стоит в кружке слева */
+    name: (day: string, from: string, to: string) => `${day} · ${from}–${to}`,
     best: (inNorm: number, all: number) => (all ? `Лучший итог: ${inNorm} из ${all} экстренных в норму` : 'Пройдена'),
     locked: (n: number) => `Откроется после смены ${n}`,
     /** следующая неделя (путь к 1.0, В2а): откроется, когда у каждой смены предыдущей есть итог */
@@ -490,6 +492,7 @@ export const T = {
   loading: {
     title: 'Смена начинается',
     steps: { pictures: 'Картинки сцен', map: 'Карта района', roads: 'Дороги и время в пути', paths: 'Улицы на мониторе', medicine: 'Звонки и больные' } as const,
+    shift: (n: number, from: string, to: string) => `Смена ${n} · ${from}–${to}`,
     percent: (n: number) => `${n}${nb}%`,
     label: (n: number, step: string) => `Загрузка смены: ${n} процентов. ${step}`,
   },

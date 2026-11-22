@@ -107,12 +107,15 @@ export function WeekEndScreen({ week, onWeek }: { week: string; onWeek: () => vo
               {r.played ? <Txt style={styles.score}>{W.rowScore(r.played.inNorm, r.played.emergency)}</Txt> : null}
             </View>
             {r.played && r.played.emergency ? <Meter share={r.played.inNorm / r.played.emergency} color={r.played.inNorm === r.played.emergency ? UI.green : UI.amber} height={4} /> : null}
-            <Txt dim style={styles.line}>
-              {r.played ? W.played(r.played.inNorm, r.played.emergency) : T.week.locked(r.n - 1)}
-              {r.played?.deaths ? ` · ${W.deaths(r.played.deaths, soft)}` : ''}
-              {/* лучший итог — когда он не тот, что сыгран на этой станции */}
-              {r.best && (r.best.inNorm !== r.played?.inNorm || r.best.emergency !== r.played?.emergency) ? ` · ${W.best(r.best.inNorm, r.best.emergency)}` : ''}
-            </Txt>
+            {/* строкой — только то, чего нет в числе справа: смена не сыграна, исходы, лучший итог другого прохождения */}
+            {(() => {
+              const notes = [
+                r.played ? (r.played.emergency ? '' : W.played(0, 0)) : T.week.locked(r.n - 1),
+                r.played?.deaths ? W.deaths(r.played.deaths, soft) : '',
+                r.best && (r.best.inNorm !== r.played?.inNorm || r.best.emergency !== r.played?.emergency) ? W.best(r.best.inNorm, r.best.emergency) : '',
+              ].filter(Boolean);
+              return notes.length ? <Txt dim style={styles.line}>{notes.join(' · ')}</Txt> : null;
+            })()}
           </View>
         ))}
       </Card>
@@ -144,7 +147,7 @@ const styles = StyleSheet.create({
   wait: { flex: 1 },
   hero: { backgroundColor: GLASS.window, borderRadius: R.card + 4, borderWidth: 1, borderColor: UI.line, borderTopColor: GLASS.edge, padding: G.l + 2, gap: G.s },
   heroLine: { flexDirection: 'row', alignItems: 'baseline', gap: G.s + 2 },
-  heroNumber: { fontSize: 64, lineHeight: 68, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  heroNumber: { fontSize: 64, lineHeight: 68, fontWeight: '600' },
   heroOf: { fontSize: S.title, lineHeight: 34, color: UI.dim, fontWeight: '500' },
   heroLabel: { fontSize: S.body, lineHeight: 24 },
   list: { gap: 0, paddingVertical: 4 },
@@ -152,7 +155,7 @@ const styles = StyleSheet.create({
   rowLine: { borderTopWidth: 1, borderTopColor: UI.line },
   rowHead: { flexDirection: 'row', alignItems: 'baseline', gap: G.s },
   head: { flex: 1, fontSize: 15, lineHeight: 21, fontWeight: '500' },
-  score: { fontSize: 15, lineHeight: 21, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  score: { fontSize: 15, lineHeight: 21, fontWeight: '600' },
   line: { fontSize: S.small, lineHeight: 20 },
   dead: { fontSize: S.body, lineHeight: 24, color: UI.red, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: G.s },

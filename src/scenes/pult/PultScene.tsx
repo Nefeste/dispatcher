@@ -3,6 +3,7 @@
 // (assets/scenes/pult-desk.png, blender/pult.py) с телефоном и рацией. Skia рисует поверх кадра то, что меняется:
 // огонёк линии, экранчики телефона и рации, строку рации. Касание телефона, рации и часов — прозрачные области над
 // кадром с подписями для чтения с экрана.
+import { tick } from '../../audio/feedback';
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
@@ -23,7 +24,7 @@ import {
   useImage,
   vec,
 } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { T, type RadioWhat } from '../../i18n';
 import { useTextScale } from '../../ui/textScale';
@@ -114,6 +115,9 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
   const clockText = T.pult.clock(clock);
   const speedText = paused ? T.pult.paused : T.pult.speed(speed);
   const speedX = 34 + width(bar, clockText) + 14 * s;
+  // предмет под пальцем — телефон, рация, вызов — подсвечен, пока палец на нём (премиум-отделка)
+  const [down, setDown] = useState<string | null>(null);
+  const hold = (id: string) => ({ onPressIn: () => setDown(id), onPressOut: () => setDown(x => (x === id ? null : x)) });
   const lineW = width(bar, lineText);
   const lineX = W - 14 - lineW - (line > 0 ? 6 : 0);
   const radioSays = radio ? T.pult.radioSays(radio.crew, radio.what, radio.transport) : null;
@@ -193,7 +197,8 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
             const y = L.waiting.y + 22 * s;
             return (
               <Group key={c.id}>
-                <RoundedRect x={x} y={y} width={tw} height={38 * s} r={6} color={UI.panel} />
+                <RoundedRect x={x} y={y} width={tw} height={38 * s} r={8} color={down === c.id ? UI.line : UI.panel} />
+                <RoundedRect x={x} y={y} width={tw} height={38 * s} r={8} color={UI.line} style="stroke" strokeWidth={1} />
                 <Circle cx={x + 15 * s} cy={y + 19 * s} r={10 * s} color={FORM[kind]} />
                 {tile ? <SkText x={x + 15 * s - width(tile, letter) / 2} y={y + 23.5 * s} text={letter} font={tile} color={UI.bg} /> : null}
                 {tile ? <SkText x={x + 32 * s} y={y + 16 * s} text={`${n} · ${form}`} font={tile} color={UI.text} /> : null}
@@ -225,6 +230,17 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
             </Group>
           ) : null}
 
+          {/* телефон или рация под пальцем: мягкий свет на предмете */}
+          {down === 'phone' || down === 'radio' ? (() => {
+            const r = down === 'phone' ? L.phone.tap : L.radio.tap;
+            const c = vec(r.x + r.w / 2, r.y + r.h / 2);
+            return (
+              <Circle cx={c.x} cy={c.y} r={Math.max(r.w, r.h) * 0.7}>
+                <RadialGradient c={c} r={Math.max(r.w, r.h) * 0.7} colors={['rgba(230,233,228,0.22)', 'rgba(230,233,228,0)']} />
+              </Circle>
+            );
+          })() : null}
+
           {/* рация: экранчик и последняя строка бригады */}
           <Lcd quad={L.radio.lcd} font={lcd} back={SCENE.lcdRadio} ink={SCENE.lcdRadioInk} text={radio ? T.pult.radioLcd(radio.crew, radio.what, radio.transport) : T.pult.radioIdle} />
           {radioSays ? <RoundedRect x={bubbleX} y={radioTop - 8 - 26 * s} width={bubbleW} height={26 * s} r={13 * s} color={UI.bg} opacity={0.92} /> : null}
@@ -239,7 +255,8 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
           <Pressable
             key={c.id}
             style={[styles.abs, { left: 12 + i * (tw + 12), top: L.waiting.y + 22 * s, width: tw, height: 38 * s }]}
-            onPress={() => onWaiting?.(c.id)}
+            onPress={() => { tick(); onWaiting?.(c.id); }}
+            {...hold(c.id)}
             accessibilityRole="button"
             accessibilityLabel={T.pult.tileLabel(Number(c.id.split('.')[1]), T.pult.forms[c.kind][1], c.minutes)}
             testID={`pult-waiting-${i}`}
@@ -250,10 +267,10 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
       {/* под окном карта приглушена: окно читается, карта остаётся видна */}
       {panel ? <View style={[styles.abs, styles.scrim, { left: L.map.x, top: L.map.y, width: L.map.w, height: L.map.h }]} pointerEvents="none" /> : null}
       {panel ? <View style={[styles.abs, styles.panel, { left: L.map.x, top: L.map.y, width: L.map.w, height: L.map.h - OSM_LINE }]} pointerEvents="box-none">{panel}</View> : null}
-      <Pressable style={[styles.abs, box(L.phone.tap)]} onPress={onPhone} accessibilityRole="button" accessibilityLabel={T.pult.phoneLabel(line)} testID="pult-phone" />
-      <Pressable style={[styles.abs, box(L.radio.tap)]} onPress={onRadio} accessibilityRole="button" accessibilityLabel={T.pult.radioLabel(radioSays)} testID="pult-radio" />
-      <Pressable style={[styles.abs, { left: 0, top: L.bar.y, width: speedX - 10, height: L.bar.h }]} onPress={onClock} accessibilityRole="button" accessibilityLabel={T.pult.clockLabel(clockText)} testID="pult-clock" />
-      <Pressable style={[styles.abs, { left: speedX - 10, top: L.bar.y, width: width(bar, speedText) + 20, height: L.bar.h }]} onPress={onSpeed} accessibilityRole="button" accessibilityLabel={T.pult.speedLabel(speedText)} testID="pult-speed" />
+      <Pressable style={[styles.abs, box(L.phone.tap)]} onPress={onPhone} {...hold('phone')} accessibilityRole="button" accessibilityLabel={T.pult.phoneLabel(line)} testID="pult-phone" />
+      <Pressable style={[styles.abs, box(L.radio.tap)]} onPress={() => { tick(); onRadio(); }} {...hold('radio')} accessibilityRole="button" accessibilityLabel={T.pult.radioLabel(radioSays)} testID="pult-radio" />
+      <Pressable style={[styles.abs, { left: 0, top: L.bar.y, width: speedX - 10, height: L.bar.h }]} onPress={() => { tick(); onClock(); }} accessibilityRole="button" accessibilityLabel={T.pult.clockLabel(clockText)} testID="pult-clock" />
+      <Pressable style={[styles.abs, { left: speedX - 10, top: L.bar.y, width: width(bar, speedText) + 20, height: L.bar.h }]} onPress={() => { tick(); onSpeed(); }} accessibilityRole="button" accessibilityLabel={T.pult.speedLabel(speedText)} testID="pult-speed" />
     </View>
   );
 }

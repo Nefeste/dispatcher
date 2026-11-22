@@ -191,7 +191,7 @@ function Tile({ value, label, delay }: { value: number | null; label: string; de
 const styles = StyleSheet.create({
   hero: { backgroundColor: GLASS.window, borderRadius: R.card + 4, borderWidth: 1, borderColor: UI.line, borderTopColor: GLASS.edge, padding: G.l + 2, gap: G.s },
   heroLine: { flexDirection: 'row', alignItems: 'baseline', gap: G.s + 2 },
-  heroNumber: { fontSize: 64, lineHeight: 68, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  heroNumber: { fontSize: 64, lineHeight: 68, fontWeight: '600' },
   heroOf: { fontSize: S.title, lineHeight: 34, color: UI.dim, fontWeight: '500' },
   heroLabel: { fontSize: S.body, lineHeight: 24 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: G.s },
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   row: { gap: 6 },
   rowBad: { borderLeftWidth: 3, borderLeftColor: UI.red },
   rowHead: { flexDirection: 'row', alignItems: 'center', gap: G.s + 2 },
-  rowNo: { fontSize: S.small, fontWeight: '500', flex: 1, fontVariant: ['tabular-nums'] },
+  rowNo: { fontSize: S.small, fontWeight: '500', flex: 1 },
   forms: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   form: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   formText: { fontSize: 12, lineHeight: 16, fontWeight: '600' },

@@ -34,8 +34,10 @@ function scaled(style: TextStyle, k: number): TextStyle {
   return out;
 }
 
-export function Txt({ children, style, dim, title, testID, numberOfLines }: { children: React.ReactNode; style?: StyleProp<TextStyle>; dim?: boolean; title?: boolean; testID?: string; numberOfLines?: number }) {
-  const k = useTextScale();
+/** `fixed` — размер не растёт со ступенью текста: логотип. */
+export function Txt({ children, style, dim, title, testID, numberOfLines, fixed }: { children: React.ReactNode; style?: StyleProp<TextStyle>; dim?: boolean; title?: boolean; testID?: string; numberOfLines?: number; fixed?: boolean }) {
+  const scale = useTextScale();
+  const k = fixed ? 1 : scale;
   const own = StyleSheet.flatten(style) as TextStyle | undefined;
   const flat = StyleSheet.flatten([styles.text, dim && styles.dim, title && styles.title, own]) as TextStyle;
   return <Text testID={testID} numberOfLines={numberOfLines} style={[flat, scaled(flat, k), face(own, !!title)]}>{children}</Text>;
@@ -168,7 +170,7 @@ const styles = StyleSheet.create({
   smallText: { fontSize: S.small, lineHeight: 20 },
   card: { backgroundColor: GLASS.panel, borderRadius: R.card, borderWidth: 1, borderColor: UI.line, padding: 14, gap: 6 },
   row: { minHeight: 56 },
-  locked: { opacity: 0.5 },
+  locked: { opacity: 0.62 },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: G.s },
   toggleOn: { fontSize: S.small, fontWeight: '600', color: UI.green },
   toggleOff: { fontSize: S.small, color: UI.dim },
@@ -177,7 +179,7 @@ const styles = StyleSheet.create({
   knob: { width: 18, height: 18, borderRadius: 9, backgroundColor: UI.dim },
   knobOn: { backgroundColor: UI.text },
   stat: { flex: 1, minWidth: 96, backgroundColor: GLASS.panel, borderRadius: R.card, borderWidth: 1, borderColor: UI.line, paddingVertical: 12, paddingHorizontal: 12, gap: 2 },
-  statValue: { fontSize: S.title, lineHeight: 34, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  statValue: { fontSize: S.title, lineHeight: 34, fontWeight: '600' },
   statLabel: { fontSize: 13, lineHeight: 17 },
   meter: { backgroundColor: UI.bg, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: UI.line },
   screen: { flex: 1 },

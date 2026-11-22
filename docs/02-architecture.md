@@ -37,7 +37,7 @@
 content/ (YAML) ──tools/content/build.ts──▶ src/content/generated/   (база: болезни, признаки, звонящие, вопросы, бригады)
 OSM (Overpass) ──tools/map/fetch.ts, build.ts──▶ src/map/generated/<район>.ts (граф дорог и слои, паспорт — assets/map/)
 blender/build.py (Blender 4.5.15) ──▶ src/art/desk.gen.ts (рабочее место; модель и паспорт — assets/models/)
-blender/pult.py, caller.py, insert.py, station.py (общее — look.py) ──▶ assets/scenes/ (кадры сцен, ролики, паспорта), src/art/pult.gen.ts, station.gen.ts (места предметов)
+blender/pult.py, title.py, caller.py, insert.py, station.py (общее — look.py) ──▶ assets/scenes/ (кадры сцен, ролики, паспорта), src/art/pult.gen.ts, station.gen.ts (места предметов)
 
 src/engine/   чистый TypeScript: смена, поток звонков, разговор, бригады, дороги, исходы, разбор
 src/state/    сессия (зерно + команды), вид вызова (только услышанное), учебные подсказки, лучший итог, сохранение,

@@ -22,9 +22,9 @@ export function Logo({ size = 46 }: { size?: number }) {
   const badge = Math.round(size * 1.02);
   return (
     <View style={styles.logo} accessible accessibilityRole="header" accessibilityLabel={T.title.name} testID="title-name">
-      <Txt title style={{ fontSize: size, lineHeight: Math.round(size * 1.2), color: UI.text }}>{T.title.logo.word}</Txt>
+      <Txt title fixed style={{ fontSize: size, lineHeight: Math.round(size * 1.2), color: UI.text }}>{T.title.logo.word}</Txt>
       <View style={[styles.badge, { height: badge, minWidth: badge * 1.28, borderRadius: badge / 2, paddingHorizontal: badge * 0.24 }]}>
-        <Txt title style={{ fontSize: Math.round(size * 0.74), lineHeight: badge, color: C.kumachInk }}>{T.title.logo.no}</Txt>
+        <Txt title fixed style={{ fontSize: Math.round(size * 0.74), lineHeight: badge, color: C.kumachInk }}>{T.title.logo.no}</Txt>
       </View>
     </View>
   );
