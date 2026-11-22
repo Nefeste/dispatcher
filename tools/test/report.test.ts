@@ -11,7 +11,7 @@ describe('журнал сбоев', () => {
     expect(parseCrashlog(null)).toEqual([]);
     expect(parseCrashlog('{не json')).toEqual([]);
     expect(parseCrashlog('{"at":1}')).toEqual([]);
-    const ok = { at: 1, kind: 'error', message: 'Error: x' };
+    const ok = { at: 1, kind: 'error' as const, message: 'Error: x' };
     expect(parseCrashlog(JSON.stringify([ok, { at: 'вчера', kind: 'error', message: 'y' }, null, 7]))).toEqual([ok]);
   });
 

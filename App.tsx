@@ -9,6 +9,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AboutScreen } from './src/screens/AboutScreen';
 import { ReportScreen } from './src/screens/ReportScreen';
 import { installCrashHandlers } from './src/state/crashlog';
+import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import { CallScreen } from './src/screens/CallScreen';
 import { CallReviewScreen } from './src/screens/CallReviewScreen';
 import { LoadingScreen } from './src/screens/LoadingScreen';
@@ -51,6 +52,13 @@ const query = Platform.OS === 'web' && typeof location !== 'undefined' ? new URL
 if (query) setPace(Number(query.get('pace') ?? 1));
 if (query?.get('seed')) setSeed(Number(query.get('seed')));
 const quickBench = query?.get('bench') === 'quick';
+// граница ошибок в сценарии: ?crash=1 — заглавный экран падает при рисовании, пока с экрана сбоя не ушли (путь к 1.0,
+// В1); падает каждый раз, а не один: упавшее рисование React повторяет само, прежде чем отдать ошибку границе
+let crashProbe = query?.get('crash') === '1';
+function CrashProbe(): null {
+  if (crashProbe) throw new Error('error boundary probe');
+  return null;
+}
 
 export default function App() {
   // шрифты студии лежат в сборке — грузятся мгновенно; не загрузились — игра идёт системным шрифтом
@@ -67,8 +75,9 @@ export default function App() {
   const systemMotion = useRef(false);
   // что показать в настройках: снимок на момент открытия
   const [settingsOpen, setSettingsOpen] = useState<{ s: Settings; system: boolean } | null>(null);
-  // откуда открыли «Сообщить об ошибке» — туда же «Назад», и это строка отчёта
-  const [reportFrom, setReportFrom] = useState<'settings' | 'about'>('about');
+  // откуда открыли «Сообщить об ошибке» — туда же «Назад» (с экрана сбоя — на заглавный), и это строка отчёта
+  const [reportFrom, setReportFrom] = useState<Screen>('about');
+  const reportBack: Screen = reportFrom === 'settings' || reportFrom === 'about' ? reportFrom : 'title';
 
   useEffect(() => {
     let alive = true;
@@ -122,14 +131,14 @@ export default function App() {
       if (screen === 'title') return false;
       // разговор кончается решением (§3): «Назад» его не закрывает
       if (screen === 'call') return true;
-      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : screen === 'station' || screen === 'weekEnd' ? 'week' : screen === 'report' ? reportFrom : 'title');
+      setScreen(screen === 'insert' ? 'map' : screen === 'callReview' ? 'end' : screen === 'station' || screen === 'weekEnd' ? 'week' : screen === 'report' ? reportBack : 'title');
       return true;
     });
     return () => sub.remove();
-  }, [screen, reportFrom]);
+  }, [screen, reportBack]);
 
-  // сцены тёмные: полоса состояния телефона над ними — тоже (ADR 0009)
-  const scene = screen !== 'about';
+  // сцены тёмные: полоса состояния телефона над ними — тоже (ADR 0009); экраны программы — светлые
+  const scene = screen !== 'about' && screen !== 'settings' && screen !== 'report';
   return (
     <GestureHandlerRootView style={styles.root}>
     <SafeAreaProvider>
@@ -137,7 +146,8 @@ export default function App() {
         <StatusBar style={scene ? 'light' : 'dark'} />
         <View style={styles.root}>
           {fontsReady || fontsError ? (
-            <>
+            <ErrorBoundary key={screen} onHome={() => { crashProbe = false; setScreen('title'); }} onReport={() => { crashProbe = false; setReportFrom(screen); setScreen('report'); }}>
+              {screen === 'title' ? <CrashProbe /> : null}
               {screen === 'title' ? (
                 <TitleScreen
                   onStart={() => setScreen('week')}
@@ -227,11 +237,11 @@ export default function App() {
               {screen === 'desk' ? <DeskScreen onBack={() => setScreen('title')} /> : null}
               {screen === 'bench' ? <BenchScreen quick={quickBench} onBack={() => setScreen('title')} /> : null}
               {screen === 'about' ? <AboutScreen onBack={() => setScreen('title')} onReport={() => { setReportFrom('about'); setScreen('report'); }} /> : null}
-              {screen === 'report' ? <ReportScreen from={reportFrom} onBack={() => setScreen(reportFrom === 'settings' ? 'settings' : 'about')} /> : null}
+              {screen === 'report' ? <ReportScreen from={reportFrom} onBack={() => setScreen(reportBack)} /> : null}
               {screen === 'settings' && settingsOpen ? (
                 <SettingsScreen settings={settingsOpen.s} system={settingsOpen.system} onChange={x => { settings.current = x; }} onReport={() => { setReportFrom('settings'); setScreen('report'); }} onBack={() => setScreen('title')} />
               ) : null}
-            </>
+            </ErrorBoundary>
           ) : null}
         </View>
       </SafeAreaView>

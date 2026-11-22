@@ -2,7 +2,7 @@
 // Сейчас — первый экран → «Первая неделя» → выбор смены → пульт (карта района, автопауза на звонке) → разговор (вопросы по вкладкам,
 // решение, бригада) → видеовставка → вся смена до конца (звонки, ожидание, доклады бригад, выбор больницы) → итог →
 // разбор (главная ошибка, вызов: по известному и по правде) → станция (письмо, журнал, табель, укладки, решение) →
-// неделя → рабочее место (сцена Three.js) → «Об игре» → назад;
+// неделя → рабочее место (сцена Three.js) → «Об игре» → «Сообщить об ошибке» → назад; экран сбоя (`?crash=1`);
 // к П8 путь растёт до сквозного (§3).
 // Снимки — tools/e2e/out/. Ошибка в консоли — провал. По образцу shelter: tools/e2e/browser.ts @ 396daee.
 //
@@ -471,6 +471,27 @@ try {
     await see(page, 'title-name');
   }
   await see(page, 'title-name');
+
+  // граница ошибок (путь к 1.0, В1): заглавный экран падает при рисовании (`?crash=1`, один раз) — вместо пустого
+  // экрана «Что-то пошло не так», ошибка — в журнале сбоев и в отчёте. Своя страница: ошибка в её консоли — та самая
+  {
+    const crash = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2 });
+    const own: string[] = [];
+    crash.on('console', m => { if (m.type() === 'error') own.push(m.text()); });
+    crash.on('pageerror', e => own.push(String(e)));
+    await crash.goto(`http://localhost:${server.port}/?crash=1`);
+    await see(crash, 'crash-screen', 'Что-то пошло не так');
+    await snap(crash, 'crash');
+    await crash.getByTestId('crash-report').click();
+    await see(crash, 'report-text', 'Экран: title');
+    await see(crash, 'report-text', ' render] ');
+    await see(crash, 'report-text', 'error boundary probe');
+    await crash.getByTestId('report-back').click();
+    await see(crash, 'title-name');
+    await crash.close();
+    const foreign = own.filter(e => !e.includes('error boundary probe') && !/The above error occurred|ErrorBoundary/.test(e));
+    if (foreign.length) throw new Error(`ошибки в консоли страницы сбоя:\n${foreign.join('\n')}`);
+  }
 
   if (errors.length) throw new Error(`ошибки в консоли:\n${errors.join('\n')}`);
   console.log(`сценарий пройден: ${checks} проверок, ${shot} снимков в ${OUT}`);
