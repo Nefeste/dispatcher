@@ -3,12 +3,13 @@
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
 import { type SkPath, Skia, useFont } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated';
 import { type Crew, free } from '../../engine/crews';
 import type { Route } from '../../engine/road/pos';
 import type { Shift, ShiftCtx } from '../../engine/shift';
 import type { MapData } from '../../map/format';
 import { crewNo } from '../../state/callView';
+import { useLessMotion } from '../../ui/motion';
 import { CallMark, CrewMark, PlaceMark, RouteLine } from '../../ui/map/Marks';
 import { CREW, FORM_MARK, UNDECIDED } from '../../ui/map/palette';
 import { slots } from './slots';
@@ -37,9 +38,21 @@ function RouteOf({ map, route, zoom, color }: { map: MapData; route: Route; zoom
 
 const colorOf = (c: Crew) => CREW[c.state];
 const busy = (c: Crew) => !free(c);
+/** маячки горят у бригады, что едет на вызов или везёт больного */
+const siren = (c: Crew) => c.state === 'drive' || c.state === 'transport';
+/** такт маячков, мс: синий и красный по очереди, около полутора раз в секунду — мягко, без вспышек */
+export const BLINK_MS = 350;
 
 export function CrewLayer({ ctx, shift, pos, zoom }: { ctx: ShiftCtx; shift: Shift; pos: SharedValue<number[]>; zoom: SharedValue<number> }) {
   const font = useFont(Onest_600SemiBold, 12);
+  const less = useLessMotion();
+  // такт маячков — один на все машины; «Меньше движения» — горят ровно (−1)
+  const blink = useSharedValue(-1);
+  useFrameCallback(info => {
+    'worklet';
+    const b = less ? -1 : Math.floor(info.timestamp / BLINK_MS) % 2;
+    if (blink.get() !== b) blink.set(b);
+  }, true);
   const { map, city } = ctx;
   const off = slots(shift.crews);
   // вызов на карте — пока его ждут, бригада едет к нему или работает на нём
@@ -55,7 +68,7 @@ export function CrewLayer({ ctx, shift, pos, zoom }: { ctx: ShiftCtx; shift: Shi
         return <CallMark key={c.id} x={at(c.node)[0]} y={at(c.node)[1]} zoom={zoom} color={form ? FORM_MARK[form] : UNDECIDED} emergency={form === 'emergency'} />;
       })}
       {shift.crews.map((c, i) => (
-        <CrewMark key={c.id} i={i} pos={pos} zoom={zoom} label={String(crewNo(c.id))} color={colorOf(c)} busy={busy(c)} font={font} dx={off[i][0]} dy={off[i][1]} />
+        <CrewMark key={c.id} i={i} pos={pos} zoom={zoom} label={String(crewNo(c.id))} color={colorOf(c)} busy={busy(c)} siren={siren(c)} blink={blink} font={font} dx={off[i][0]} dy={off[i][1]} />
       ))}
     </>
   );

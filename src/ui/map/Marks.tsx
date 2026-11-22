@@ -4,7 +4,7 @@
 import { Circle, Group, Path, Rect, RoundedRect, type SkFont, type SkPath, Skia, Text } from '@shopify/react-native-skia';
 import React from 'react';
 import { type SharedValue, useDerivedValue } from 'react-native-reanimated';
-import { MARK } from './palette';
+import { MARK, VAN } from './palette';
 
 export interface CrewMarkProps {
   i: number;
@@ -12,34 +12,53 @@ export interface CrewMarkProps {
   zoom: SharedValue<number>;
   label: string;
   color: string;
-  /** занятая бригада — квадрат, свободная — круг: цвет никогда не единственный знак */
+  /** занятая бригада — машина с маячками на крыше, свободная — без: цвет никогда не единственный знак */
   busy: boolean;
+  /** едет на вызов или везёт в больницу — маячки горят */
+  siren: boolean;
+  /** такт маячков: 0 — горит синий, 1 — красный, −1 — оба ровно («Меньше движения») */
+  blink: SharedValue<number>;
   font: SkFont | null;
   /** сдвиг на экране, точки: бригады в одном месте встают рядом, а не друг на друга */
   dx?: number;
   dy?: number;
 }
 
-export function CrewMark({ i, pos, zoom, label, color, busy, font, dx = 0, dy = 0 }: CrewMarkProps) {
+/** Бригада — машина скорой сбоку, цвета своего состояния, с номером на кузове. У занятой на крыше — маячки; едет на
+ *  вызов или в больницу — маячки мигают синим и красным по очереди. Мигание — отклик на то, что игрок послал бригаду
+ *  (устав, ADR 0023, правило 6); «Меньше движения» — горят ровно. */
+export function CrewMark({ i, pos, zoom, label, color, busy, siren, blink, font, dx = 0, dy = 0 }: CrewMarkProps) {
   const transform = useDerivedValue(() => {
     const p = pos.get();
     return [{ translateX: p[i * 2] }, { translateY: p[i * 2 + 1] }, { scale: 1 / zoom.get() }, { translateX: dx }, { translateY: dy }];
   });
+  const blue = useDerivedValue(() => (siren && blink.get() !== 1 ? VAN.blue : VAN.blueOff));
+  const red = useDerivedValue(() => (siren && blink.get() !== 0 ? VAN.red : VAN.redOff));
+  const glowBlue = useDerivedValue(() => (siren && blink.get() === 0 ? 0.45 : 0));
+  const glowRed = useDerivedValue(() => (siren && blink.get() === 1 ? 0.45 : 0));
+  const [body, glass] = vanPaths();
   const w = font ? font.getTextWidth(label) : 0;
   return (
     <Group transform={transform}>
       {busy ? (
-        <>
-          <RoundedRect x={-12} y={-12} width={24} height={24} r={6} color={MARK.halo} />
-          <RoundedRect x={-10} y={-10} width={20} height={20} r={5} color={color} />
-        </>
-      ) : (
-        <>
-          <Circle cx={0} cy={0} r={12} color={MARK.halo} />
-          <Circle cx={0} cy={0} r={10} color={color} />
-        </>
-      )}
-      {font ? <Text x={-w / 2} y={4.5} text={label} font={font} color={MARK.label} /> : null}
+        <Group>
+          <Circle cx={-5.5} cy={-14} r={7} color={VAN.blue} opacity={glowBlue} />
+          <Circle cx={-0.5} cy={-14} r={7} color={VAN.red} opacity={glowRed} />
+          <RoundedRect x={-9.5} y={-17} width={13} height={6} r={2} color={MARK.halo} />
+          <RoundedRect x={-8.5} y={-16} width={5.5} height={4} r={1.2} color={blue} />
+          <RoundedRect x={-2.5} y={-16} width={5.5} height={4} r={1.2} color={red} />
+        </Group>
+      ) : null}
+      <Path path={body} color={MARK.halo} style="stroke" strokeWidth={3.5} strokeJoin="round" />
+      <Path path={body} color={color} />
+      <Path path={glass} color={VAN.glass} opacity={0.9} />
+      {[-8.5, 8.5].map(x => (
+        <Group key={x}>
+          <Circle cx={x} cy={5.5} r={4} color={MARK.halo} />
+          <Circle cx={x} cy={5.5} r={2.8} color={VAN.wheel} />
+        </Group>
+      ))}
+      {font ? <Text x={-4.5 - w / 2} y={1.8} text={label} font={font} color={MARK.label} /> : null}
     </Group>
   );
 }
@@ -95,7 +114,33 @@ function house(s: number): SkPath {
   return b.detach();
 }
 
+/** Машина скорой сбоку, мордой вправо: кузов-фургон, скос лобового стекла, капот; центр — середина кузова. */
+function van(): [SkPath, SkPath] {
+  const b = Skia.PathBuilder.Make();
+  b.moveTo(-16, -8.5);
+  b.lineTo(-14, -10.5);
+  b.lineTo(4, -10.5);
+  b.lineTo(8.5, -2.5);
+  b.lineTo(14.5, -1.5);
+  b.lineTo(16, 0.5);
+  b.lineTo(16, 5);
+  b.lineTo(-16, 5);
+  b.close();
+  const g = Skia.PathBuilder.Make();
+  g.moveTo(4.5, -9);
+  g.lineTo(7.8, -2.6);
+  g.lineTo(4.5, -2.6);
+  g.close();
+  return [b.detach(), g.detach()];
+}
+
 // пути знаков — один раз, но не при загрузке модуля: в вебе Skia (CanvasKit) готова только к первому кадру
+let vans: [SkPath, SkPath] | null = null;
+function vanPaths(): [SkPath, SkPath] {
+  if (!vans) vans = van();
+  return vans;
+}
+
 let houses: [SkPath, SkPath] | null = null;
 function housePaths(): [SkPath, SkPath] {
   if (!houses) houses = [house(1), house(1.25)];

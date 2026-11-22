@@ -149,6 +149,7 @@ describe('бригада', () => {
   test('знаки бригад в одном месте не ложатся друг на друга', () => {
     const crews = DB.shifts['shift.proto'].crews.map(c => crewAtBase(c.id, c.kind, city.bases.find(b => b.id === c.base)!.node));
     const off = slots(crews);
-    for (let i = 0; i < crews.length; i++) for (let j = i + 1; j < crews.length; j++) if (crews[i].at === crews[j].at) expect(off[i]).not.toEqual(off[j]);
+    // машины (0.31.0) — 32 точки в ширину с обводкой: соседи в одном месте не ближе 34 точек по горизонтали
+    for (let i = 0; i < crews.length; i++) for (let j = i + 1; j < crews.length; j++) if (crews[i].at === crews[j].at) expect(Math.abs(off[i][0] - off[j][0])).toBeGreaterThanOrEqual(34);
   });
 });
