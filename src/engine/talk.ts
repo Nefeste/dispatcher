@@ -75,15 +75,20 @@ function present(db: Db, call: CallTruth, fs: string[], key: string): string {
 
 /**
  * Первые слова: повод — первый по порядку, чей признак у больного есть и звонящий о нём знает. Начнёт ли он с него —
- * доля `say` повода; не начнёт — скажет смутное «плохо», и признак откроет только вопрос.
+ * доля `say` повода; не начнёт — скажет смутное «плохо», и признак откроет только вопрос. Сначала — поводы основной
+ * болезни: с давней спины не начинает тот, у кого жар и кашель (игра владельца 22.11.2026); фоновая болезнь даёт повод,
+ * только если основная не даёт ни одного.
  */
 export function firstWords(db: Db, call: CallTruth): { reason: string; words: string; learned: Learned[] } {
-  const reasons = Object.values(db.phone.reasons).sort((a, b) => a.rank - b.rank);
+  const byRank = Object.values(db.phone.reasons).sort((a, b) => a.rank - b.rank);
   const self = db.phone.callers[call.caller].self;
-  const fallback = reasons.find(r => !r.when.length);
+  const fallback = byRank.find(r => !r.when.length);
   if (!fallback) throw new Error('firstWords: no fallback reason');
   const vague = { reason: fallback.id, words: say(db, call, fallback.words, `first:${fallback.id}`), learned: [] };
   if (call.first === 'vague') return vague;
+  const main = (f: string) => call.patient.truth.findings.some(x => x.f === f && x.cause === call.condition);
+  const ofMain = (r: (typeof byRank)[number]) => r.when.some(f => main(f) && call.knows[f]);
+  const reasons = [...byRank.filter(ofMain), ...byRank.filter(r => !ofMain(r))];
   for (const r of reasons) {
     const known = r.when.filter(f => has(call, f) && call.knows[f]);
     if (!r.when.length || !known.length || (self && !r.words.self.length)) continue;

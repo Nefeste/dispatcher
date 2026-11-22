@@ -78,7 +78,9 @@ const styles = StyleSheet.create({
   sub: { color: UI.dim, fontSize: 12 },
   mark: { color: UI.amber, fontSize: 12 },
   note: { color: UI.amber, fontSize: 12 },
-  actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
-  action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: UI.line },
-  actionText: { color: UI.text, fontSize: 14, fontFamily: FONTS.medium },
+  // кнопки переносятся в следующую строку и растягиваются; длинная подпись переносится внутри кнопки — текст не выходит
+  // за край (игра владельца 22.11.2026: «Передать в поликлинику» не помещалась)
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' },
+  action: { minHeight: 44, flexGrow: 1, flexShrink: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: UI.line },
+  actionText: { color: UI.text, fontSize: 14, fontFamily: FONTS.medium, textAlign: 'center' },
 });
