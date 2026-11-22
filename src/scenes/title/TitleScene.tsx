@@ -2,7 +2,8 @@
 // кадр Cycles из Blender (blender/title.py): видеостена с картой района, мониторы, стол под лампой. Поверх Skia рисует
 // то, что живёт: на видеостене расходятся круги вызова — как на значке игры, — и мигает огонёк телефона на столе. С
 // «Меньше движения» круги стоят, огонёк горит. Только картинка: касаний у сцены нет.
-import { Canvas, Circle, Fill, Group, Image, LinearGradient, RadialGradient, Rect, useImage, vec } from '@shopify/react-native-skia';
+import { Canvas, Circle, Fill, Group, Image, LinearGradient, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
+import { useSkiaImage } from '../../ui/skiaAssets';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { TITLE } from '../../art/title.gen';
@@ -20,7 +21,7 @@ export function titleFit(W: number, H: number): { k: number; x: number; y: numbe
 }
 
 export function TitleScene({ width: W, height: H }: { width: number; height: number }) {
-  const hall = useImage(HALL);
+  const hall = useSkiaImage(HALL);
   const less = useLessMotion();
   const f = useMemo(() => titleFit(W, H), [W, H]);
   // сцена живёт шагами, а не кадрами: четыре перерисовки за три секунды

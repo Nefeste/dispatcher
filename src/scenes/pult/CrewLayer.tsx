@@ -1,7 +1,8 @@
 // Слой смены на карте пульта (части П3, П5): подстанции, больницы, вызовы, пути едущих бригад и сами бригады.
 // Место бригад — общее значение `pos` (x, y по очереди), его каждый кадр пишет экран пульта.
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
-import { type SkPath, Skia, useFont } from '@shopify/react-native-skia';
+import { type SkPath, Skia } from '@shopify/react-native-skia';
+import { useSkiaFont } from '../../ui/skiaAssets';
 import React, { useMemo } from 'react';
 import { type SharedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated';
 import { type Crew, free } from '../../engine/crews';
@@ -44,7 +45,7 @@ const siren = (c: Crew) => c.state === 'drive' || c.state === 'transport';
 export const BLINK_MS = 350;
 
 export function CrewLayer({ ctx, shift, pos, zoom }: { ctx: ShiftCtx; shift: Shift; pos: SharedValue<number[]>; zoom: SharedValue<number> }) {
-  const font = useFont(Onest_600SemiBold, 12);
+  const font = useSkiaFont(Onest_600SemiBold, 12);
   const less = useLessMotion();
   // такт маячков — один на все машины; «Меньше движения» — горят ровно (−1)
   const blink = useSharedValue(-1);

@@ -4,7 +4,8 @@
 // открывается здесь — смена закрыта (ADR 0005).
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
-import { useFont } from '@shopify/react-native-skia';
+
+import { useSkiaFont } from '../ui/skiaAssets';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { cue } from '../audio/feedback';
@@ -69,9 +70,9 @@ export function ReviewScreen({ onCall, onAgain, onHome }: { onCall: (id: string)
   // лучший итог этой смены — до этой; записывается один раз, когда открыт итог
   const [best, setBest] = useState<{ before: Best | null; isBest: boolean } | null>(null);
   const [snap, setSnap] = useState<string | null>(null);
-  const title = useFont(Onest_500Medium, 44);
-  const body = useFont(Onest_400Regular, 38);
-  const small = useFont(Onest_400Regular, 26);
+  const title = useSkiaFont(Onest_500Medium, 44);
+  const body = useSkiaFont(Onest_400Regular, 38);
+  const small = useSkiaFont(Onest_400Regular, 26);
   const shift = x?.ctx.setup.id;
   const seed = x?.s.seed;
   const totals = view?.totals;

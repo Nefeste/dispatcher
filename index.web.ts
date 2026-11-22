@@ -9,5 +9,9 @@ const base = process.env.EXPO_BASE_URL ?? '';
 
 LoadSkiaWeb({ locateFile: (file: string) => `${base}/${file}` }).then(() => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  registerRootComponent(require('./App').default);
+  const App = require('./App').default;
+  // модуль приложения создал SkiaViewApi; до первого холста — прежние картинки холстов освобождаются (src/ui/skiaWeb.ts)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('./src/ui/skiaWeb').freeReplacedPictures();
+  registerRootComponent(App);
 });

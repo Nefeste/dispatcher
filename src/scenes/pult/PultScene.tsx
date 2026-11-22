@@ -20,10 +20,9 @@ import {
   Skia,
   Text as SkText,
   type SkFont,
-  useFont,
-  useImage,
   vec,
 } from '@shopify/react-native-skia';
+import { useSkiaFont, useSkiaImage } from '../../ui/skiaAssets';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { T, type RadioWhat } from '../../i18n';
@@ -104,12 +103,12 @@ export function PultScene({ width: W, height: H, map, clock, speed, line, waitin
   // размер текста (§12 геймдизайна; срез, С8б): шрифты строки программы, вызовов и рации — по ступени, полосы — выше
   const s = useTextScale();
   const L = useMemo(() => pultLayout(W, H, s), [W, H, s]);
-  const desk = useImage(DESK);
-  const bar = useFont(Onest_500Medium, 15 * s);
-  const small = useFont(Onest_400Regular, 12 * s);
-  const head = useFont(Onest_500Medium, 12 * s);
-  const tile = useFont(Onest_500Medium, 13 * s);
-  const lcd = useFont(Onest_600SemiBold, 28);
+  const desk = useSkiaImage(DESK);
+  const bar = useSkiaFont(Onest_500Medium, 15 * s);
+  const small = useSkiaFont(Onest_400Regular, 12 * s);
+  const head = useSkiaFont(Onest_500Medium, 12 * s);
+  const tile = useSkiaFont(Onest_500Medium, 13 * s);
+  const lcd = useSkiaFont(Onest_600SemiBold, 28);
   const lineText = T.pult.line(line);
   const paused = speed === 0;
   const clockText = T.pult.clock(clock);

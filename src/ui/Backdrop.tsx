@@ -1,7 +1,8 @@
 // Фон экранов программы (docs/13-art.md, §7): зал диспетчерской ночью — тот же кадр, что на заглавном экране
 // (blender/title.py), размытый и приглушённый; поверх — затемнение сверху вниз, чтобы текст читался. Рисуется один раз,
 // не каждый кадр. Только картинка: касаний нет, экранный диктор его не читает.
-import { Blur, Canvas, Fill, Image, LinearGradient, Rect, useImage, vec } from '@shopify/react-native-skia';
+import { Blur, Canvas, Fill, Image, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
+import { useSkiaImage } from './skiaAssets';
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SCENE } from '../scenes/palette';
@@ -10,7 +11,7 @@ export const HALL = require('../../assets/scenes/title-hall.jpg');
 
 export function Backdrop({ blur = 14, dim = 0.62 }: { blur?: number; dim?: number }) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const hall = useImage(HALL);
+  const hall = useSkiaImage(HALL);
   return (
     <View style={[StyleSheet.absoluteFill, styles.root]} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
       {size ? (

@@ -3,7 +3,8 @@
 // остаются. Только из итогов, которые знают станция и журнал недели (src/state/weekEnd.ts) — правды о больных нет.
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
-import { useFont } from '@shopify/react-native-skia';
+
+import { useSkiaFont } from '../ui/skiaAssets';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { DB } from '../content/generated/db';
@@ -27,9 +28,9 @@ export function WeekEndScreen({ week, onWeek }: { week: string; onWeek: () => vo
   const [data, setData] = useState<{ view: WeekEndView; log: WeekLog } | null>(null);
   const [snap, setSnap] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogSpec | null>(null);
-  const title = useFont(Onest_500Medium, 44);
-  const body = useFont(Onest_400Regular, 38);
-  const small = useFont(Onest_400Regular, 26);
+  const title = useSkiaFont(Onest_500Medium, 44);
+  const body = useSkiaFont(Onest_400Regular, 38);
+  const small = useSkiaFont(Onest_400Regular, 26);
   useEffect(() => {
     let alive = true;
     void Promise.all([readStation(week), readWeekLog(week), readBest()]).then(([st, log, best]) => {

@@ -7,7 +7,8 @@ import { tick } from '../../audio/feedback';
 import { Onest_400Regular } from '@expo-google-fonts/onest/400Regular';
 import { Onest_500Medium } from '@expo-google-fonts/onest/500Medium';
 import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
-import { Canvas, Circle, Group, Image, LinearGradient, Rect, rect, RoundedRect, Text as SkText, type SkFont, useFont, useImage, vec } from '@shopify/react-native-skia';
+import { Canvas, Circle, Group, Image, LinearGradient, Rect, rect, RoundedRect, Text as SkText, type SkFont, vec } from '@shopify/react-native-skia';
+import { useSkiaFont, useSkiaImage } from '../../ui/skiaAssets';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { QuestionGroup } from '../../content/types';
@@ -54,12 +55,12 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
   const L = useMemo(() => callLayout(W, H, s), [W, H, s]);
   const pic = pictureRect(L.picture);
   const [group, setGroup] = useState<QuestionGroup>('vital');
-  const picture = useImage(view.picture ? (PICTURES[view.picture] ?? null) : null);
-  const big = useFont(Onest_500Medium, 16 * s);
-  const mid = useFont(Onest_500Medium, 13 * s);
-  const small = useFont(Onest_400Regular, 12 * s);
-  const bold = useFont(Onest_600SemiBold, 14 * s);
-  const title = useFont(Onest_500Medium, 30 * s);
+  const picture = useSkiaImage(view.picture ? (PICTURES[view.picture] ?? null) : null);
+  const big = useSkiaFont(Onest_500Medium, 16 * s);
+  const mid = useSkiaFont(Onest_500Medium, 13 * s);
+  const small = useSkiaFont(Onest_400Regular, 12 * s);
+  const bold = useSkiaFont(Onest_600SemiBold, 14 * s);
+  const title = useSkiaFont(Onest_500Medium, 30 * s);
   const hasPicture = Boolean(view.picture && PICTURES[view.picture]);
   const bubbleMax = W - 24 - 28;
   // вызов вернулся из поликлиники: говорит её врач (срез, С5)
