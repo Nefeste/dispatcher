@@ -85,6 +85,18 @@ export function wrap(text: string, max: number, measure: (s: string) => number, 
   return cut;
 }
 
+/** Подпись кнопки, нарисованной Skia (игра владельца 22.11.2026: текст не должен выходить за кнопку): первый вариант,
+ *  что помещается в `max`; не помещается ни один — самый короткий, уменьшенный до `max`; меньше `MIN_SCALE` — ещё и
+ *  с многоточием. `scale` — во сколько раз уменьшить шрифт при рисовании. */
+export const MIN_SCALE = 0.7;
+export function fitLabel(variants: readonly string[], max: number, measure: (s: string) => number): { text: string; scale: number } {
+  for (const v of variants) if (measure(v) <= max) return { text: v, scale: 1 };
+  const short = [...variants].sort((a, b) => measure(a) - measure(b))[0];
+  const scale = max / measure(short);
+  if (scale >= MIN_SCALE) return { text: short, scale };
+  return { text: fit(short, max / MIN_SCALE, measure), scale: MIN_SCALE };
+}
+
 /** Строка не шире `max`: лишнее — многоточием. */
 export function fit(text: string, max: number, measure: (s: string) => number): string {
   if (measure(text) <= max) return text;

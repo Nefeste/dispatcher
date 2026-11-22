@@ -13,6 +13,7 @@ const SEALED: Record<string, string> = {
   // код тега v0.24.0 — первая сборка, которую ставит владелец (журнала сбоев в ней нет)
   '0.24.0': '231ecf91d94816770e23622a525860a1ad755ac6431c6cb6fc7f0553a6edf63c',
   '0.25.0': 'fa215bd85d718959789e52a70664699e8179a920d253015a8cf97bb837aeb365',
+  '0.26.0': '33c5db09f1afc8fef9a91c4a2e72532e3e3855e4d7d9a933a673922a3bd0a753',
 };
 
 const DIR = join(import.meta.dir, 'fixtures/saves');

@@ -38,6 +38,10 @@ export function TitleScene({ width: W, height: H }: { width: number; height: num
           <RadialGradient c={vec(W * 0.45, L.screen.y + L.screen.h * 0.45)} r={W * 0.9} colors={['rgba(126,166,201,0.16)', 'rgba(126,166,201,0)']} />
         </Rect>
         {desk ? <Image image={desk} x={L.desk.x} y={L.desk.y} width={L.desk.w} height={L.desk.h} fit="fill" /> : null}
+        {/* ночной зал: стол под окном программы приглушён — светлый кадр не спорит с меню (игра владельца 22.11.2026) */}
+        <Rect x={L.desk.x} y={L.desk.y} width={L.desk.w} height={L.desk.h}>
+          <LinearGradient start={vec(0, L.desk.y)} end={vec(0, L.desk.y + L.desk.h)} colors={['rgba(14,18,21,0.55)', 'rgba(14,18,21,0.75)']} />
+        </Rect>
         {lit ? (
           <Group>
             <Circle cx={lx} cy={ly} r={lr * 5}>

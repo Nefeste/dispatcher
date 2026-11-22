@@ -15,7 +15,7 @@ import { useTextScale } from '../../ui/textScale';
 import type { CallView } from '../../state/callView';
 import { ProgramPanel } from '../panel';
 import { FORM, SCENE, UI } from '../palette';
-import { pictureRect, callLayout, fit, wrap } from './layout';
+import { pictureRect, callLayout, fit, fitLabel, wrap } from './layout';
 
 /** Картинки звонящих (assets/scenes/callers.json) — по имени из записи звонящего. */
 const PICTURES: Record<string, number> = {
@@ -137,7 +137,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
                 return (
                   <Group key={g.id}>
                     <RoundedRect x={r.x} y={L.tabs.y + 8} width={r.w} height={L.tabs.h - 16} r={14} color={on ? UI.line : UI.panel} />
-                    {small ? <SkText x={r.x + r.w / 2 - tw(small, tabNames[i]) / 2} y={L.tabs.y + L.tabs.h / 2 + 4 * s} text={tabNames[i]} font={small} color={on ? UI.text : UI.dim} /> : null}
+                    {small ? <Label font={small} variants={[tabNames[i]]} cx={r.x + r.w / 2} y={L.tabs.y + L.tabs.h / 2 + 4 * s} max={r.w - 8} color={on ? UI.text : UI.dim} /> : null}
                   </Group>
                 );
               })}
@@ -167,7 +167,7 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
               <Group key={kind}>
                 <RoundedRect x={r.x} y={r.y} width={r.w} height={r.h} r={10} color={color} opacity={kind === 'none' ? 0.35 : decided && !chosen ? 0.5 : 1} />
                 {chosen ? <RoundedRect x={r.x - 2} y={r.y - 2} width={r.w + 4} height={r.h + 4} r={12} color={UI.text} style="stroke" strokeWidth={2} /> : null}
-                {bold ? <SkText x={r.x + r.w / 2 - tw(bold, `${letter}  ${name}`) / 2} y={r.y + r.h / 2 + 5 * s} text={`${letter}  ${name}`} font={bold} color={kind === 'none' ? UI.text : UI.bg} /> : null}
+                {bold ? <Label font={bold} variants={[`${letter}  ${name}`, name]} cx={r.x + r.w / 2} y={r.y + r.h / 2 + 5 * s} max={r.w - 8} color={kind === 'none' ? UI.text : UI.bg} /> : null}
               </Group>
             );
           })}
@@ -233,6 +233,17 @@ export function CallScene({ width: W, height: H, view, onAsk, onForm, onSend, on
         />
       ))}
     </View>
+  );
+}
+
+/** Подпись кнопки Skia по середине `cx`: длинный вариант, если помещается, иначе короткий, иначе уменьшенный
+ *  (`fitLabel`) — текст никогда не выходит за кнопку (игра владельца 22.11.2026). */
+function Label({ font, variants, cx, y, max, color }: { font: SkFont; variants: readonly string[]; cx: number; y: number; max: number; color: string }) {
+  const { text, scale } = fitLabel(variants, max, x => tw(font, x));
+  return (
+    <Group origin={vec(cx, y)} transform={[{ scale }]}>
+      <SkText x={cx - tw(font, text) / 2} y={y} text={text} font={font} color={color} />
+    </Group>
   );
 }
 
