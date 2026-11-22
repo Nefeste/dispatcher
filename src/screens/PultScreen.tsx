@@ -162,11 +162,14 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
     );
   } else if (picked) {
     const opts = crewOptions(ctx, s, picked.id);
+    const lineBusy = s.rings.length > 0 || s.open !== null;
     panel = (
       <ProgramPanel
         testID="crews"
         title={T.crews.head(picked.no)}
         empty={T.crews.none}
+        // линия одна: пока звонит телефон или идёт разговор, перезвонить нельзя — так и сказано
+        note={lineBusy ? T.refusal.ringing : undefined}
         rows={opts.map((o, i) => {
           const kind = ctx.db.crews[s.crews.find(c => c.id === o.crew)!.kind].name;
           const min = Math.ceil(o.eta / 60_000);
@@ -179,7 +182,11 @@ export function PultScreen({ onBack, onCall, onEnd }: { onBack: () => void; onCa
             testID: `crews-${i}`,
           };
         })}
-        actions={[{ label: T.crews.close, onPress: () => setPick(null), testID: 'crews-close' }]}
+        actions={[
+          // перезвонить ждущему — уточнить, пока линия свободна (игра владельца 22.11.2026)
+          ...(lineBusy ? [] : [{ label: T.crews.dial, onPress: () => { if (!command({ c: 'dial', call: picked.id })) { setPick(null); onCall(); } }, testID: 'crews-dial' }]),
+          { label: T.crews.close, onPress: () => setPick(null), testID: 'crews-close' },
+        ]}
       />
     );
   } else if (crewPick) {

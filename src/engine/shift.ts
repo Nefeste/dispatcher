@@ -155,6 +155,8 @@ export interface CallRec {
   answeredAt: number | null;
   /** когда открыт этот разговор — последний раз; повторный звонок открывает его снова */
   openedAt: number | null;
+  /** диспетчер сам перезвонил ждущему (игра владельца 22.11.2026): когда в последний раз; нет — не перезванивал */
+  dialedAt?: number;
   /** первые слова и повод */
   first: { reason: string; words: string; learned: Learned[] } | null;
   asked: Asked[];
@@ -276,10 +278,12 @@ export type Command =
   /** ответ на просьбу не про медицину: перезвонить звонящему, послать ещё бригаду `crew`, «ждите» / «справитесь сами» */
   | { c: 'snag'; call: string; act: 'phone' | 'send' | 'wait'; crew?: string }
   /** неотложный вызов — в неотложную помощь поликлиники (срез, С5), в её часы */
-  | { c: 'pass'; call: string };
+  | { c: 'pass'; call: string }
+  /** перезвонить звонящему вызова, который ждёт бригаду, — уточнить (игра владельца 22.11.2026); набор — минута */
+  | { c: 'dial'; call: string };
 
 /** Почему команду не приняли; слова — src/i18n (T.refusal). */
-export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus' | 'clinicClosed' | 'clinicBack';
+export type Refusal = 'over' | 'talking' | 'noRing' | 'notOpen' | 'unknown' | 'noForm' | 'crewBusy' | 'noRoute' | 'notReport' | 'notAsked' | 'notResus' | 'clinicClosed' | 'clinicBack' | 'ringing' | 'notWaiting';
 
 const lengthOf = (ctx: ShiftCtx) => ctx.setup.length * 1000;
 
@@ -852,6 +856,22 @@ function command(ctx: ShiftCtx, s: Shift, cmd: Command): Refusal | null {
         call.state = 'talk';
       }
       runTo(ctx, s, s.t + ANSWER);
+      return null;
+    }
+    case 'dial': {
+      // линия одна: пока звонит телефон или открыт разговор — нельзя
+      if (open) return 'talking';
+      if (s.rings.length) return 'ringing';
+      const call = callOf(s, cmd.call);
+      if (!call) return 'unknown';
+      if (call.state !== 'wait') return 'notWaiting';
+      s.open = call.id;
+      call.openedAt = s.t;
+      call.dialedAt = s.t;
+      call.state = 'talk';
+      // пока говорят, сам звонящий не перезвонит; оставят ждать — срок повторного звонка заново (hold)
+      call.repeatAt = null;
+      runTo(ctx, s, s.t + SNAG_PHONE);
       return null;
     }
     case 'ask': {
