@@ -1,6 +1,6 @@
 {
   "name": "dispatcher",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "main": "index",
   "private": true,
   "description": "Диспетчер 03 — смена диспетчера скорой помощи в большом городе",

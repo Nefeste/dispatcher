@@ -1,0 +1,49 @@
+{
+ "version": "0.27.0",
+ "saveV": 8,
+ "keys": {
+  "dispatcher.crashlog.v1": "[{\"at\":1795342810913,\"kind\":\"error\",\"message\":\"make-save-fixture\\nError: образец сохранений: запись журнала\\n    at /home/user/dispatcher-station/tools/test/make-save-fixture.ts:62:31\"}]",
+  "dispatcher.progress.v1": "{\"best\":{\"shift.week-1\":{\"emergency\":4,\"inNorm\":4,\"urgentMedian\":745536,\"accepted\":7}}}",
+  "dispatcher.settings.v1": "{\"autopause\":true,\"sound\":false,\"haptics\":true,\"softOutcome\":true,\"textSize\":1,\"lessMotion\":true}",
+  "dispatcher.shift.current.v1": "{\"v\":8,\"setup\":\"shift.week-2\",\"seed\":202,\"t\":809493,\"log\":[{\"t\":201599,\"cmd\":{\"c\":\"answer\"}},{\"t\":231599,\"cmd\":{\"c\":\"ask\",\"q\":\"q.conscious\"}},{\"t\":246599,\"cmd\":{\"c\":\"ask\",\"q\":\"q.breathing\"}},{\"t\":261599,\"cmd\":{\"c\":\"ask\",\"q\":\"q.face\"}},{\"t\":286599,\"cmd\":{\"c\":\"ask\",\"q\":\"q.pain_where\"}},{\"t\":306599,\"cmd\":{\"c\":\"ask\",\"q\":\"q.skin\"}},{\"t\":321599,\"cmd\":{\"c\":\"ask\",\"q\":\"q.access\"}},{\"t\":336599,\"cmd\":{\"c\":\"form\",\"form\":\"urgent\"}},{\"t\":346599,\"cmd\":{\"c\":\"send\",\"call\":\"call.1\",\"crew\":\"crew.4\"}},{\"t\":400546,\"cmd\":{\"c\":\"answer\"}},{\"t\":430546,\"cmd\":{\"c\":\"ask\",\"q\":\"q.conscious\"}},{\"t\":445546,\"cmd\":{\"c\":\"ask\",\"q\":\"q.breathing\"}},{\"t\":460546,\"cmd\":{\"c\":\"ask\",\"q\":\"q.face\"}},{\"t\":485546,\"cmd\":{\"c\":\"ask\",\"q\":\"q.pain_where\"}},{\"t\":505546,\"cmd\":{\"c\":\"ask\",\"q\":\"q.skin\"}},{\"t\":520546,\"cmd\":{\"c\":\"ask\",\"q\":\"q.access\"}},{\"t\":535546,\"cmd\":{\"c\":\"form\",\"form\":\"urgent\"}},{\"t\":545546,\"cmd\":{\"c\":\"send\",\"call\":\"call.2\",\"crew\":\"crew.1\"}},{\"t\":717948,\"cmd\":{\"c\":\"snag\",\"call\":\"call.1\",\"act\":\"phone\"}},{\"t\":779493,\"cmd\":{\"c\":\"answer\"}}],\"played\":11,\"lineup\":{\"extra\":[],\"kits\":{},\"trained\":[],\"plus\":[],\"stock\":[]}}",
+  "dispatcher.station.v1": "{\"fund\":152500,\"extra\":[],\"trained\":[],\"kits\":{},\"plus\":[],\"stock\":[],\"journal\":[{\"kind\":\"shift\",\"amount\":140000,\"after\":\"shift.week-1\"},{\"kind\":\"thanks\",\"amount\":30000,\"after\":\"shift.week-1\"},{\"kind\":\"kits\",\"amount\":-17500,\"after\":\"shift.week-1\",\"crews\":[\"crew.1\",\"crew.4\",\"crew.5\"]}],\"letter\":{\"after\":\"shift.week-1\",\"emergency\":4,\"inNorm\":4,\"income\":140000,\"thanks\":true,\"longWaits\":0,\"refusals\":0,\"deaths\":0,\"inquiries\":[],\"fine\":0},\"done\":[\"shift.week-1\"],\"decided\":1}",
+  "dispatcher.week.v1": "{\"map\":\"nn-center\",\"edges\":3072,\"shifts\":[{\"shift\":\"shift.week-1\",\"emergency\":4,\"inNorm\":4,\"deaths\":0,\"paths\":\"0000008b10400c0c300040001000000000000fec1200070000000004000000000000ef900e1000000000000000000000000431800004000000035800400000000864000c8c140000000000900022f300a3068b108730800000001000a000000000800000102000000000c000000000000000310c000008300005381000000001e00e06000000000000000008100c70000000000083000000004e00300000000000000000000000000000000000000000000000000000000000000000000000000c100000000000100008440004030002000000000451000000000080c0e0001000060f4000000004006700000000000000000005008f7000f101081642200000000000020020000000000061000000000087600000000010000000030000000b50000891000008f9f818ff1c1000f3100efff00400080000000000000000006010080260900000007efffff700e0000000c900001480000020000080c00002710000000000000000004008b9f708f18f31000600000002cff8ff104000200410\"}]}"
+ },
+ "seen": {
+  "settings": {
+   "autopause": true,
+   "sound": false,
+   "haptics": true,
+   "softOutcome": true,
+   "textSize": 1,
+   "lessMotion": true
+  },
+  "station": {
+   "fund": 152500,
+   "done": [
+    "shift.week-1"
+   ],
+   "decided": 1,
+   "extra": 0,
+   "kits": {}
+  },
+  "weekShifts": [
+   "shift.week-1"
+  ],
+  "best": {
+   "shift.week-1": {
+    "emergency": 4,
+    "inNorm": 4,
+    "urgentMedian": 745536,
+    "accepted": 7
+   }
+  },
+  "crashlog": 1,
+  "shift": {
+   "setup": "shift.week-2",
+   "seed": 202,
+   "commands": 20,
+   "t": 809493
+  }
+ }
+}

@@ -19,7 +19,7 @@ import { useTextScale } from '../ui/textScale';
 import { SCENE, UI } from '../scenes/palette';
 
 /** Нижняя полоса с подсказкой и кнопками, точки экрана. */
-const FOOT_MIN = 150;
+const FOOT_MIN = 180;
 const HEAD_MIN = 64;
 
 export function StationScreen({ week, onWeek, onNext, onWeekEnd }: { week: string; onWeek: () => void; onNext: (shiftId: string) => void; onWeekEnd: () => void }) {
