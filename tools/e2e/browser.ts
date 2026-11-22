@@ -64,7 +64,32 @@ const WEEK = weekStorage();
 const errors: string[] = [];
 let shot = 0;
 let checks = 0;
-const snap = async (p: Page, name: string) => p.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`) });
+/** Текст кнопок — внутри кнопки (игра владельца 22.11.2026: «В поликлинику» не помещалось): у каждой видимой кнопки
+ *  ни одна строка текста не выходит за её края. Проверяется на каждом снимке. */
+async function buttonsFit(p: Page, name: string): Promise<void> {
+  const out = await p.evaluate(() => {
+    const bad: string[] = [];
+    for (const b of Array.from(document.querySelectorAll<HTMLElement>('[role="button"]'))) {
+      const r = b.getBoundingClientRect();
+      if (!r.width || !r.height || getComputedStyle(b).visibility === 'hidden') continue;
+      const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        const t = range.getBoundingClientRect();
+        if (t.left < r.left - 1 || t.right > r.right + 1) bad.push(`«${n.textContent.trim().slice(0, 40)}»: текст ${Math.round(t.width)} px, кнопка ${Math.round(r.width)} px`);
+      }
+    }
+    return bad;
+  });
+  if (out.length) throw new Error(`${name}: текст не помещается в кнопку\n${out.join('\n')}`);
+  checks++;
+}
+const snap = async (p: Page, name: string) => {
+  await buttonsFit(p, name);
+  return p.screenshot({ path: join(OUT, `${String(++shot).padStart(2, '0')}-${name}.png`) });
+};
 const see = async (p: Page, id: string, text?: string) => {
   const el = p.getByTestId(id);
   await el.waitFor({ state: 'visible', timeout: 15000 });
