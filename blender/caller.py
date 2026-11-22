@@ -9,7 +9,7 @@
 # - assets/scenes/callers.json — паспорт: версия Blender, настройки рендера, исходники Rocketbox, отпечатки файлов.
 #
 # Оси — Blender: z вверх, человек стоит в начале координат лицом к −y, камера — перед ним. Позу задают цели обратной
-# кинематики: правая кисть — у правого уха, левая — опущена. Случайности нет, кроме шума Cycles с закреплённым зерном.
+# кинематики: правая кисть — на телефоне у правого уха, левая — опущена. Случайности нет, кроме шума Cycles с закреплённым зерном.
 import bpy  # noqa: I001 — bpy первым: без него нет bmesh
 
 import hashlib
@@ -37,59 +37,49 @@ if not SRC:
 # предпросмотр — малый кадр; CALLER_PREVIEW_SCALE=2 — вдвое крупнее, чтобы разглядеть кисть
 _K = float(os.environ.get('CALLER_PREVIEW_SCALE', '1'))
 W, H = (1080, 960) if not PREVIEW else (int(360 * _K), int(320 * _K))
-# ось кисти к ладони и сгиб пальцев (градусы по осям кости) — подобраны по кадру
-PALM = os.environ.get('CALLER_PALM', 'TRACK_Z')
-CURL = tuple(float(x) for x in os.environ.get('CALLER_CURL', '0,0,-45').split(','))
+# сгиб пальцев вокруг телефона: градусы в трёх суставах от ладони к кончику — подобраны по кадру
+CURL = tuple(float(x) for x in os.environ.get('CALLER_CURL', '30,50,30').split(','))
 SAMPLES = 192 if not PREVIEW else 16
 SEED = 11
 
-# Звонящие прототипа: кто, какой человек Rocketbox, где стоит (комната), куда смотрит.
+# Звонящие: кто, какой человек Rocketbox, где стоит (комната), насколько повёрнут правым ухом — с телефоном — к камере
+# (yaw, градусы; 0 — лицом к камере). Крупность и высоту камеры считает `camera` по голове каждого.
 CALLERS = {
     'daughter': {
         'avatar': 'Adults/Female_Adult_02/Export/Female_Adult_02.fbx',
         'room': 'kitchen',
-        'yaw': -28,
+        'yaw': 32,
     },
     # мужчина дома: сын, муж, сосед, сам больной (часть П8)
     'man': {
         'avatar': 'Adults/Male_Adult_01/Export/Male_Adult_01.fbx',
         'room': 'kitchen',
-        # повёрнут сильнее: при −28° рука с телефоном закрывала лицо
-        'yaw': -50,
-        # он выше: камера смотрит выше и чуть шире, чтобы голова не упиралась в край кадра
-        'look': 0.04,
-        'lens': 52,
+        'yaw': 34,
     },
     # срез, С7: ещё четыре человека — пожилая женщина и пожилой мужчина (их пожилыми ведёт и «Больница», cast.ts),
     # молодая женщина и подросток, который звонит за родителя
     'grandma': {
         'avatar': 'Professions/Business_Female_02/Export/Business_Female_02.fbx',
         'room': 'kitchen',
-        'yaw': -32,
+        'yaw': 30,
         'grey': 1.7,
         'grey_head': True,
     },
-    # пожилой мужчина и подросток: при −34…−46° предплечье закрывало рот — повёрнуты сильнее, запястье — дальше назад
     'grandpa': {
         'avatar': 'Adults/Male_Adult_03/Export/Male_Adult_03.fbx',
         'grey': 1.7,
         'room': 'kitchen',
-        'yaw': -58,
-        'wrist': '0.09,0.04',
-        # он ниже остальных взрослых: тот же объектив, что у женщин, — иначе в кадре он мельче всех
-        'look': -0.06,
-        'lens': 60,
+        'yaw': 32,
     },
     'young': {
         'avatar': 'Adults/Female_Adult_05/Export/Female_Adult_05.fbx',
         'room': 'kitchen',
-        'yaw': -30,
+        'yaw': 34,
     },
     'teen': {
         'avatar': 'Children/Male_Child_01/Export/Male_Child_01.fbx',
         'room': 'kitchen',
-        'yaw': -58,
-        'wrist': '0.09,0.04',
+        'yaw': 32,
     },
 }
 # те же люди на вечерней улице — звонки не из дома (родственник, сам больной, прохожий; игра владельца 20.11.2026:
@@ -394,7 +384,14 @@ def person(spec):
         sub.levels = sub.render_levels = 1
         sub.uv_smooth = 'PRESERVE_BOUNDARIES'
         sub.boundary_smooth = 'PRESERVE_CORNERS'
-    arm.rotation_euler = (0, 0, math.radians(spec['yaw']))
+    # FBX приносит действие с ключами поворота самого скелета: при рендере Blender пересчитывает кадр и возвращает
+    # человека лицом к камере, как при импорте, — а кисть, телефон, камера и свет уже посчитаны для повёрнутого. До
+    # 22.11.2026 так и выходило: тело стоит прямо, рука тянется к уху «повёрнутой» головы — кисть вывернута, телефон
+    # висит у виска (игра владельца: «рука вывернута назад»). Действие снимаем: позу задаёт только этот скрипт.
+    for ob in bpy.data.objects:
+        ob.animation_data_clear()
+    # при импорте человек стоит лицом к −y, к камере; yaw > 0 — поворот правым ухом (с телефоном) к камере
+    arm.rotation_euler.z += math.radians(spec['yaw'])
     bpy.context.view_layer.update()
     return arm, body
 
@@ -471,20 +468,23 @@ def body_axes(arm):
 
 
 def head_box(arm):
-    """Рамка головы в осях человека (вправо, вперёд, вверх) по вершинам сетки, привязанным к кости головы, — до позы."""
+    """Рамка головы в осях человека (вправо, вперёд, вверх) по вершинам сетки, привязанным к костям головы, — до позы."""
     if 'box' in HEAD_BOX:
         return HEAD_BOX['box']
     body = next(o for o in bpy.data.objects if o.type == 'MESH' and o.parent == arm)
-    g = body.vertex_groups.get('Bip01 Head')
+    # кость головы и кости лица под ней (щёки, челюсть, губы, веки): вес вершины — их сумма
+    names = {'Bip01 Head'} | {b.name for b in arm.data.bones['Bip01 Head'].children_recursive}
+    groups = {g.index for g in body.vertex_groups if g.name in names}
     axes = body_axes(arm)
     pts = []
     for v in body.data.vertices:
-        for ge in v.groups:
-            if ge.group == g.index and ge.weight > 0.6:
-                pts.append(body.matrix_world @ v.co)
-    lo = [min(p.dot(a) for p in pts) for a in axes]
-    hi = [max(p.dot(a) for p in pts) for a in axes]
+        if sum(ge.weight for ge in v.groups if ge.group in groups) > 0.6:
+            pts.append(body.matrix_world @ v.co)
+    pts = [tuple(p.dot(a) for a in axes) for p in pts]
+    lo = [min(p[i] for p in pts) for i in range(3)]
+    hi = [max(p[i] for p in pts) for i in range(3)]
     HEAD_BOX['box'] = (axes, lo, hi)
+    HEAD_BOX['pts'] = pts
     return HEAD_BOX['box']
 
 
@@ -492,150 +492,265 @@ def at(axes, r, f, u):
     return axes[0] * r + axes[1] * f + axes[2] * u
 
 
-def phone_line(arm):
-    """Верх и низ телефона у правого уха: от уха (край головы на высоте глаз) к щеке у рта."""
+def unit_rot(m):
+    """Поворот без масштаба (скелет Rocketbox — в сантиметрах, масштаб 0,01)."""
+    return m.to_3x3().normalized()
+
+
+def phone_frame(arm):
+    """Где телефон у правого уха, в позе покоя: оси (наружу от головы, поперёк, вдоль — от рта к уху) и середина.
+    Экран лежит на ухе и на щеке: обе точки — по сетке головы, а не по её рамке, иначе низ телефона висит в воздухе
+    в двух сантиметрах от щеки."""
     axes, lo, hi = head_box(arm)
     eye = bone_head(arm, 'Bip01 REye')
     mouth = bone_head(arm, 'Bip01 RMouthCorner')
+    # мерка головы: у подростка она меньше — расстояния от глаза до уха и ото рта до щеки меньше во столько же
+    k = (eye - bone_head(arm, 'Bip01 LEye')).length / 0.064
     ef, mf = eye.dot(axes[1]), mouth.dot(axes[1])
-    # ухо — сбоку головы, на 8–9 см позади глаза и чуть ниже; низ телефона — у щеки, рядом с углом рта
-    top = at(axes, hi[0] + 0.006, ef - 0.115, eye.z - 0.01)
-    bottom = at(axes, hi[0] - 0.006, mf - 0.06, mouth.z - 0.02)
-    return top, bottom
+
+    def side(f, u, rad):
+        """Самая правая точка головы рядом с (вперёд f, вверх u)."""
+        near = [p[0] for p in HEAD_BOX['pts'] if (p[1] - f) ** 2 + (p[2] - u) ** 2 < rad * rad]
+        return max(near) if near else hi[0]
+    # ухо — на 10 см позади глаза, на его высоте; ушная раковина мягкая — телефон прижимает её (`EAR_PRESS`)
+    f, u = ef - 0.1 * k, eye.z - 0.005
+    ear = at(axes, side(f, u, 0.022 * k) - EAR_PRESS, f, u)
+    # щека — позади угла рта, чуть ниже
+    f, u = mf - 0.045 * k, mouth.z - 0.012 * k
+    cheek = at(axes, side(f, u, 0.016 * k) + 0.001, f, u)
+    if os.environ.get('CALLER_DEBUG'):
+        rel = lambda v: tuple(round(v.dot(a), 3) for a in axes)
+        print('DEBUG ухо', rel(ear), 'щека', rel(cheek), 'глаз', rel(eye), 'рот', rel(mouth), 'рамка', [round(v, 3) for v in lo], [round(v, 3) for v in hi], 'точек', len(HEAD_BOX['pts']))
+    z = (ear - cheek).normalized()
+    x = (axes[0] - z * axes[0].dot(z)).normalized()
+    y = z.cross(x)
+    m = Matrix((x, y, z)).transposed().to_4x4()
+    # динамик — у уха: верхний край телефона — на 3 см выше слухового прохода
+    m.translation = ear + z * (0.03 - PHONE[2] / 2) + x * (PHONE[0] / 2)
+    return m
+
+
+# телефон: толщина, ширина, длина — метры; насколько он прижимает ухо
+EAR_PRESS = float(os.environ.get('CALLER_EAR', '0.012'))
+PHONE = (0.008, 0.072, 0.152)
 
 
 def pose_call(arm, spec):
-    """Правая кисть — у правого уха, локоть вниз и вбок; левая рука опущена; голова чуть к телефону."""
+    """Правая рука держит телефон у правого уха, левая опущена, голова чуть к телефону. Возвращает место телефона.
+
+    Хват (22.11.2026; игра владельца: «рука вывернута назад»). До этого кисть ставили двумя слежениями по осям кости
+    (`TRACK_Y` к «пальцам», `LOCK_Y`/`TRACK_Z` «ладонью к голове»): какая ось кости — ладонь, подбирали по кадру, и
+    ладонь смотрела вперёд, а не к голове; пальцы уходили назад к затылку, и при прямом локте вниз запястье ломалось
+    назад почти под прямым углом. Теперь оси кисти меряются по самой руке в позе покоя — пальцы (от запястья к
+    костяшке среднего), сторона большого пальца (от мизинца к указательному), ладонь (их произведение) — и кисть
+    ставится поворотом целиком: ладонь — на тыльную сторону телефона, к голове; пальцы — наискось вверх по телефону,
+    вдоль предплечья (запястье прямое), кончиками — за его передний край; большой палец — у заднего края."""
     head_box(arm)
     pb = arm.pose.bones
-    head = bone_head(arm, 'Bip01 Head')
-    right, fwd, _ = body_axes(arm)
-    def target(name, loc):
+    mw = arm.matrix_world
+    right, fwd, up = body_axes(arm)
+
+    def target(name, loc=(0, 0, 0)):
         e = bpy.data.objects.new(name, None)
         bpy.context.collection.objects.link(e)
         e.location = loc
         return e
-    up = Vector((0, 0, 1))
-    # запястье — под телефоном у уха: телефон в ладони прижат к уху (точки лица — по костям глаза и угла рта)
-    top, bottom = phone_line(arm)
-    # хват — по фотографиям людей с телефоном у уха (Викисклад, 20.11.2026; docs/13-art.md, «Звонящий»): запястье — у
-    # нижнего переднего края телефона, у челюсти; пальцы — поперёк тыльной стороны телефона, к затылку, и обхватывают его
-    # дальний край; ладонь — к щеке; предплечье уходит вниз. У 0.11.0 пальцы смотрели вверх вдоль телефона — владелец:
-    # «кисть всё ещё неудовлетворительно».
-    z = (top - bottom).normalized()
-    out = (right - z * right.dot(z)).normalized()
-    # пальцы — назад к затылку (по горизонтали), чуть вверх и внутрь, к голове: кончики ложатся за ухом
-    fb, fu, fi = (float(x) for x in os.environ.get('CALLER_FINGERS', spec.get('fingers', '0.85,0.35,0.25')).split(','))
-    fingers = (-fwd * fb + up * fu - out * fi).normalized()
-    # середина ладони — над серединой телефона (он — у щеки, `phone_in_hand`), запястье — на `wl` назад по пальцам
-    wl, wo = (float(x) for x in os.environ.get('CALLER_WRIST', spec.get('wrist', '0.06,0.025')).split(','))
-    phone = (top + bottom) / 2 + right * 0.012
-    ear = target('ik_ear', phone - fingers * wl + out * wo)
-    # локоть — внизу у рёбер, сбоку и чуть позади: плечо вдоль тела, предплечье поднимается к лицу почти вертикально, как
-    # на фотографиях (у 0.9.0 подсказка стояла впереди — локоть уходил перед грудь; у 0.11.0 — сбоку на уровне груди, и
-    # предплечье шло по диагонали через низ лица; владелец, 20.11.2026)
-    er, eu, ef = (float(x) for x in os.environ.get('CALLER_ELBOW', spec.get('elbow', '0.25,-0.9,-0.05')).split(','))
-    elbow = target('ik_elbow', head + right * er + up * eu + fwd * ef)
+
+    def rest_rot(name):
+        return unit_rot(mw @ arm.data.bones[name].matrix_local)
+    # оси кисти в позе покоя
+    h0 = bone_head(arm, 'Bip01 R Hand')
+    F0 = bone_head(arm, 'Bip01 R Finger2') - h0
+    palm = F0.length
+    F0.normalize()
+    T0 = bone_head(arm, 'Bip01 R Finger1') - bone_head(arm, 'Bip01 R Finger4')
+    T0 = (T0 - F0 * T0.dot(F0)).normalized()
+    N0 = T0.cross(F0)   # из ладони наружу (правая рука)
+    hand_rest = rest_rot('Bip01 R Hand')
+    shoulder = bone_head(arm, 'Bip01 R UpperArm')
+    phone = phone_frame(arm)
+    # голова — чуть к телефону; телефон едет вместе с головой
+    hb = pb['Bip01 Head']
+    hb.rotation_mode = 'XYZ'
+    hb.rotation_euler = (0, math.radians(8), 0)
+    bpy.context.view_layer.update()
+    phone = (mw @ hb.matrix) @ (mw @ arm.data.bones['Bip01 Head'].matrix_local).inverted() @ phone
+    x, y, z = (phone.col[i].xyz.normalized() for i in range(3))
+    # локоть — внизу, впереди и чуть сбоку от плеча: предплечье поднимается к уху почти вертикально
+    er, eu, ef = (float(v) for v in os.environ.get('CALLER_ELBOW', spec.get('elbow', '0.12,-0.6,0.3')).split(','))
+    wrist = target('ik_wrist')
     ik = pb['Bip01 R Hand'].constraints.new('IK')
-    ik.target = ear
-    ik.pole_target = elbow
+    ik.target = wrist
+    ik.pole_target = target('ik_elbow', shoulder + right * er + up * eu + fwd * ef)
     ik.pole_angle = math.radians(float(os.environ.get('CALLER_POLE', '0')))
     ik.use_tail = False
     ik.chain_count = 2
-    hip = bone_head(arm, 'Bip01 Pelvis')
-    left = -right
-    low = target('ik_hand_l', hip + left * 0.2 + fwd * 0.08 + up * -0.08)
-    low_elbow = target('ik_elbow_l', hip + left * 0.35 + up * 0.25 + fwd * 0.02)
-    ik_l = pb['Bip01 L Hand'].constraints.new('IK')
-    ik_l.target = low
-    ik_l.pole_target = low_elbow
-    ik_l.pole_angle = 0
-    ik_l.use_tail = False
-    ik_l.chain_count = 2
-    # кисть: пальцы — по `fingers`; ладонь — к голове; пальцы согнуты вокруг телефона
-    axes, lo, hi = head_box(arm)
-    center = at(axes, *[(x + y) / 2 for x, y in zip(lo, hi)])
-    up_t = target('hand_up', ear.location + fingers * 0.3)
-    tr = pb['Bip01 R Hand'].constraints.new('DAMPED_TRACK')
-    tr.target = up_t
-    tr.track_axis = 'TRACK_Y'
-    lk = pb['Bip01 R Hand'].constraints.new('LOCKED_TRACK')
-    lk.target = target('hand_palm', center)
-    lk.lock_axis = 'LOCK_Y'
-    lk.track_axis = PALM
-    for f in range(5):
+    aim = target('hand_aim')
+    aim.rotation_mode = 'QUATERNION'
+    cp = pb['Bip01 R Hand'].constraints.new('COPY_ROTATION')
+    cp.target = aim
+    cp.target_space = cp.owner_space = 'WORLD'
+    # где на тыльной стороне телефона лежит костяшка среднего пальца (поперёк — к переднему краю, вдоль — от середины
+    # к верху) и насколько кость запястья над телефоном: пятка ладони — у нижнего конца, пальцы уходят за передний край
+    ky, kz, lift = (float(v) for v in os.environ.get('CALLER_GRIP', spec.get('grip', '0.02,-0.005,0.017')).split(','))
+    N = -x
+    # кисть отведена к мизинцу от линии предплечья — так телефон и держат: пальцы идут наискось к переднему краю
+    ulnar = math.radians(float(os.environ.get('CALLER_ULNAR', '20')))
+    ang = math.radians(25)
+    fore = pb['Bip01 R Forearm']
+    for _ in range(5):
+        # пальцы — в плоскости телефона, наискось от его оси к переднему краю; угол — по предплечью
+        F = z * math.cos(ang) + y * math.sin(ang)
+        T = F.cross(N)
+        rot = Matrix((F, T, N)).transposed() @ Matrix((F0, T0, N0))
+        aim.rotation_quaternion = (rot @ hand_rest).to_quaternion()
+        wrist.location = phone.translation + x * (PHONE[0] / 2 + lift) + y * ky + z * kz - F * palm
+        bpy.context.view_layer.update()
+        arm_dir = ((mw @ pb['Bip01 R Hand'].matrix).translation - (mw @ fore.matrix).translation).normalized()
+        ang = min(math.radians(50), max(math.radians(10), math.atan2(arm_dir.dot(y), arm_dir.dot(z)) + ulnar))
+    # пальцы согнуты вокруг телефона: ось сгиба — сторона большого пальца, от пальцев к ладони
+    for f in range(1, 5):
         for k, sub in enumerate(('', '1', '2')):
             name = f'Bip01 R Finger{f}{sub}'
             if name in pb:
                 b = pb[name]
-                b.rotation_mode = 'XYZ'
-                b.rotation_euler = tuple(math.radians(a * (0.6 if f == 0 else 1)) for a in CURL)
-    pb['Bip01 Head'].rotation_mode = 'XYZ'
-    pb['Bip01 Head'].rotation_euler = (0, math.radians(8), 0)
+                b.rotation_mode = 'AXIS_ANGLE'
+                ax = rest_rot(name).inverted() @ T0
+                # мизинец и безымянный согнуты сильнее — они у нижнего края
+                b.rotation_axis_angle = (math.radians(CURL[k] * (1 + 0.12 * (f - 2))), *ax)
+    # большой палец — к ладони, на задний край телефона
+    tb = float(os.environ.get('CALLER_THUMB', '18'))
+    for sub in ('', '1', '2'):
+        name = f'Bip01 R Finger0{sub}'
+        if name in pb:
+            b = pb[name]
+            b.rotation_mode = 'AXIS_ANGLE'
+            ax = rest_rot(name).inverted() @ F0
+            b.rotation_axis_angle = (math.radians(-tb if sub == '' else 0), *ax)
+    # левая рука опущена
+    hip = bone_head(arm, 'Bip01 Pelvis')
+    left = -right
+    ik_l = pb['Bip01 L Hand'].constraints.new('IK')
+    ik_l.target = target('ik_hand_l', hip + left * 0.2 + fwd * 0.08 + up * -0.08)
+    ik_l.pole_target = target('ik_elbow_l', hip + left * 0.35 + up * 0.25 + fwd * 0.02)
+    ik_l.pole_angle = 0
+    ik_l.use_tail = False
+    ik_l.chain_count = 2
     bpy.context.view_layer.update()
     if os.environ.get('CALLER_DEBUG'):
-        hm = arm.matrix_world @ pb['Bip01 R Hand'].matrix
-        f = lambda v: '(' + ', '.join(f'{c:+.2f}' for c in v) + ')'
-        print('DEBUG right', f(right), 'fwd', f(fwd), 'z', f(z), 'out', f(out), 'fingers', f(fingers))
-        print('DEBUG hand x', f(hm.col[0].xyz.normalized()), 'y', f(hm.col[1].xyz.normalized()), 'z', f(hm.col[2].xyz.normalized()))
-        print('DEBUG wrist', f(hm.translation), 'target', f(ear.location), 'aim', f(up_t.location), 'phone top', f(top), 'bottom', f(bottom))
-        mid = arm.matrix_world @ pb['Bip01 R Finger2'].head
-        print('DEBUG middle finger base', f(mid))
-        print('DEBUG head', f(head), 'REye', f(bone_head(arm, 'Bip01 REye')), 'LEye', f(bone_head(arm, 'Bip01 LEye')))
-        print('DEBUG head box center', f(center), 'camera side ~ head + (0.3, -1.3)')
-    return ear
+        hm = mw @ pb['Bip01 R Hand'].matrix
+        el = (mw @ fore.matrix).translation
+        f = lambda v: '(' + ', '.join(f'{c:+.3f}' for c in v) + ')'
+        rel = lambda v: f((v.dot(right), v.dot(fwd), v.z))
+        print('DEBUG оси: вправо', f(right), 'вперёд', f(fwd))
+        print('DEBUG (вправо, вперёд, вверх): плечо', rel(shoulder), 'локоть', rel(el), 'запястье', rel(hm.translation), 'цель', rel(wrist.location))
+        print('DEBUG телефон', rel(phone.translation), 'ось', rel(z), 'наружу', rel(x), 'пальцы', rel(F), 'наклон', round(math.degrees(ang)))
+        print('DEBUG излом запястья, градусы:', round(math.degrees(arm_dir.angle(F))), '— из них из плоскости ладони:', round(math.degrees(math.asin(arm_dir.dot(x)))))
+    return phone
 
 
-def phone_in_hand(arm, ear):
-    """Мобильный телефон в правой руке, у уха: тёмный матовый корпус со скруглёнными краями, на тыльной стороне —
-    блок камеры."""
-    # тёмный и матовый: глянцевый на скользящем угле отражал светлую стену и выходил серой пластиной
-    body = mat('phone', lin('#0b0c0e'), 0.85)
-    body.node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value = 0.12
-    lens = mat('phone_lens', lin('#050506'), 0.25)
-    lens.node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value = 0.3
-    right, _, _ = body_axes(arm)
-    top, bottom = phone_line(arm)
-    z = (top - bottom).normalized()
-    x = (right - z * right.dot(z)).normalized()
-    y = z.cross(x)
-    m = Matrix((x, y, z)).transposed().to_4x4()
-    m.translation = (top + bottom) / 2 + right * 0.012
+def phone_in_hand(phone):
+    """Смартфон в правой руке, у уха: тонкая пластина 152 × 72 × 8 мм со скруглёнными углами, экраном к голове;
+    наружу — матовая тёмная спинка в рамке и блок камер у верхнего края. До 22.11.2026 это была коробка со фаской
+    4 мм — читалась чёрным клином или бруском."""
+    import bmesh
+    frame = mat('phone_frame', lin('#4a4e56'), 0.38, metal=0.9)
+    back = mat('phone_back', lin('#1b1e24'), 0.62)
+    back.node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value = 0.3
+    glass = mat('phone_glass', lin('#050506'), 0.12)
+    ring = mat('phone_ring', lin('#6a6e76'), 0.3, metal=1.0)
+    t, w, h = PHONE
 
-    def part(name, material, size, loc, bevel):
-        bpy.ops.mesh.primitive_cube_add(size=1)
-        ob = bpy.context.object
-        ob.name = name
-        ob.scale = size
-        bpy.ops.object.transform_apply(scale=True)
+    def plate(name, material, wy, hz, thick, radius, loc, bevel):
+        """Пластина со скруглёнными углами: толщина — по x, ширина — по y, длина — по z."""
+        bm = bmesh.new()
+        ring_v = []
+        for cy, cz, a0 in ((wy / 2 - radius, hz / 2 - radius, 0), (-wy / 2 + radius, hz / 2 - radius, 90),
+                           (-wy / 2 + radius, -hz / 2 + radius, 180), (wy / 2 - radius, -hz / 2 + radius, 270)):
+            for i in range(9):
+                a = math.radians(a0 + i * 90 / 8)
+                ring_v.append(bm.verts.new((-thick / 2, cy + radius * math.cos(a), cz + radius * math.sin(a))))
+        face = bm.faces.new(ring_v)
+        ext = bmesh.ops.extrude_face_region(bm, geom=[face])
+        bmesh.ops.translate(bm, verts=[v for v in ext['geom'] if isinstance(v, bmesh.types.BMVert)], vec=(thick, 0, 0))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        me = bpy.data.meshes.new(name)
+        bm.to_mesh(me)
+        bm.free()
+        ob = bpy.data.objects.new(name, me)
+        bpy.context.collection.objects.link(ob)
         ob.data.materials.append(material)
-        bev = ob.modifiers.new('bevel', 'BEVEL')
-        bev.width = bevel
-        bev.segments = 4
+        if bevel:
+            bev = ob.modifiers.new('bevel', 'BEVEL')
+            bev.width = bevel
+            bev.segments = 3
+            bev.limit_method = 'ANGLE'
+            bev.angle_limit = math.radians(50)
         for p in ob.data.polygons:
             p.use_smooth = True
-        ob.matrix_world = m @ Matrix.Translation(loc)
+        ob.matrix_world = phone @ Matrix.Translation(loc)
         return ob
-    ph = part('mobile', body, (0.0095, 0.074, 0.152), (0, 0, 0), 0.0042)
-    # блок камеры — на тыльной стороне (она смотрит наружу, от головы), у верхнего края
-    part('mobile_camera', body, (0.004, 0.032, 0.034), (0.006, -0.014, 0.05), 0.0018)
-    part('mobile_lens', lens, (0.002, 0.012, 0.012), (0.0085, -0.02, 0.056), 0.0009)
-    part('mobile_lens2', lens, (0.002, 0.012, 0.012), (0.0085, -0.02, 0.041), 0.0009)
+    ph = plate('mobile', frame, w, h, t, 0.011, (0, 0, 0), 0.0022)
+    # спинка — наружу, экран — к голове: обе чуть выступают из рамки
+    plate('mobile_back', back, w - 0.003, h - 0.003, 0.0012, 0.0098, (t / 2 - 0.0003, 0, 0), 0.0005)
+    plate('mobile_screen', glass, w - 0.004, h - 0.004, 0.001, 0.0094, (-t / 2 + 0.0002, 0, 0), 0.0004)
+    # блок камер — на спинке у верхнего края, со стороны затылка: пальцы его не закрывают
+    cy, cz = -w / 2 + 0.021, h / 2 - 0.023
+    plate('mobile_camera', back, 0.03, 0.034, 0.0022, 0.008, (t / 2 + 0.0014, cy, cz), 0.0007)
+    for i, dz in enumerate((0.0075, -0.0075)):
+        for name, material, r, d, out in ((f'mobile_ring{i}', ring, 0.0062, 0.0012, 0.0026), (f'mobile_lens{i}', glass, 0.0048, 0.0013, 0.0029)):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=r, depth=d)
+            ob = bpy.context.object
+            ob.name = name
+            ob.data.materials.append(material)
+            for p in ob.data.polygons:
+                p.use_smooth = len(p.vertices) == 4
+            ob.matrix_world = phone @ Matrix.Translation((t / 2 + out, cy, cz + dz)) @ Matrix.Rotation(math.radians(90), 4, 'Y')
     return ph
 
 
-def camera(arm, spec):
+# кадр: макушка — на десятой части высоты от верха, глаза — на трети; камера — на высоте глаз, без наклона
+HEAD_TOP, EYES = 0.10, 1 / 3
+
+
+def camera(arm, body, spec):
+    """Камера на высоте глаз человека, смотрит ровно по горизонту — у каждого своя высота, наклона нет. Глаза в кадре
+    выше середины за счёт сдвига объектива (`shift_y`), а не наклона: вертикали комнаты остаются вертикалями, и потолок
+    не занимает верх кадра. Крупность — по голове: от макушки до глаз у всех одна доля кадра.
+
+    До 22.11.2026 камера стояла на 5 см ниже кости головы (у подбородка) и смотрела вверх, на точку выше себя (`look`
+    до +0,04 у мужчины): снимок выходил «снизу вверх», полкадра — потолок (игра владельца)."""
     head = bone_head(arm, 'Bip01 Head')
-    fwd = arm.matrix_world.to_quaternion() @ Vector((0, -1, 0))
-    bpy.ops.object.camera_add(location=head + Vector((0.3, -1.3, -0.05)))
+    eyes = (bone_head(arm, 'Bip01 REye') + bone_head(arm, 'Bip01 LEye')) / 2
+    deps = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(deps)
+    me = ev.to_mesh()
+    top = max((ev.matrix_world @ v.co).z for v in me.vertices)
+    ev.to_mesh_clear()
+    right, fwd, _ = body_axes(arm)
+    # середина головы — позади глаз; кадр чуть сдвинут к руке с телефоном
+    mid = eyes - fwd * 0.08 + right * 0.02
+    mid.z = eyes.z
+    loc = Vector((mid.x + 0.3, mid.y - 1.3, eyes.z))
+    bpy.ops.object.camera_add(location=loc)
     cam = bpy.context.object
-    look = head + Vector((0.02, 0, spec.get('look', -0.12)))
-    cam.rotation_euler = (look - cam.location).to_track_quat('-Z', 'Y').to_euler()
-    cam.data.lens = spec.get('lens', 62)
+    cam.rotation_euler = (mid - loc).to_track_quat('-Z', 'Y').to_euler()
+    height = (top - eyes.z) / (EYES - HEAD_TOP)   # сколько метров по высоте видит кадр на расстоянии человека
+    cam.data.sensor_width = 36
+    cam.data.lens = 36 * (mid - loc).length / (height * W / H)
+    cam.data.shift_y = -(0.5 - EYES) * H / W
     cam.data.dof.use_dof = True
-    cam.data.dof.focus_distance = (head - cam.location).length
+    cam.data.dof.focus_distance = (eyes - loc).length
     cam.data.dof.aperture_fstop = 2.8
     bpy.context.scene.camera = cam
+    if os.environ.get('CALLER_DEBUG'):
+        from bpy_extras.object_utils import world_to_camera_view
+        sc = bpy.context.scene
+        sc.render.resolution_x, sc.render.resolution_y = W, H
+        bpy.context.view_layer.update()
+        e = world_to_camera_view(sc, cam, eyes)
+        t = world_to_camera_view(sc, cam, Vector((eyes.x, eyes.y, top)))
+        print(f'DEBUG кадр: объектив {cam.data.lens:.1f} мм, высота камеры {loc.z:.3f}, макушка {top:.3f} — {(1 - t.y) * 100:.1f} % от верха, глаза — {(1 - e.y) * 100:.1f} %')
     # Свет на человека. Рука с телефоном — слева в кадре, поэтому рисующий свет — справа спереди: слева его закрывали
     # рука и телефон, и пол-лица уходило в тень. Слева сзади — контровой: отделяет волосы и плечо от фона.
     if spec['room'] == 'street':
@@ -651,7 +766,6 @@ def camera(arm, spec):
     for lt in (key, fill, rim):
         lt.rotation_euler = (head - lt.location).to_track_quat('-Z', 'Y').to_euler()
         lt.visible_camera = False
-    _ = fwd
     return cam
 
 
@@ -696,10 +810,11 @@ def main():
             spec = {**spec, 'yaw': float(os.environ['CALLER_YAW'])}
         bpy.ops.wm.read_factory_settings(use_empty=True)
         ROOMS[spec['room']]()
-        arm, _ = person(spec)
-        ear = pose_call(arm, spec)
-        phone_in_hand(arm, ear)
-        camera(arm, spec)
+        arm, body = person(spec)
+        phone_in_hand(pose_call(arm, spec))
+        camera(arm, body, spec)
+        if os.environ.get('CALLER_DRY'):   # только числа позы и кадра (CALLER_DEBUG), без рендера
+            continue
         if PREVIEW:
             out = os.path.join(os.environ.get('CALLER_PREVIEW', '/tmp'), f'caller-{cid}-preview.jpg')
             render(out, SKY[spec['room']])

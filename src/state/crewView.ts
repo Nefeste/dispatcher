@@ -6,7 +6,7 @@ import type { FormKind } from '../content/types';
 import type { CrewState } from '../engine/crews';
 import { FAR } from '../engine/road/route';
 import type { Shift, ShiftCtx } from '../engine/shift';
-import { callNo, crewNo } from './callView';
+import { addressOf, type CallAddress, callNo, crewNo } from './callView';
 
 export interface CrewCard {
   id: string;
@@ -15,7 +15,7 @@ export interface CrewCard {
   kind: string;
   state: CrewState;
   /** вызов, на котором бригада: номер и форма */
-  call: { no: number; form: FormKind | 'none' | null } | null;
+  call: { no: number; form: FormKind | 'none' | null; address: CallAddress | null } | null;
   /** больница, куда везёт или где стоит */
   hospital: string | null;
   /** сколько ещё до конца этого шага — доедет, закончит на месте, сдаст больного; игровых минут, вверх; null — не знает */
@@ -64,7 +64,7 @@ export function crewCard(ctx: ShiftCtx, s: Shift, id: string): CrewCard | null {
     no: crewNo(c.id),
     kind: ctx.db.crews[c.kind].name,
     state: c.state,
-    call: call ? { no: callNo(call.id), form: call.form } : null,
+    call: call ? { no: callNo(call.id), form: call.form, address: addressOf(ctx, s, call) } : null,
     hospital,
     minutes: end > s.t ? Math.ceil((end - s.t) / 60_000) : null,
     kit: c.kit,

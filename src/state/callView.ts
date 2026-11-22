@@ -6,6 +6,7 @@ import { fnv1a } from '../engine/core/hash';
 import { AGAIN, CLINIC_ARRIVE, CLINIC_HOURS } from '../engine/rules';
 import { type CallRec, crewOf, crewOptions, type Shift, type ShiftCtx, clinicOpen } from '../engine/shift';
 import { mayDecide } from '../engine/form';
+import { callAddress } from '../map/address';
 import { type Heard, render } from '../engine/talk';
 
 export interface QuestionView {
@@ -35,6 +36,20 @@ export interface CrewChoice {
   redirect: boolean;
 }
 
+/** Адрес вызова словами звонящего (игра владельца 22.11.2026): улица и дом из OpenStreetMap у точки вызова; на улице —
+ *  «у дома»; ближайший дом дальше 150 м — «около дома». После «адрес не тот» — уже верный. */
+export interface CallAddress {
+  street: string;
+  house: string;
+  outside: boolean;
+  far: boolean;
+}
+
+export function addressOf(ctx: ShiftCtx, s: Shift, call: CallRec): CallAddress | null {
+  const a = callAddress(ctx.city.map, call.node, `${s.seed}:${call.id}`);
+  return a ? { street: a.street, house: a.house, far: a.far, outside: call.truth.where === 'street' } : null;
+}
+
 export interface CallView {
   id: string;
   no: number;
@@ -47,6 +62,8 @@ export interface CallView {
   repeat: boolean;
   /** что звонящий сказал последним */
   said: string;
+  /** улица и дом; у карты без адресов — нет */
+  address: CallAddress | null;
   rows: CardRow[];
   /** на линии в этом разговоре, игровых секунд */
   seconds: number;
@@ -133,7 +150,7 @@ export function callView(ctx: ShiftCtx, s: Shift, id: string): CallView | null {
         }))
       : [];
   return {
-    id: call.id, no: callNo(call.id), who: call.truth.relation.caller, picture: pictureOf(call), self: kind.self, repeat, said, rows,
+    id: call.id, no: callNo(call.id), who: call.truth.relation.caller, picture: pictureOf(call), self: kind.self, repeat, said, address: addressOf(ctx, s, call), rows,
     seconds: Math.floor((s.t - (call.openedAt ?? s.t)) / 1000), groups, form: call.form, options,
     pass: call.form === 'urgent' && clinicOpen(ctx, s) && !call.clinic,
     passClosed: call.form === 'urgent' && ctx.setup.clinic && !clinicOpen(ctx, s) && !call.clinic,
