@@ -41,7 +41,7 @@
 | Когда | Вопрос |
 |---|---|
 | путь к 1.0 | деньги — [#46](https://github.com/Nefeste/dispatcher/issues/46); второй район — [#47](https://github.com/Nefeste/dispatcher/issues/47) |
-| по игре владельца 22.11.2026 | бригады из людей — [#51](https://github.com/Nefeste/dispatcher/issues/51); вертолёт и другие машины — [#52](https://github.com/Nefeste/dispatcher/issues/52); любой город — [#53](https://github.com/Nefeste/dispatcher/issues/53); уровни сложности — [#57](https://github.com/Nefeste/dispatcher/issues/57), «эксперт» без сохранений — [#58](https://github.com/Nefeste/dispatcher/issues/58); тип района — [#59](https://github.com/Nefeste/dispatcher/issues/59) |
+| по игре владельца 22.11.2026 | бригады из людей — [#51](https://github.com/Nefeste/dispatcher/issues/51); вертолёт и другие машины — [#52](https://github.com/Nefeste/dispatcher/issues/52); любой город — [#53](https://github.com/Nefeste/dispatcher/issues/53); уровни сложности — [#57](https://github.com/Nefeste/dispatcher/issues/57), «эксперт» без сохранений — [#58](https://github.com/Nefeste/dispatcher/issues/58); тип района — [#59](https://github.com/Nefeste/dispatcher/issues/59); адрес из разговора, врач поликлиники на карте, разнообразие смены ([`specs/2026-11-variety.md`](specs/2026-11-variety.md)) — #? (адрес), #? (врач на карте), #? (разнообразие в 1.0), #? (смена на передаче) |
 | до выпуска | возрастная категория (с анкетами, часть В6); страница игры на сайте (В7) |
 
 ## Решения владельца
