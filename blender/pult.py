@@ -242,26 +242,54 @@ def scene_objects(M):
     cord.data.materials.append(M['dark'])
     parts['radio'] = {'body': ['radio_body'], 'lcd': 'radio_display', 'extra': [mic.name]}
 
-    # гарнитура на подставке слева сзади
+    # гарнитура висит на подставке: оголовье лежит в седле на верху стойки, чашки — на концах оголовья. До 22.11.2026
+    # дуга висела в воздухе на 7 см выше стойки, а чашки стояли несимметрично: цилиндр растёт от своего низа, и левая
+    # чашка уходила внутрь дуги, правая — наружу (игра владельца: «один наушник не ровно оторван от дужки»)
+    R, ZC, CUP_Z = 0.078, 0.146, 0.105   # радиус дуги, высота её середины, высота середины чашек
     hs = [cyl('hs_base', M['dark'], 0.05, 0.012, (0, 0, 0), sides=32, bevel=0.003),
-          cyl('hs_pole', M['metal'], 0.007, 0.19, (0, 0, 0.012), sides=16)]
-    # оголовье — гладкая дуга
+          cyl('hs_pole', M['metal'], 0.007, 0.2, (0, 0, 0.012), sides=16),
+          # седло: верх — ровно под нижней кромкой оголовья
+          box('hs_saddle', M['dark'], (0.06, 0.034, 0.012), (0, 0, ZC + R - 0.006 - 0.012), bevel=0.005)]
+    # оголовье — гладкая дуга, от её концов вниз — прямые стойки до середины чашек
     band = bpy.data.curves.new('hs_band', 'CURVE')
     band.dimensions = '3D'
-    band.bevel_depth = 0.007
+    band.bevel_depth = 0.006
     band.bevel_resolution = 4
     arc = band.splines.new('POLY')
-    arc.points.add(40)
-    for k in range(41):
-        ang = math.radians(-90 + k * 4.5)
-        arc.points[k].co = (0.075 * math.sin(ang), 0, 0.195 + 0.075 * math.cos(ang), 1)
+    pts = [(-R, 0, CUP_Z)] + [(R * math.sin(math.radians(-90 + k * 4.5)), 0, ZC + R * math.cos(math.radians(-90 + k * 4.5)))
+                              for k in range(41)] + [(R, 0, CUP_Z)]
+    arc.points.add(len(pts) - 1)
+    for k, pt in enumerate(pts):
+        arc.points[k].co = (*pt, 1)
     band_ob = bpy.data.objects.new('hs_band', band)
     bpy.context.collection.objects.link(band_ob)
     band_ob.data.materials.append(M['dark'])
     hs.append(band_ob)
+
+    def across(name, material, r, x0, x1, bevel=0.0, sides=28):
+        """Цилиндр вдоль x от x0 до x1 на высоте чашек."""
+        return cyl(name, material, r, x1 - x0, (x0, 0, CUP_Z), rot=(0, 90, 0), sides=sides, bevel=bevel)
     for s in (-1, 1):
-        hs.append(cyl(f'hs_cup{s}', M['cushion'], 0.035, 0.026, (s * 0.075 - s * 0.013, 0, 0.165), rot=(0, 90, 0), sides=28, bevel=0.006))
-    hs.append(box('hs_mic', M['dark'], (0.006, 0.1, 0.006), (-0.072, -0.045, 0.15), rot=(-8, 0, 12), bevel=0.0025))
+        # корпус чашки, подушка к голове, шарнир к стойке оголовья — зеркально с обеих сторон
+        shell, pad, hinge = sorted((s * 0.053, s * 0.075)), sorted((s * 0.037, s * 0.055)), sorted((s * 0.07, s * 0.086))
+        hs.append(across(f'hs_cup{s}', M['dark'], 0.036, *shell, bevel=0.005))
+        hs.append(across(f'hs_pad{s}', M['cushion'], 0.034, *pad, bevel=0.006))
+        hs.append(across(f'hs_hinge{s}', M['dark'], 0.009, *hinge, bevel=0.002, sides=16))
+    # микрофон — от левой чашки вперёд и вниз
+    boom = bpy.data.curves.new('hs_boom', 'CURVE')
+    boom.dimensions = '3D'
+    boom.bevel_depth = 0.003
+    boom.bevel_resolution = 3
+    bs = boom.splines.new('POLY')
+    bp = [(-0.066, -0.02, CUP_Z - 0.02), (-0.064, -0.06, CUP_Z - 0.034), (-0.052, -0.105, CUP_Z - 0.04)]
+    bs.points.add(len(bp) - 1)
+    for k, pt in enumerate(bp):
+        bs.points[k].co = (*pt, 1)
+    boom_ob = bpy.data.objects.new('hs_boom', boom)
+    bpy.context.collection.objects.link(boom_ob)
+    boom_ob.data.materials.append(M['dark'])
+    hs.append(boom_ob)
+    hs.append(box('hs_mic', M['dark'], (0.012, 0.022, 0.012), (-0.05, -0.112, CUP_Z - 0.046), rot=(0, 0, 14), bevel=0.004))
     parent(hs, 'headset', (0.04, 0.09, TOP), -8)
 
     # блокнот с ручкой, кружка
