@@ -22,5 +22,8 @@
 - деньги — [#46](https://github.com/Nefeste/dispatcher/issues/46); второй район — [#47](https://github.com/Nefeste/dispatcher/issues/47);
 - по вашей игре 22.11: бригады из людей — [#51](https://github.com/Nefeste/dispatcher/issues/51), вертолёт и другие
   машины — [#52](https://github.com/Nefeste/dispatcher/issues/52), любой город — [#53](https://github.com/Nefeste/dispatcher/issues/53);
+- уровни сложности — [#57](https://github.com/Nefeste/dispatcher/issues/57) и [#58](https://github.com/Nefeste/dispatcher/issues/58)
+  ([спецификация](docs/specs/2026-11-levels.md)); тип района — [#59](https://github.com/Nefeste/dispatcher/issues/59)
+  ([спецификация городов](docs/specs/2026-11-cities.md));
 - до выпуска — возрастная категория; резервная копия Android против строки устава «сохранения удаляются вместе с
   игрой» (ADR [0010](docs/adr/0010-android-backup.md)), как у «Нард» и «Козыря».
