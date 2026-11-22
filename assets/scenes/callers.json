@@ -23,85 +23,85 @@
       "avatar": "Adults/Female_Adult_02/Export/Female_Adult_02.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-daughter.jpg",
-      "sha256": "2830e7bd491dc6cf76db2a7132661a6f70b06b6e9e61e5a96e253a74cf712b6c",
-      "bytes": 86218
+      "sha256": "629c7941f4d248d6ebb9fbb0744d3c39c8e1143efb66b021da9b4fd9711b1c7a",
+      "bytes": 80039
     },
     "man": {
       "avatar": "Adults/Male_Adult_01/Export/Male_Adult_01.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-man.jpg",
-      "sha256": "4f9b9ff642d13e937f1a2421d3f8d766aba7bb840c5a79624d6e4e2ff3524ecb",
-      "bytes": 77928
+      "sha256": "5865926c6c1768e7d7a67bce774482be4e22c17c27d447c3b8e7bc944b7efeb3",
+      "bytes": 91559
     },
     "grandma": {
       "avatar": "Professions/Business_Female_02/Export/Business_Female_02.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-grandma.jpg",
-      "sha256": "df56458128996b0bdb143ceb8348188a8935f9c3b93b940dde9e240dbe78fdeb",
-      "bytes": 113233
+      "sha256": "1c4f4bec837b594a49ebbbc6858b81ba11aa8e3b0883514bbf4d167f9dd4c599",
+      "bytes": 109610
     },
     "grandpa": {
       "avatar": "Adults/Male_Adult_03/Export/Male_Adult_03.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-grandpa.jpg",
-      "sha256": "9b8052c51f95ed8028a3b9dfc65f4bc1d0005c5807fdd6eccefa00fc0bcfcee3",
-      "bytes": 112554
+      "sha256": "dd4415ca2b354207246de4aa562486305cb6a0d1ebd8e619f168e00db8859565",
+      "bytes": 112116
     },
     "young": {
       "avatar": "Adults/Female_Adult_05/Export/Female_Adult_05.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-young.jpg",
-      "sha256": "2ca7ffc5d68389309bf25def95b34d3225e451cf2f41454eef338716d990f4be",
-      "bytes": 99895
+      "sha256": "27fddad783c2be780d199804b42218d2ee26d01aa59e9da05232a79beef58263",
+      "bytes": 93009
     },
     "teen": {
       "avatar": "Children/Male_Child_01/Export/Male_Child_01.fbx",
       "room": "kitchen",
       "file": "assets/scenes/caller-teen.jpg",
-      "sha256": "574dc180db7dcdbd795d92d8c3d4084e22acdef3ac0832da814326d7b6a26c69",
-      "bytes": 82364
+      "sha256": "dfae13f75f433546f5626657e9ae68582d8208e5896c8052c723f13af17d4586",
+      "bytes": 76622
     },
     "daughter-street": {
       "avatar": "Adults/Female_Adult_02/Export/Female_Adult_02.fbx",
       "room": "street",
       "file": "assets/scenes/caller-daughter-street.jpg",
-      "sha256": "ae2e52a87bc6222620ed43fbd72ca22cbdedeed9443ff86a80771aed1cb770c2",
-      "bytes": 89728
+      "sha256": "72a97fadd183675dfb63e2cc1f98b50a7e035eb34fefe603016a1139526d59d4",
+      "bytes": 81973
     },
     "man-street": {
       "avatar": "Adults/Male_Adult_01/Export/Male_Adult_01.fbx",
       "room": "street",
       "file": "assets/scenes/caller-man-street.jpg",
-      "sha256": "706abe33eee70136439661931e7949a642f6beefc1a39526cabb10e71e453e5e",
-      "bytes": 85671
+      "sha256": "26491c8c6dac6f24b3098fb0c3e41f7505a443262c70bbb22005a8707fef9cd8",
+      "bytes": 90673
     },
     "grandma-street": {
       "avatar": "Professions/Business_Female_02/Export/Business_Female_02.fbx",
       "room": "street",
       "file": "assets/scenes/caller-grandma-street.jpg",
-      "sha256": "1b8fbd0bec57eecf755ce1e9674de3f757da0767a6ab1758afea0ce9a21507d1",
-      "bytes": 104551
+      "sha256": "95c2e2645e67d3f2d8b57a1da3de2af63cd3f06ac95b86745a4015b4fdff19a5",
+      "bytes": 100113
     },
     "grandpa-street": {
       "avatar": "Adults/Male_Adult_03/Export/Male_Adult_03.fbx",
       "room": "street",
       "file": "assets/scenes/caller-grandpa-street.jpg",
-      "sha256": "a8d3b922aaf2a5f16d2060758eec373b21313656cd2b9f95e44b35faaeca87f7",
-      "bytes": 107279
+      "sha256": "d089e96357ea6d952c9a41cb2aa3b1c9bfc9f4f899e3e2ed71dd18d8737c0e8c",
+      "bytes": 101659
     },
     "young-street": {
       "avatar": "Adults/Female_Adult_05/Export/Female_Adult_05.fbx",
       "room": "street",
       "file": "assets/scenes/caller-young-street.jpg",
-      "sha256": "7f03d361faea24074fb981e132ae560a7576e8baff54efa238319e720f5b92c2",
-      "bytes": 104295
+      "sha256": "c0fab941fb51e0b8d91f23a6ba5855178627aa957ccfe90af25317f191578cf7",
+      "bytes": 95244
     },
     "teen-street": {
       "avatar": "Children/Male_Child_01/Export/Male_Child_01.fbx",
       "room": "street",
       "file": "assets/scenes/caller-teen-street.jpg",
-      "sha256": "e285c9e6e7784e9a8c2e5aec8d4f8ce8acd898920dd06347ac5fa7e08d5db286",
-      "bytes": 80232
+      "sha256": "8a67abe188ddbf7f8fcc2ae520d700eeb3fd6058000c7143bfffd4e7e131eae1",
+      "bytes": 71005
     }
   }
 }
