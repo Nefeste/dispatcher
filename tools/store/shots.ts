@@ -3,9 +3,10 @@
 //
 //   NODE_PATH=/opt/node22/lib/node_modules bun tools/store/shots.ts
 //
-// Список кадров — SHOTS ниже: имя кадра сценария → имя в store/screenshots/ru/. Подписи и описания — store/site/page.*.md.
+// Список кадров — SHOTS ниже: имя кадра сценария без номера (номера сдвигаются, когда в сценарий добавляют кадры) →
+// имя в store/screenshots/ru/. Подписи и описания — store/site/page.*.md.
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -13,14 +14,14 @@ const ROOT = join(import.meta.dir, '..', '..');
 const OUT = join(ROOT, 'store', 'screenshots', 'ru');
 
 export const SHOTS: [string, string][] = [
-  ['08-call', '01-call.png'],
-  ['10-call-crews', '02-crews.png'],
-  ['18-crew-card-onsite', '03-map.png'],
-  ['19-review', '04-report.png'],
-  ['21-call-review', '05-call-review.png'],
-  ['22-station', '06-station.png'],
-  ['34-week-done', '07-week.png'],
-  ['27-desk', '08-desk.png'],
+  ['call', '01-call.png'],
+  ['call-crews', '02-crews.png'],
+  ['pult-waiting', '03-map.png'],
+  ['review', '04-report.png'],
+  ['call-review', '05-call-review.png'],
+  ['station', '06-station.png'],
+  ['week-done', '07-week.png'],
+  ['desk', '08-desk.png'],
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'dispatcher-shots-'));
@@ -30,5 +31,10 @@ const run = spawnSync('bun', [join(ROOT, 'tools', 'e2e', 'browser.ts')], {
 });
 if (run.status !== 0) process.exit(run.status ?? 1);
 mkdirSync(OUT, { recursive: true });
-for (const [from, to] of SHOTS) copyFileSync(join(tmp, `${from}.png`), join(OUT, to));
+const files = readdirSync(tmp);
+for (const [from, to] of SHOTS) {
+  const found = files.filter(f => f.replace(/^\d+-/, '') === `${from}.png`);
+  if (found.length !== 1) throw new Error(`кадр «${from}»: найдено ${found.length}`);
+  copyFileSync(join(tmp, found[0]), join(OUT, to));
+}
 console.log(`store/screenshots/ru: ${SHOTS.length} снимков`);

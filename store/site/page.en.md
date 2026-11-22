@@ -17,7 +17,7 @@ shots:
     alt: "An emergency call: free crews listed by travel time, the nearest first"
   - file: screenshots/ru/03-map.png
     caption: Desk and map
-    alt: "The dispatcher's desk: a map of Nizhny Novgorod and a crew card on site — how long it will stay and how many calls its kit lasts; waiting calls below"
+    alt: "The dispatcher's desk: a map of Nizhny Novgorod, a «who to send to call 3» window with the street address; a waiting emergency call below"
   - file: screenshots/ru/04-report.png
     caption: Shift review
     alt: "End of shift: emergencies reached in time, the main mistake — which question was worth asking and what it cost"
@@ -72,5 +72,5 @@ guidelines. There is no first-aid advice and no doses in the game, and no blood 
 ## Done and in progress
 
 «The first week» is done: seven shifts in order, a station between shifts and a free shift after the week. In progress:
-a second district and a second week, the address on the call card, flashing lights on the map, and a free shift with a
+a second district and a second week, flashing lights on the map, and a free shift with a
 choice of district. The game will come out in RuStore for Android, offline and without sign-up.
