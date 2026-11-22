@@ -287,6 +287,10 @@ try {
           await snap(page, 'call-dialed');
           dialed++;
         }
+      } else if (!dialed) {
+        // линия занята — «Перезвонить» нет: окно закрыть и попробовать снова, когда линия освободится (бригаду не слать —
+        // ждущий нужен для перезвона)
+        await tap('crews-close');
       } else if (await visible('crews-0')) { if (await tap('crews-0')) picked++; }
       else await tap('crews-close');
     } else if (await visible('pult')) {
@@ -317,6 +321,9 @@ try {
   // разбор вызова: разговор, решение, по известному и по правде — отдельно
   if (await visible('review-main-call')) await page.getByTestId('review-main-call').click();
   else await page.getByTestId('review-row-1').click();
+  // адрес вызова — улица и дом из OpenStreetMap (игра владельца 22.11.2026)
+  await see(page, 'call-review-address');
+  checks++;
   await see(page, 'call-review-known', 'По известному');
   await see(page, 'call-review-truth', 'По правде');
   await snap(page, 'call-review');

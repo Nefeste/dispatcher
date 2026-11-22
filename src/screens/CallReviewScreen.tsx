@@ -17,6 +17,7 @@ export function CallReviewScreen({ id, onBack }: { id: string; onBack: () => voi
   return (
     <ScrollView contentContainerStyle={styles.root} testID="call-review">
       <Txt title style={styles.title}>{T.review.head(d.row.no, clock(d.row.clock))}</Txt>
+      {d.address ? <Txt testID="call-review-address">{T.call.address(d.address)}</Txt> : null}
       <Txt dim>{T.review.who(d.who, d.self)}</Txt>
 
       <Txt style={styles.head}>{T.review.talk}</Txt>

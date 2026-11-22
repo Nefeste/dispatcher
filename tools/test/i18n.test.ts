@@ -47,7 +47,8 @@ describe('строки интерфейса', () => {
   test('кириллица только в src/i18n и в комментариях', () => {
     const bad: string[] = [];
     for (const file of new Glob('**/*.{ts,tsx}').scanSync(SRC)) {
-      if (file.startsWith('i18n/') || file.startsWith('content/generated/')) continue;
+      // src/map/generated — данные OpenStreetMap (названия улиц), как content/generated — данные записей
+      if (file.startsWith('i18n/') || file.startsWith('content/generated/') || file.startsWith('map/generated/')) continue;
       stripComments(readFileSync(join(SRC, file), 'utf8')).split('\n').forEach((line, i) => {
         if (CYRILLIC.test(line)) bad.push(`src/${file}:${i + 1}: ${line.trim()}`);
       });

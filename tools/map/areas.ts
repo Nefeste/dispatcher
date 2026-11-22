@@ -43,3 +43,10 @@ export function overpassQuery(a: Area): string {
     'out body geom;',
   ].join('');
 }
+
+/** Адреса района (игра владельца 22.11.2026: «улица и номер дома нигде не показываются»): дома и точки с улицей и
+ *  номером — центр каждого. Отдельная выгрузка: карта дорог от неё не меняется (tools/map/addr.ts). */
+export function addrQuery(a: Area): string {
+  return `[out:json][timeout:180];(nwr["addr:housenumber"]["addr:street"](${a.bbox.join(',')}););out tags center;`;
+}
+

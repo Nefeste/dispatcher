@@ -1,0 +1,36 @@
+{
+  "id": "nn-center",
+  "name": "Нижний Новгород: Нагорная часть у Стрелки и Канавино за Окой",
+  "bbox": [
+    56.275,
+    43.93,
+    56.355,
+    44.03
+  ],
+  "licence": "ODbL-1.0",
+  "attribution": "© участники OpenStreetMap — https://www.openstreetmap.org/copyright",
+  "source": {
+    "endpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "query": "[out:json][timeout:180];(nwr[\"addr:housenumber\"][\"addr:street\"](56.275,43.93,56.355,44.03););out tags center;",
+    "osmBase": "2026-11-22T11:23:51Z",
+    "sha256": "46abcaf3a9c934ac7ee6c56419386935fc4b7de5c5f28185eef331a20bb799a0",
+    "bytes": 2614481
+  },
+  "rule": {
+    "nearM": 80,
+    "farM": 150,
+    "perNode": 3
+  },
+  "output": {
+    "file": "src/map/generated/nn-center.addr.ts",
+    "sha256": "4216b9b34044716abd5ee25c404137da09de5bf0f1954206f60e76d6e74d3073",
+    "elements": 7793,
+    "homes": 7277,
+    "skipped": 1,
+    "streets": 367,
+    "nodes": 2410,
+    "far": 21,
+    "empty": 0
+  },
+  "builder": "tools/map/addr.ts"
+}
