@@ -203,8 +203,19 @@ try {
   await page.getByTestId('call-q-q.age').click();
   await page.waitForTimeout(300);
   await snap(page, 'call-asked');
+  // «Без выезда» — с подтверждением: «Вернуться к разговору» оставляет вызов открытым (игра владельца 22.11.2026)
+  await page.getByTestId('call-form-none').click();
+  await page.getByText('Закрыть вызов без бригады?').waitFor({ state: 'visible', timeout: 5000 });
+  await page.getByText('Вернуться к разговору', { exact: true }).click();
+  await see(page, 'call-q-q.age');
+  checks++;
   await page.getByTestId('call-form-emergency').click();
   await see(page, 'hint', 'ближайшей бригаде');
+  await see(page, 'call-crews', 'Кого послать');
+  // «Ещё спросить» — вопросы снова, форму можно назвать заново
+  await page.getByTestId('call-more').click();
+  await see(page, 'call-q-q.age');
+  await page.getByTestId('call-form-emergency').click();
   await see(page, 'call-crews', 'Кого послать');
   await snap(page, 'call-crews');
   await page.getByTestId('call-crew-0').click();
@@ -223,7 +234,7 @@ try {
   const visible = async (id: string) => (await page.getByTestId(id).count()) > 0 && page.getByTestId(id).first().isVisible();
   // экран живой: часы идут, строки пересобираются — касание, которое не успело, просто повторится на следующем шаге
   const tap = (id: string) => page.getByTestId(id).first().click({ timeout: 1500 }).then(() => true, () => false);
-  let calls = 1, reports = 0, held = 0, picked = 0, shotReport = false, shotWaiting = false, lastTile = 0, snags = 0, onsite = 0;
+  let calls = 1, reports = 0, held = 0, picked = 0, shotReport = false, shotWaiting = false, dialed = 0, lastTile = 0, snags = 0, onsite = 0;
   for (let i = 0; i < 3000; i++) {
     if (await visible('end')) break;
     const snag = (await visible('snag-door')) ? 'door' : (await visible('snag-address')) ? 'address' : (await visible('snag-victim')) ? 'victim' : null;
@@ -265,7 +276,18 @@ try {
       await page.waitForTimeout(200);
     } else if (await visible('crews')) {
       if (!shotWaiting) { await snap(page, 'pult-waiting'); shotWaiting = true; }
-      if (await visible('crews-0')) { if (await tap('crews-0')) picked++; }
+      // первый раз — перезвонить ждущему (игра владельца 22.11.2026): разговор открывается снова
+      if (!dialed && (await visible('crews-dial')) && (await tap('crews-dial'))) {
+        if (await visible('call')) {
+          const said = (await page.getByTestId('call-said').getAttribute('aria-label')) ?? '';
+          if (!said.includes('Скорая беспокоит')) throw new Error(`перезвон: на экране «${said}»`);
+          // перезвонили — сначала вопросы и формы, не окно бригад
+          await see(page, 'call-form-emergency');
+          if (await visible('call-crews')) throw new Error('перезвон: сразу окно бригад');
+          await snap(page, 'call-dialed');
+          dialed++;
+        }
+      } else if (await visible('crews-0')) { if (await tap('crews-0')) picked++; }
       else await tap('crews-close');
     } else if (await visible('pult')) {
       const now = await speed();
@@ -277,9 +299,10 @@ try {
     } else await page.waitForTimeout(100);
   }
   await see(page, 'end-emergency', 'Экстренные с доездом до 20 минут');
-  console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта, ${snags} просьб на месте, ${onsite} вставок на месте`);
+  console.log(`смена: ${calls} звонков, ${reports} докладов с больницей, ${held} ждали, ${picked} посланы с пульта, ${dialed} перезвон, ${snags} просьб на месте, ${onsite} вставок на месте`);
   // зерно 2 — подъезд закрыт на первом звонке потока: просьба и вставка на месте должны быть
   if (!snags || !onsite) throw new Error('не было просьбы бригады на месте или вставки на месте');
+  if (!dialed) throw new Error('ждущему не перезвонили: «Перезвонить» не было на свободной линии');
   // послать с пульта удаётся, только когда свободна бригада, — это не всегда; звонки и доклады — всегда
   // первая смена недели — учебная, поток вполовину (§8 геймдизайна): около девяти звонков
   if (calls < 7 || reports < 1) throw new Error('смена прошла не вся');
